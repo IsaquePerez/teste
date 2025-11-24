@@ -1,32 +1,27 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
-from enum import Enum
+from app.models.testing import StatusCicloEnum
 
-class StatusProjeto(str, Enum):
-    ativo = "ativo"
-    pausado = "pausado"
-    finalizado = "finalizado"
-class ProjetoBase(BaseModel):
+class CicloTesteBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
-    status: Optional[StatusProjeto] = StatusProjeto.ativo
-    sistema_id: int
-    modulo_id: int
-    responsavel_id: Optional[int] = None    
+    data_inicio: Optional[datetime] = None
+    data_fim: Optional[datetime] = None
+    status: StatusCicloEnum = StatusCicloEnum.planejado
+    projeto_id: int
 
-class ProjetoCreate(ProjetoBase):
+class CicloTesteCreate(CicloTesteBase):
     pass
 
-class ProjetoUpdate(BaseModel):
-    nome: str
+class CicloTesteUpdate(BaseModel):
+    nome: Optional[str] = None
     descricao: Optional[str] = None
-    status: Optional[StatusProjeto] = None
-    sistema_id: int
-    modulo_id: int
-    responsavel_id: Optional[int] = None   
+    status: Optional[StatusCicloEnum] = None
+    data_inicio: Optional[datetime] = None
+    data_fim: Optional[datetime] = None
 
-class ProjetoResponse(ProjetoBase):
+class CicloTesteResponse(CicloTesteBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None

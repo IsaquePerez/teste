@@ -3,9 +3,5 @@ from .usuario import Usuario
 from .sistema import Sistema
 from .modulo import Modulo
 from .projeto import Projeto
-from .ciclo_teste import CicloTeste
-from .caso_teste import CasoTeste
-from .passo_caso_teste import PassoCasoTeste
-from .execucao_teste import ExecucaoTeste
-from .execucao_passo import ExecucaoPasso
+from .testing import (CasoTeste, CicloTeste, PassoCasoTeste, ExecucaoTeste, ExecucaoPasso, StatusExecucaoEnum, StatusPassoEnum)
 from .metrica import Metrica

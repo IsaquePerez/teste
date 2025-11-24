@@ -1,35 +1,48 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
-from enum import Enum
+from typing import List, Optional
+# CORREÇÃO AQUI: Importar de 'testing' onde o Enum está definido
+from app.models.testing import PrioridadeEnum
 
-class PrioridadeEnum(str, Enum):
-    alta = "alta"
-    media = "media"
-    baixa = "baixa"
+# --- PASSOS (Sub-recurso de Caso de Teste) ---
+class PassoCasoTesteBase(BaseModel):
+    ordem: int
+    acao: str
+    resultado_esperado: str
 
+class PassoCasoTesteCreate(PassoCasoTesteBase):
+    pass
+
+class PassoCasoTesteResponse(PassoCasoTesteBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+# --- CASO DE TESTE ---
 class CasoTesteBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
-    criterios_aceitacao: Optional[str] = None
-    prioridade: PrioridadeEnum = PrioridadeEnum.media 
-    passos: Optional[str] = None
+    pre_condicoes: Optional[str] = None
+    prioridade: PrioridadeEnum = PrioridadeEnum.media
     projeto_id: int
 
 class CasoTesteCreate(CasoTesteBase):
-    pass
+    # Agora recebemos uma lista de objetos de passos
+    passos: List[PassoCasoTesteCreate] = []
 
 class CasoTesteUpdate(BaseModel): 
     nome: Optional[str] = None
     descricao: Optional[str] = None
-    criterios_aceitacao: Optional[str] = None
     prioridade: Optional[PrioridadeEnum] = None
-    passos: Optional[str] = None
+    # Atualizar passos é complexo, geralmente se faz via endpoint específico
+    # passos: Optional[List[PassoCasoTesteCreate]] = None 
     projeto_id: Optional[int] = None
 
 class CasoTesteResponse(CasoTesteBase):
     id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    # Retorna os passos detalhados
+    passos: List[PassoCasoTesteResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
