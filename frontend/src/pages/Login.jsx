@@ -28,11 +28,17 @@ export function Login() {
     try {
       const data = await api.post("/login", { username, password });
       
+      // Normalização de dados (caso o backend não envie tudo)
       if (!data.role) data.role = username.toLowerCase().includes("admin") ? "admin" : "user";
       if (!data.username) data.username = username;
 
       login(data);
-      navigate(data.role === 'admin' ? '/admin' : '/tester', { replace: true });
+      if (data.role === 'admin') {
+          navigate('/admin', { replace: true });
+      } else {
+          navigate('/qa/runner', { replace: true });
+      }
+
     } catch (err) {
       console.error(err);
       setError(err.message || "Falha no login. Verifique as credenciais.");

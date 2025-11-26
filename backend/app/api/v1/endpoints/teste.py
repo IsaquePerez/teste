@@ -12,6 +12,11 @@ from app.schemas.execucao_teste import ExecucaoTesteResponse, ExecucaoPassoUpdat
 
 from app.api.deps import get_current_user 
 from app.models.testing import StatusExecucaoEnum
+import json
+import shutil
+import uuid
+import os
+from fastapi import File, UploadFile
 
 router = APIRouter()
 
@@ -160,3 +165,48 @@ async def finalizar_execucao(
     """Atualiza o status final do teste (Ex: Passou, Falhou, Bloqueado)."""
     service = TesteService(db)
     return await service.finalizar_execucao(execucao_id, status)
+
+@router.post("/passos/{execucao_passo_id}/evidencia", summary="Upload de Evidência")
+async def upload_evidencia(
+    execucao_passo_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    service = TesteService(db)
+    
+    # 1. Busca o passo atual para verificar limite
+    passo_atual = await service.repo.get_execucao_passo(execucao_passo_id)
+    if not passo_atual:
+        raise HTTPException(status_code=404, detail="Passo não encontrado")
+
+    # 2. Parse das evidências existentes (JSON)
+    evidencias_lista = []
+    if passo_atual.evidencias:
+        try:
+            # Tenta ler como JSON
+            evidencias_lista = json.loads(passo_atual.evidencias)
+            # Se por acaso não for lista (legado), converte
+            if not isinstance(evidencias_lista, list):
+                evidencias_lista = [passo_atual.evidencias]
+        except json.JSONDecodeError:
+            # Se for texto simples (legado), vira o primeiro item
+            evidencias_lista = [passo_atual.evidencias]
+
+    if len(evidencias_lista) >= 3:
+        raise HTTPException(status_code=400, detail="Limite de 3 evidências atingido para este passo.")
+
+    extensao = file.filename.split(".")[-1]
+    nome_arquivo = f"{uuid.uuid4()}.{extensao}"
+    caminho_arquivo = f"evidencias/{nome_arquivo}"
+    
+    with open(caminho_arquivo, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    url_publica = f"http://localhost:8000/{caminho_arquivo}"
+    
+    evidencias_lista.append(url_publica)
+    
+    dados_atualizacao = ExecucaoPassoUpdate(evidencias=json.dumps(evidencias_lista))
+    await service.registrar_resultado_passo(execucao_passo_id, dados_atualizacao)
+    
+    return {"url": url_publica, "lista_completa": evidencias_lista}

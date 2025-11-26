@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
+from app.models.usuario import Usuario
 
 class PrioridadeEnum(str, enum.Enum):
     alta = "alta"
@@ -69,15 +70,18 @@ class CasoTeste(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
+    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     nome = Column(String, nullable=False)
     descricao = Column(Text)
     pre_condicoes = Column(Text)
-    criterios_aceitacao = Column(Text)
+    criterios_aceitacao = Column(Text) 
     prioridade = Column(Enum(PrioridadeEnum, name='prioridade_enum', create_type=False), default=PrioridadeEnum.media)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Relacionamentos
     projeto = relationship("Projeto", back_populates="casos_teste")
+    responsavel = relationship("Usuario")   
     passos = relationship("PassoCasoTeste", back_populates="caso_teste", cascade="all, delete-orphan")
     execucoes = relationship("ExecucaoTeste", back_populates="caso_teste")
 

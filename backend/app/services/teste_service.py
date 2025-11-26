@@ -14,11 +14,15 @@ class TesteService:
     # --- GESTÃO DE CASOS E CICLOS ---
 
     async def criar_caso_teste(self, projeto_id: int, dados: CasoTesteCreate):
-        # Regra de Negócio: Validar se o projeto existe (opcional, mas recomendado)
-        # projeto = await self.repo.get_projeto_by_id(projeto_id)
-        # if not projeto: raise HTTPException(...)
-        
-        return await self.repo.create_caso_teste(projeto_id, dados)
+        novo_caso = await self.repo.create_caso_teste(projeto_id, dados)
+        if dados.ciclo_id and dados.responsavel_id:
+            await self.repo.criar_planejamento_execucao(
+                ciclo_id=dados.ciclo_id,
+                caso_id=novo_caso.id,
+                responsavel_id=dados.responsavel_id
+            )
+            
+        return novo_caso
     
     async def atualizar_caso(self, caso_id: int, dados: CasoTesteUpdate):
         update_data = dados.model_dump(exclude_unset=True)

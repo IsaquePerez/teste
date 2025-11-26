@@ -8,25 +8,23 @@ from .caso_teste import CasoTesteResponse, PassoCasoTesteResponse
 
 class ExecucaoPassoBase(BaseModel):
     resultado_obtido: Optional[str] = None
-    status: StatusPassoEnum = StatusPassoEnum.pendente
+    status: Optional[StatusPassoEnum] = None
     evidencias: Optional[str] = None
 
 class ExecucaoPassoUpdate(BaseModel):
     resultado_obtido: Optional[str] = None
-    status: StatusPassoEnum
+    status: Optional[StatusPassoEnum] = None 
     evidencias: Optional[str] = None
 
 class ExecucaoPassoResponse(ExecucaoPassoBase):
     id: int
     passo_caso_teste_id: int
     updated_at: Optional[datetime] = None
-    
-    # Incluímos o template do passo para o front saber o que testar ("Ação", "Resultado Esperado")
     passo_template: Optional[PassoCasoTesteResponse] = None 
     
     model_config = ConfigDict(from_attributes=True)
 
-# --- EXECUÇÃO GERAL (HEADER) ---
+# --- EXECUÇÃO DE TESTE ---
 
 class ExecucaoTesteBase(BaseModel):
     ciclo_teste_id: int
@@ -38,8 +36,6 @@ class ExecucaoTesteResponse(ExecucaoTesteBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    # Dados aninhados para facilitar a tela de execução
     caso_teste: Optional[CasoTesteResponse] = None 
     passos_executados: List[ExecucaoPassoResponse] = [] 
     

@@ -173,3 +173,51 @@ tr.selected { background-color: #dbeafe; border-left: 3px solid #3b82f6; }
     letter-spacing: 1px;
     margin-top: 10px;
 }
+
+.btn-approve {
+    width: 100%;
+    background-color: #10b981; /* Verde Base */
+    color: white;
+    border: none;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.btn-approve:hover {
+    background-color: #059669; /* Verde Escuro */
+    cursor: pointer;
+}
+.btn-approve:active { transform: scale(0.98); }
+
+.btn-reject {
+    width: 100%;
+    background-color: #ef4444; /* Vermelho Base */
+    color: white;
+    border: none;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.btn-reject:hover {
+    background-color: #dc2626; /* Vermelho Escuro */
+    cursor: pointer;
+}
+.btn-reject:active { transform: scale(0.98); }
+
+/* --- Chips de Evidência --- */
+.evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-right: 5px;
+    margin-top: 5px;
+}
+.evidence-chip .delete-btn {
+    cursor: pointer;
+    color: #555555;
+    font-weight: bold;
+    margin-left: 5px;
+}
+.evidence-chip .delete-btn:hover { color: #b91c1c; }
