@@ -29,22 +29,30 @@ export function QADefeitos() {
     } catch (e) { alert("Erro ao atualizar."); }
   };
 
+  // --- NOVA FUNÇÃO PARA FORMATAR A DATA ---
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
   const parseEvidencias = (evidenciaString) => {
       if (!evidenciaString) return [];
-      
-      // 1. Se for uma URL direta (começa com http e não é um array JSON)
       if (typeof evidenciaString === 'string' && evidenciaString.trim().startsWith('http') && !evidenciaString.trim().startsWith('[')) {
           return [evidenciaString];
       }
-
-      // 2. Se for JSON (Lista de URLs)
       try {
           const parsed = JSON.parse(evidenciaString);
           if (Array.isArray(parsed)) return parsed;
-          if (typeof parsed === 'string') return [parsed]; // Caso tenha sido stringuificado duas vezes
+          if (typeof parsed === 'string') return [parsed];
           return [];
       } catch (e) {
-          // 3. Fallback: Se falhar o parse, assume que é texto ou link simples
           console.warn("Falha ao parsear evidência:", evidenciaString);
           return [evidenciaString];
       }
@@ -76,11 +84,13 @@ export function QADefeitos() {
                 <thead>
                   <tr>
                     <th>ID</th>
+                    {/* --- NOVA COLUNA NO CABEÇALHO --- */}
                     <th>Origem (Teste/Responsável)</th>
                     <th>Erro</th>
                     <th>Evidências</th>
                     <th>Severidade</th>
                     <th>Status</th>
+                    <th>Registado em</th> 
                     <th>Ações</th>
                   </tr>
                 </thead>
@@ -90,8 +100,8 @@ export function QADefeitos() {
                     return (
                         <tr key={d.id}>
                         <td style={{color:'#64748b'}}>#{d.id}</td>
+
                         
-                        {/* --- NOVA COLUNA DE CONTEXTO --- */}
                         <td>
                             <div style={{fontWeight: 600, color: '#334155'}}>
                                 {d.execucao?.caso_teste?.nome || 'Teste Removido'}
@@ -131,11 +141,14 @@ export function QADefeitos() {
                                 </select>
                             ) : (
                                 <span className="badge" style={{
-                                    backgroundColor: d.status === 'aberto' ? '#fee2e2' : (d.status === 'corrigido' ? '#d1fae5' : '#eff6ff'),
-                                    color: d.status === 'aberto' ? '#b91c1c' : (d.status === 'corrigido' ? '#065f46' : '#1e40af')
+                                  backgroundColor: d.status === 'aberto' ? '#fee2e2' : (d.status === 'corrigido' ? '#d1fae5' : '#eff6ff'),
+                                  color: d.status === 'aberto' ? '#b91c1c' : (d.status === 'corrigido' ? '#065f46' : '#1e40af')
                                 }}>{d.status.toUpperCase()}</span>
                             )}
                         </td>
+                          <td style={{fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap'}}>
+                              {formatDate(d.created_at)}
+                          </td>
                         <td>
                             {editingId === d.id ? (
                                 <div style={{display:'flex', gap:'5px'}}>
@@ -156,7 +169,7 @@ export function QADefeitos() {
         )}
       </section>
 
-      {/* GALERIA */}
+      {/* GALERIA (Mantém igual) */}
       {galleryImages && (
           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}} onClick={() => setGalleryImages(null)}>
               <div style={{display:'flex', gap:'20px', overflowX: 'auto', maxWidth: '90%', padding:'20px'}}>

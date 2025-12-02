@@ -20,12 +20,14 @@ export function AuthProvider({ children }) {
     // Guarda no sessionStorage como o script.js original fazia
     sessionStorage.setItem("token", apiResponse.access_token);
     sessionStorage.setItem("role", apiResponse.role);
-    sessionStorage.setItem("username", apiResponse.username); // Certifique-se que o backend retorna isto
+    sessionStorage.setItem("username", apiResponse.username);
+    sessionStorage.setItem("nome", apiResponse.nome);
     
     setUser({
       token: apiResponse.access_token,
       role: apiResponse.role,
-      username: apiResponse.username
+      username: apiResponse.username,
+      nome: apiResponse.nome
     });
   };
 

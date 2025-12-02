@@ -6,6 +6,22 @@ from app.schemas.caso_teste import CasoTesteCreate, CasoTesteUpdate
 from app.schemas.ciclo_teste import CicloTesteCreate, CicloTesteUpdate
 from app.schemas.execucao_teste import ExecucaoPassoUpdate
 from app.models.testing import StatusExecucaoEnum, StatusPassoEnum
+from datetime import datetime
+
+MESES_PT = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro"
+}
 
 class TesteService:
     def __init__(self, db: AsyncSession):

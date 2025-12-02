@@ -20,12 +20,10 @@ function TopHeader() {
   return (
     <header className="top-header">
       <nav className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '100%' }}>
-        {/* Botão Voltar apenas se necessário, ou removido para dashboard principal */}
-        <div style={{ marginRight: 'auto' }}></div> 
-
-        <span style={{ fontWeight: 500 }}>{user?.username}</span>
+        <div style={{ marginRight: 'auto' }}></div>
+        {/* <span style={{ fontWeight: 500 }}>{user?.nome}</span> */}
         <span className="badge" style={{backgroundColor: '#eef2ff', color: '#3730a3'}}>
-            {user?.role === 'admin' ? 'Gerente (Admin)' : 'Testador (QA)'}
+            {user?.nome}
         </span>
         <button onClick={logout} className="btn danger">Sair</button>
       </nav>
@@ -62,8 +60,8 @@ function Sidebar({ role }) {
              <Link to="/admin/projetos" className={isActive('/admin/projetos')}>Projetos</Link>
 
              <div className="nav-section">PLANEJAMENTO</div>
-             <Link to="/admin/ciclos" className={isActive('/admin/ciclos')}>Criar Ciclos</Link>
-             <Link to="/admin/casos" className={isActive('/admin/casos')}>Biblioteca de Testes</Link>
+             <Link to="/admin/ciclos" className={isActive('/admin/ciclos')}>Ciclos</Link>
+             <Link to="/admin/casos" className={isActive('/admin/casos')}>Casos de Testes</Link>
              
              {/* Admin vê Defeitos para acompanhar, mas não executa testes */}
              <div className="nav-section">MONITORAMENTO</div>

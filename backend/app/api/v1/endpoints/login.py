@@ -49,5 +49,8 @@ async def login_access_token(
 
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "username": user.email,
+        "nome": user.nome,          
+        "role": user.nivel_acesso.nome
     }

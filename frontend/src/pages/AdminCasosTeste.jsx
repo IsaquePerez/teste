@@ -69,6 +69,26 @@ export function AdminCasosTeste() {
     }
   };
 
+  // --- STEPS ---
+  const addStep = () => {
+    setForm(prev => ({
+      ...prev,
+      passos: [...prev.passos, { ordem: prev.passos.length + 1, acao: '', resultado_esperado: '' }]
+    }));
+  };
+
+  const removeStep = (index) => {
+    if (form.passos.length === 1) return;
+    const newPassos = form.passos.filter((_, i) => i !== index).map((p, i) => ({ ...p, ordem: i + 1 }));
+    setForm(prev => ({ ...prev, passos: newPassos }));
+  };
+
+  const updateStep = (index, field, value) => {
+    const newPassos = [...form.passos];
+    newPassos[index][field] = value;
+    setForm(prev => ({ ...prev, passos: newPassos }));
+  };
+
   // --- GESTÃO DO FORMULÁRIO ---
   const handleReset = () => {
     setForm({
@@ -100,26 +120,6 @@ export function AdminCasosTeste() {
     });
     setEditingId(caso.id);
     setView('form');
-  };
-
-  // --- STEPS ---
-  const addStep = () => {
-    setForm(prev => ({
-      ...prev,
-      passos: [...prev.passos, { ordem: prev.passos.length + 1, acao: '', resultado_esperado: '' }]
-    }));
-  };
-
-  const removeStep = (index) => {
-    if (form.passos.length === 1) return;
-    const newPassos = form.passos.filter((_, i) => i !== index).map((p, i) => ({ ...p, ordem: i + 1 }));
-    setForm(prev => ({ ...prev, passos: newPassos }));
-  };
-
-  const updateStep = (index, field, value) => {
-    const newPassos = [...form.passos];
-    newPassos[index][field] = value;
-    setForm(prev => ({ ...prev, passos: newPassos }));
   };
 
   // --- SUBMIT ---

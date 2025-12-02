@@ -7,6 +7,7 @@ export const getSession = () => ({
   token: sessionStorage.getItem("token"),
   username: sessionStorage.getItem("username"),
   role: sessionStorage.getItem("role"),
+  nome: sessionStorage.getItem("nome"),
 });
 
 export const clearSession = () => {

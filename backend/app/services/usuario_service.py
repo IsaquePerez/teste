@@ -39,14 +39,15 @@ class UsuarioService:
             return UsuarioResponse.model_validate(novo_usuario_db)
         except IntegrityError as e:
             await self.repo.db.rollback()
-            # Se o erro for violação de unicidade (email duplicado que passou na pré-verificação por alguma razão de concorrência)
+
             if "ix_usuarios_email" in str(e.orig):
                 raise HTTPException(status_code=409, detail="Este email já está em uso por outro utilizador.")
-            # Outro erro de integridade qualquer
+
             raise HTTPException(status_code=400, detail="Erro de integridade na base de dados.")
+
         except Exception as e:
             await self.repo.db.rollback()
-            # Erro genérico para não vazar detalhes sensíveis, mas logamos no console
+
             print(f"Erro inesperado ao criar usuário: {e}")
             raise HTTPException(status_code=500, detail="Erro interno ao criar utilizador.")
 
