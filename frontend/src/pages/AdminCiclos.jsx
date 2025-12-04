@@ -7,11 +7,9 @@ export function AdminCiclos() {
   const [ciclos, setCiclos] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Estado de Visualização e Edição
-  const [view, setView] = useState('list'); // 'list' ou 'form'
+  const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
 
-  // Estado do Form
   const [form, setForm] = useState({
     nome: '',
     descricao: '',
@@ -20,7 +18,6 @@ export function AdminCiclos() {
     status: 'planejado'
   });
 
-  // 1. Carregar Projetos
   useEffect(() => {
     api.get("/projetos").then(data => {
       setProjetos(data);
@@ -28,7 +25,6 @@ export function AdminCiclos() {
     });
   }, []);
 
-  // 2. Carregar Ciclos ao mudar projeto
   useEffect(() => {
     if (selectedProjeto) loadCiclos(selectedProjeto);
   }, [selectedProjeto]);
@@ -42,15 +38,34 @@ export function AdminCiclos() {
     finally { setLoading(false); }
   };
 
-  // --- AÇÕES CRUD ---
+  // --- HELPERS ---
+
+  const formatForInput = (dateString) => {
+      if (!dateString) return '';
+      return dateString.split('T')[0];
+  };
+
+  const formatDateTable = (dateString) => {
+      if (!dateString) return '-';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  };
+
+  const getHojeISO = () => {
+      const hoje = new Date();
+      return new Date(hoje.getTime() - (hoje.getTimezoneOffset() * 60000))
+          .toISOString()
+          .split('T')[0];
+  };
+
+  // --- AÇÕES ---
 
   const handleEdit = (ciclo) => {
     setForm({
       nome: ciclo.nome,
       descricao: ciclo.descricao || '',
-      // Converte a data ISO do backend para YYYY-MM-DD que o input date aceita
-      data_inicio: ciclo.data_inicio ? ciclo.data_inicio.split('T')[0] : '',
-      data_fim: ciclo.data_fim ? ciclo.data_fim.split('T')[0] : '',
+      data_inicio: formatForInput(ciclo.data_inicio),
+      data_fim: formatForInput(ciclo.data_fim),
       status: ciclo.status
     });
     setEditingId(ciclo.id);
@@ -58,15 +73,11 @@ export function AdminCiclos() {
   };
 
   const handleDelete = async (id) => {
-    if(!confirm("Tem a certeza que deseja excluir este ciclo? Isso apagará todas as execuções vinculadas!")) return;
+    if(!confirm("Tem a certeza que deseja excluir este ciclo?")) return;
     try {
         await api.delete(`/testes/ciclos/${id}`);
-        alert("Ciclo excluído.");
         loadCiclos(selectedProjeto);
-    } catch (e) { 
-        console.error(e);
-        alert("Erro ao excluir."); 
-    }
+    } catch (e) { alert("Erro ao excluir."); }
   };
 
   const handleCancel = () => {
@@ -79,20 +90,25 @@ export function AdminCiclos() {
     e.preventDefault();
     if (!selectedProjeto) return alert("Selecione um projeto!");
 
+    // VALIDAÇÃO BÁSICA PARA EVITAR ERRO DE DADOS VAZIOS
+    if (!form.data_inicio || !form.data_fim) {
+        return alert("Por favor, preencha as datas de início e fim.");
+    }
+
     try {
       const payload = { 
           ...form, 
           projeto_id: parseInt(selectedProjeto),
-          data_inicio: form.data_inicio ? new Date(form.data_inicio).toISOString() : null,
-          data_fim: form.data_fim ? new Date(form.data_fim).toISOString() : null
+          // CORREÇÃO DO ERRO DE CRIAÇÃO:
+          // Garante que só chama toISOString se a data existir
+          data_inicio: new Date(form.data_inicio).toISOString(),
+          data_fim: new Date(form.data_fim).toISOString()
       };
 
       if (editingId) {
-          // UPDATE
           await api.put(`/testes/ciclos/${editingId}`, payload);
           alert("Ciclo atualizado!");
       } else {
-          // CREATE
           await api.post(`/testes/projetos/${selectedProjeto}/ciclos`, payload);
           alert("Ciclo criado!");
       }
@@ -101,7 +117,8 @@ export function AdminCiclos() {
       loadCiclos(selectedProjeto);
 
     } catch (error) {
-      alert("Erro ao salvar: " + (error.message || "Verifique os dados"));
+      console.error(error);
+      alert("Erro ao salvar: " + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -116,7 +133,6 @@ export function AdminCiclos() {
 
   return (
     <main className="container">
-      {/* HEADER */}
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <div>
            <h2 className="section-title" style={{marginBottom: '5px', border: 'none'}}>Gestão de Ciclos</h2>
@@ -142,7 +158,6 @@ export function AdminCiclos() {
         )}
       </div>
 
-      {/* FORMULÁRIO */}
       {view === 'form' && (
         <section className="card">
           <h3 style={{marginTop:0}}>{editingId ? 'Editar Ciclo' : 'Novo Ciclo'}</h3>
@@ -156,20 +171,37 @@ export function AdminCiclos() {
                <div style={{gridColumn: '1/-1'}}>
                  <label>Descrição / Objetivo</label>
                  <textarea 
-                    value={form.descricao} 
-                    onChange={e => setForm({...form, descricao: e.target.value})}
-                    style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
+                   value={form.descricao} 
+                   onChange={e => setForm({...form, descricao: e.target.value})}
+                   style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
                  />
                </div>
 
                <div>
                  <label>Data Início</label>
-                 <input type="date" value={form.data_inicio} onChange={e => setForm({...form, data_inicio: e.target.value})} />
+                 <input 
+                   type="date" 
+                   required
+                   value={form.data_inicio} 
+                   onChange={e => setForm({...form, data_inicio: e.target.value})} 
+                   // CORREÇÃO DO BLOQUEIO:
+                   // Se for NOVO, bloqueia passado. 
+                   // Se for EDIÇÃO, remove o bloqueio para permitir editar ciclos antigos sem erro.
+                   min={!editingId ? getHojeISO() : undefined}
+                 />
                </div>
                
                <div>
                  <label>Data Fim</label>
-                 <input type="date" value={form.data_fim} onChange={e => setForm({...form, data_fim: e.target.value})} />
+                 <input 
+                   type="date" 
+                   required
+                   value={form.data_fim} 
+                   onChange={e => setForm({...form, data_fim: e.target.value})}
+                   // CORREÇÃO DO BLOQUEIO:
+                   // A data fim SEMPRE tem que ser maior ou igual a data inicio (mesmo na edição)
+                   min={form.data_inicio}
+                 />
                </div>
 
                <div>
@@ -191,7 +223,6 @@ export function AdminCiclos() {
         </section>
       )}
 
-      {/* LISTAGEM */}
       {view === 'list' && (
         <section className="card">
            {loading ? <p>Carregando...</p> : (
@@ -210,19 +241,19 @@ export function AdminCiclos() {
                    <tbody>
                      {ciclos.map(c => (
                        <tr key={c.id}>
-                         <td>#{c.id}</td>
+                         <td style={{color: '#94a3b8'}}>#{c.id}</td>
                          <td>
                            <strong>{c.nome}</strong><br/>
                            <span style={{fontSize:'0.85em', color:'#6b7280'}}>{c.descricao}</span>
                          </td>
                          <td>
-                            {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString() : 'N/A'} 
+                            {formatDateTable(c.data_inicio)} 
                             {' até '} 
-                            {c.data_fim ? new Date(c.data_fim).toLocaleDateString() : 'N/A'}
+                            {formatDateTable(c.data_fim)}
                          </td>
                          <td>
                             <span className="badge" style={{backgroundColor: getStatusColor(c.status)}}>
-                                {c.status}
+                                {c.status.replace('_', ' ').toUpperCase()}
                             </span>
                          </td>
                          <td>

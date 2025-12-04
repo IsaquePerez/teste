@@ -7,9 +7,7 @@ export function AdminModulos() {
   const [form, setForm] = useState({ nome: '', descricao: '', sistema_id: '' });
   const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => { 
-      loadData(); 
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
@@ -19,7 +17,8 @@ export function AdminModulos() {
         ]);
         setModulos(mods);
         setSistemas(sis);
-        if (sis.length > 0) setForm(f => ({ ...f, sistema_id: sis[0].id }));
+        const ativos = sis.filter(s => s.ativo);
+        if (ativos.length > 0) setForm(f => ({ ...f, sistema_id: ativos[0].id }));
     } catch (e) { console.error(e); }
   };
 
@@ -27,28 +26,36 @@ export function AdminModulos() {
     e.preventDefault();
     try {
       const payload = { ...form, sistema_id: parseInt(form.sistema_id) };
-      if (editingId) {
-        await api.put(`/modulos/${editingId}`, payload);
-      } else {
-        await api.post("/modulos/", payload);
-      }
+      if (editingId) await api.put(`/modulos/${editingId}`, payload);
+      else await api.post("/modulos/", { ...payload, ativo: true });
+      
       alert("Salvo com sucesso!");
-      setForm({ nome: '', descricao: '', sistema_id: sistemas[0]?.id || '' });
-      setEditingId(null);
+      handleCancel();
       const updatedMods = await api.get("/modulos/");
       setModulos(updatedMods);
     } catch (error) { alert("Erro ao salvar."); }
   };
 
-  const handleDelete = async (id) => {
-      if(!confirm("Deseja apagar este módulo?")) return;
-      await api.delete(`/modulos/${id}`);
-      const updatedMods = await api.get("/modulos/");
-      setModulos(updatedMods);
-  }
+  const handleCancel = () => {
+      setEditingId(null);
+      setForm(f => ({...f, nome:'', descricao:''})); 
+  };
 
-  // Helper para mostrar o nome do sistema na tabela
+  const handleSelectRow = (modulo) => {
+      setForm({nome: modulo.nome, descricao: modulo.descricao, sistema_id: modulo.sistema_id});
+      setEditingId(modulo.id);
+  };
+
+  const toggleActive = async (modulo) => {
+      try {
+          await api.put(`/modulos/${modulo.id}`, { ativo: !modulo.ativo });
+          const updatedMods = await api.get("/modulos/");
+          setModulos(updatedMods);
+      } catch(e) { alert("Erro ao alterar status."); }
+  };
+
   const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || id;
+  const sistemasAtivos = sistemas.filter(s => s.ativo);
 
   return (
     <main className="container grid">
@@ -59,7 +66,8 @@ export function AdminModulos() {
             <div>
                 <label>Sistema Pai</label>
                 <select value={form.sistema_id} onChange={e => setForm({...form, sistema_id: e.target.value})} required>
-                    {sistemas.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    {sistemasAtivos.length === 0 && <option value="">Nenhum sistema ativo disponível</option>}
+                    {sistemasAtivos.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
                 </select>
             </div>
             <div>
@@ -72,8 +80,8 @@ export function AdminModulos() {
             </div>
           </div>
           <div className="actions" style={{marginTop: '15px'}}>
-            <button type="submit" className="btn primary">Salvar</button>
-            {editingId && <button type="button" onClick={() => {setEditingId(null); setForm(f => ({...f, nome:'', descricao:''}))}} className="btn" style={{marginLeft:'10px'}}>Cancelar</button>}
+            <button type="submit" className="btn primary">{editingId ? 'Atualizar' : 'Salvar'}</button>
+            {editingId && <button type="button" onClick={handleCancel} className="btn" style={{marginLeft:'10px'}}>Cancelar Seleção</button>}
           </div>
         </form>
       </section>
@@ -82,15 +90,31 @@ export function AdminModulos() {
         <h2 className="section-title">Módulos Cadastrados</h2>
         <div className="table-wrap">
             <table>
-                <thead><tr><th>Sistema</th><th>Módulo</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Sistema</th><th>Módulo</th><th>Status</th></tr></thead>
                 <tbody>
                     {modulos.map(m => (
-                        <tr key={m.id}>
+                        <tr 
+                            key={m.id} 
+                            onClick={() => handleSelectRow(m)}
+                            className={editingId === m.id ? 'selected' : 'selectable'}
+                            style={{opacity: m.ativo ? 1 : 0.6}}
+                        >
                             <td><span className="badge" style={{backgroundColor: '#e0f2fe', color: '#0369a1'}}>{getSistemaName(m.sistema_id)}</span></td>
                             <td><strong>{m.nome}</strong></td>
+                            
                             <td>
-                                <button onClick={() => { setForm({nome: m.nome, descricao: m.descricao, sistema_id: m.sistema_id}); setEditingId(m.id); }} className="btn">Editar</button>
-                                <button onClick={() => handleDelete(m.id)} className="btn danger" style={{marginLeft: '5px'}}>Excluir</button>
+                                <span 
+                                    onClick={(e) => { e.stopPropagation(); toggleActive(m); }}
+                                    className="badge"
+                                    title="Clique para alternar"
+                                    style={{
+                                        cursor: 'pointer',
+                                        backgroundColor: m.ativo ? '#eef2ff' : '#fee2e2', 
+                                        color: m.ativo ? '#3730a3' : '#b91c1c'
+                                    }}
+                                >
+                                    {m.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
                             </td>
                         </tr>
                     ))}

@@ -4,8 +4,8 @@ import { api } from '../services/api';
 export function QADefeitos() {
   const [defeitos, setDefeitos] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [statusForm, setStatusForm] = useState('');
+  // openMenuId controla qual dropdown está aberto no momento
+  const [openMenuId, setOpenMenuId] = useState(null);
   const [galleryImages, setGalleryImages] = useState(null);
 
   useEffect(() => { loadDefeitos(); }, []);
@@ -19,13 +19,19 @@ export function QADefeitos() {
     finally { setLoading(false); }
   };
 
-  const handleSaveStatus = async (id) => {
+  // Agora recebe o novo status diretamente ao clicar na opção
+  const handleUpdateStatus = async (id, newStatus) => {
+    // UI otimista: fecha o menu imediatamente
+    setOpenMenuId(null); 
+    
     try {
-        await api.put(`/defeitos/${id}`, { status: statusForm });
-        alert("Status atualizado!");
-        setEditingId(null);
+        await api.put(`/defeitos/${id}`, { status: newStatus });
+        // Recarrega lista para confirmar
         loadDefeitos(); 
-    } catch (e) { alert("Erro ao atualizar."); }
+    } catch (e) { 
+        alert("Erro ao atualizar status."); 
+        console.error(e);
+    }
   };
 
   // --- HELPERS VISUAIS ---
@@ -40,8 +46,6 @@ export function QADefeitos() {
 
   const renderResponsavel = (responsavel) => {
       if (!responsavel) return <span style={{color: '#94a3b8', fontSize: '0.8rem'}}>Desconhecido</span>;
-
-      // Inativo = Vermelho
       if (responsavel.ativo === false) {
           return (
               <span className="badge" style={{backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.75rem'}} title="Utilizador Inativo">
@@ -49,8 +53,6 @@ export function QADefeitos() {
               </span>
           );
       }
-      
-      // Ativo = Azul Padrão
       return (
           <span className="badge" style={{backgroundColor: '#eef2ff', color: '#3730a3', fontSize: '0.75rem'}}>
               {responsavel.nome}
@@ -65,6 +67,15 @@ export function QADefeitos() {
           case 'medio': return '#f59e0b'; 
           default: return '#10b981'; 
       }
+  };
+
+  const getStatusStyle = (status) => {
+    switch(status) {
+        case 'aberto': return { bg: '#fee2e2', color: '#b91c1c' };
+        case 'corrigido': return { bg: '#d1fae5', color: '#065f46' };
+        case 'fechado': return { bg: '#f1f5f9', color: '#475569' };
+        default: return { bg: '#eff6ff', color: '#1e40af' }; // em_teste e outros
+    }
   };
 
   // --- GALERIA ---
@@ -84,6 +95,11 @@ export function QADefeitos() {
       if (lista.length > 0) setGalleryImages(lista);
   };
 
+  const toggleMenu = (id) => {
+    if (openMenuId === id) setOpenMenuId(null);
+    else setOpenMenuId(id);
+  };
+
   return (
     <main className="container">
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
@@ -91,11 +107,11 @@ export function QADefeitos() {
         <button onClick={loadDefeitos} className="btn">Atualizar Lista</button>
       </div>
 
-      <section className="card">
+      <section className="card" style={{overflow: 'visible'}}> {/* overflow visible para o menu não cortar */}
         {loading ? <p>A carregar...</p> : (
-          <div className="table-wrap">
+          <div className="table-wrap" style={{overflowX: 'visible'}}>
             {defeitos.length === 0 ? <p className="muted">Nenhum defeito registado.</p> : (
-              <table>
+              <table style={{ borderCollapse: 'separate', borderSpacing: '0 5px' }}>
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -103,19 +119,20 @@ export function QADefeitos() {
                     <th>Erro</th>
                     <th>Evidências</th>
                     <th>Severidade</th>
-                    <th>Status</th>
+                    <th>Status & Ações</th> {/* Coluna fundida */}
                     <th>Registado em</th>
-                    <th>Ações</th>
+                    {/* Coluna Ações removida */}
                   </tr>
                 </thead>
                 <tbody>
                   {defeitos.map(d => {
                     const temEvidencia = d.evidencias && parseEvidencias(d.evidencias).length > 0;
+                    const styleStatus = getStatusStyle(d.status);
+                    
                     return (
                         <tr key={d.id}>
                             <td style={{color:'#64748b'}}>#{d.id}</td>
                             
-                            {/* ORIGEM */}
                             <td>
                                 <div style={{fontWeight: 600, color: '#334155', marginBottom: '4px'}}>
                                     {d.execucao?.caso_teste?.nome || 'Teste Removido'}
@@ -125,7 +142,6 @@ export function QADefeitos() {
                                 </div>
                             </td>
 
-                            {/* ERRO */}
                             <td>
                                 <strong>{d.titulo}</strong>
                                 <div style={{fontSize:'0.85em', color:'#6b7280', marginTop:'2px', maxWidth:'300px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}} title={d.descricao}>
@@ -133,7 +149,6 @@ export function QADefeitos() {
                                 </div>
                             </td>
                             
-                            {/* EVIDÊNCIAS */}
                             <td>
                                 {temEvidencia ? (
                                     <button onClick={() => openGallery(d.evidencias)} className="btn small" style={{backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', fontSize: '0.75rem'}}>
@@ -142,45 +157,71 @@ export function QADefeitos() {
                                 ) : <span style={{color: '#cbd5e1'}}>-</span>}
                             </td>
                             
-                            {/* SEVERIDADE */}
                             <td>
                                 <span style={{color: getSeveridadeColor(d.severidade), fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.75rem'}}>
                                     {d.severidade}
                                 </span>
                             </td>
                             
-                            {/* STATUS */}
-                            <td>
-                                {editingId === d.id ? (
-                                    <select value={statusForm} onChange={e => setStatusForm(e.target.value)} style={{padding: '4px', borderRadius: '4px', fontSize: '0.85rem'}}>
-                                        <option value="aberto">Aberto</option>
-                                        <option value="em_teste">Em Teste</option>
-                                        <option value="corrigido">Corrigido</option>
-                                        <option value="fechado">Fechado</option>
-                                    </select>
-                                ) : (
-                                    <span className="badge" style={{
-                                        backgroundColor: d.status === 'aberto' ? '#fee2e2' : (d.status === 'corrigido' ? '#d1fae5' : '#eff6ff'),
-                                        color: d.status === 'aberto' ? '#b91c1c' : (d.status === 'corrigido' ? '#065f46' : '#1e40af')
-                                    }}>{d.status.toUpperCase()}</span>
+                            {/* --- COLUNA DE STATUS INTERATIVA --- */}
+                            <td style={{ position: 'relative' }}> 
+                                <button 
+                                    onClick={() => toggleMenu(d.id)}
+                                    className="badge"
+                                    style={{
+                                        backgroundColor: styleStatus.bg,
+                                        color: styleStatus.color,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 'bold',
+                                        
+                                    }}
+                                >
+                                    {d.status} <span style={{fontSize: '0.6rem'}}>▼</span>
+                                </button>
+
+                                {/* MENU SUSPENSO (DROPDOWN) */}
+                                {openMenuId === d.id && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        backgroundColor: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                        borderRadius: '6px',
+                                        zIndex: 50,
+                                        minWidth: '120px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        {['aberto', 'em_teste', 'corrigido', 'fechado'].map(opt => (
+                                            <div 
+                                                key={opt}
+                                                onClick={() => handleUpdateStatus(d.id, opt)}
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.85rem',
+                                                    color: '#334155',
+                                                    borderBottom: '1px solid #f1f5f9',
+                                                    backgroundColor: d.status === opt ? '#f8fafc' : 'white'
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f5f9'}
+                                                onMouseLeave={(e) => e.target.style.backgroundColor = d.status === opt ? '#f8fafc' : 'white'}
+                                            >
+                                                {opt.replace('_', ' ')}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </td>
 
-                            {/* DATA */}
                             <td style={{fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap'}}>
                                 {formatDate(d.created_at)}
-                            </td>
-                            
-                            {/* AÇÕES */}
-                            <td>
-                                {editingId === d.id ? (
-                                    <div style={{display:'flex', gap:'5px'}}>
-                                        <button onClick={() => handleSaveStatus(d.id)} className="btn primary" style={{fontSize: '0.7rem', padding: '4px 8px'}}>OK</button>
-                                        <button onClick={() => setEditingId(null)} className="btn" style={{fontSize: '0.7rem', padding: '4px 8px'}}>X</button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => { setEditingId(d.id); setStatusForm(d.status); }} className="btn" style={{fontSize: '0.75rem', padding: '4px 8px'}}>Status</button>
-                                )}
                             </td>
                         </tr>
                     );

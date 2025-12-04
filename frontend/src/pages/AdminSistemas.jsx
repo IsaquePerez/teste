@@ -13,7 +13,7 @@ export function AdminSistemas() {
     setLoading(true);
     try {
       const data = await api.get("/sistemas/");
-      setSistemas(data);
+      setSistemas(Array.isArray(data) ? data : []);
     } catch (error) { console.error(error); alert("Erro ao carregar sistemas."); }
     finally { setLoading(false); }
   };
@@ -21,30 +21,31 @@ export function AdminSistemas() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingId) {
-        await api.put(`/sistemas/${editingId}`, form);
-        alert("Sistema atualizado!");
-      } else {
-        await api.post("/sistemas/", form);
-        alert("Sistema criado!");
-      }
-      setForm({ nome: '', descricao: '' });
-      setEditingId(null);
+      if (editingId) await api.put(`/sistemas/${editingId}`, form);
+      else await api.post("/sistemas/", { ...form, ativo: true });
+      
+      alert("Salvo com sucesso!");
+      handleCancel();
       loadSistemas();
     } catch (error) { alert("Erro ao salvar sistema."); }
   };
 
-  const handleEdit = (s) => {
+  const handleCancel = () => {
+      setForm({ nome: '', descricao: '' });
+      setEditingId(null);
+  };
+
+  const handleSelectRow = (s) => {
     setForm({ nome: s.nome, descricao: s.descricao });
     setEditingId(s.id);
   };
 
-  const handleDelete = async (id) => {
-    if(!confirm("Tem certeza? Isso pode afetar módulos vinculados.")) return;
-    try {
-        await api.delete(`/sistemas/${id}`);
-        loadSistemas();
-    } catch(e) { alert("Erro ao apagar. Verifique se há módulos vinculados."); }
+  const toggleActive = async (sistema) => {
+      try {
+          const novoStatus = !sistema.ativo;
+          await api.put(`/sistemas/${sistema.id}`, { ativo: novoStatus });
+          loadSistemas();
+      } catch(e) { alert("Erro ao atualizar status."); }
   };
 
   return (
@@ -63,25 +64,41 @@ export function AdminSistemas() {
             </div>
           </div>
           <div className="actions" style={{marginTop: '15px', display: 'flex', gap: '10px'}}>
-            <button type="submit" className="btn primary">{editingId ? 'Salvar Alterações' : 'Cadastrar'}</button>
-            {editingId && <button type="button" onClick={() => {setEditingId(null); setForm({nome:'', descricao:''})}} className="btn">Cancelar</button>}
+            <button type="submit" className="btn primary">{editingId ? 'Atualizar' : 'Cadastrar'}</button>
+            {editingId && <button type="button" onClick={handleCancel} className="btn">Cancelar Seleção</button>}
           </div>
         </form>
       </section>
 
       <section className="card">
-        <h2 className="section-title">Sistemas Ativos</h2>
+        <h2 className="section-title">Sistemas Registrados</h2>
         <div className="table-wrap">
             <table>
-                <thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>Descrição</th><th>Status</th></tr></thead>
                 <tbody>
                     {sistemas.map(s => (
-                        <tr key={s.id}>
+                        <tr 
+                            key={s.id} 
+                            onClick={() => handleSelectRow(s)}
+                            className={editingId === s.id ? 'selected' : 'selectable'}
+                            style={{opacity: s.ativo ? 1 : 0.6}}
+                        >
                             <td><strong>{s.nome}</strong></td>
                             <td>{s.descricao}</td>
+                            
                             <td>
-                                <button onClick={() => handleEdit(s)} className="btn" style={{padding: '2px 5px', fontSize: '0.8rem', marginRight: '5px'}}>Editar</button>
-                                <button onClick={() => handleDelete(s.id)} className="btn danger" style={{padding: '2px 5px', fontSize: '0.8rem'}}>Excluir</button>
+                                <span 
+                                    onClick={(e) => { e.stopPropagation(); toggleActive(s); }}
+                                    className="badge" 
+                                    title="Clique para alterar"
+                                    style={{
+                                        cursor: 'pointer',
+                                        backgroundColor: s.ativo ? '#eef2ff' : '#fee2e2', 
+                                        color: s.ativo ? '#3730a3' : '#b91c1c'
+                                    }}
+                                >
+                                    {s.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
                             </td>
                         </tr>
                     ))}

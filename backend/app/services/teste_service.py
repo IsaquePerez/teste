@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
-
+from datetime import datetime
 from app.repositories.teste_repository import TesteRepository
 from app.schemas.caso_teste import CasoTesteCreate, CasoTesteUpdate
 from app.schemas.ciclo_teste import CicloTesteCreate, CicloTesteUpdate
@@ -49,6 +49,16 @@ class TesteService:
         return await self.repo.delete_caso_teste(caso_id)
 
     async def criar_ciclo(self, projeto_id: int, dados: CicloTesteCreate):
+        if dados.data_inicio:
+            hoje = datetime.now().date()
+            inicio = dados.data_inicio.date()
+            
+            if inicio < hoje:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="A data de início do ciclo não pode ser no passado."
+                )
+
         return await self.repo.create_ciclo(projeto_id, dados)
     
     async def atualizar_ciclo(self, ciclo_id: int, dados: CicloTesteUpdate):
@@ -82,9 +92,7 @@ class TesteService:
         if not passo_atualizado:
             raise HTTPException(status_code=404, detail="Passo de execução não encontrado")
 
-        # Automação de Status
         if dados.status == StatusPassoEnum.reprovado:
-            # Se um passo falha, o teste todo falha imediatamente
             await self.repo.update_status_geral_execucao(
                 passo_atualizado.execucao_teste_id, 
                 StatusExecucaoEnum.falhou

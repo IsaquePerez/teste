@@ -203,7 +203,7 @@ export function AdminCasosTeste() {
       {/* HEADER DA PÁGINA */}
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', paddingBottom: '15px', borderBottom: '1px solid #e5e7eb'}}>
         <div>
-           <h2 style={{margin: 0, color: '#1e293b'}}>Biblioteca de Testes</h2>
+           <h2 style={{margin: 0, color: '#1e293b'}}>Casos de Testes</h2>
            <p className="muted" style={{margin: '5px 0 0 0'}}>Gerencie e planeje os cenários de teste do projeto.</p>
         </div>
         
@@ -379,7 +379,7 @@ export function AdminCasosTeste() {
                        <th style={{width: '60px'}}>ID</th>
                        <th>Cenário</th>
                        <th>Prioridade</th>
-                       <th>Responsável</th>
+                       <th>Testador</th>
                        <th>Passos</th>
                        <th style={{textAlign: 'right'}}>Ações</th>
                      </tr>
