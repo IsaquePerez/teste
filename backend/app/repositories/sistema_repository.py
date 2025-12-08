@@ -36,6 +36,12 @@ class SistemaRepository:
             select(Sistema).where(Sistema.id == sistema_id)
         )
         return result.scalars().first()
+    
+    async def get_by_nome(self, nome: str) -> Optional[Sistema]:
+        
+        query = select(Sistema).where(Sistema.nome == nome)
+        result = await self.db.execute(query)
+        return result.scalars().first()
 
     async def update_sistema(self, sistema_id: int, sistema_data: SistemaUpdate) -> Optional[Sistema]:
         """

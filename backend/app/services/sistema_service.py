@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
 from typing import Sequence, Optional
 
 from app.models import Sistema
@@ -10,14 +11,9 @@ class SistemaService:
         self.repo = SistemaRepository(db)
 
     async def create_sistema(self, sistema_data: SistemaCreate) -> Sistema:
-        """
-        Orquestra a criação de um novo sistema.
-        Aqui pode adicionar lógica de negócio, como validações.
-        """
-        # Exemplo de lógica de negócio:
-        # sistema_existente = await self.repo.get_by_name(sistema_data.nome)
-        # if sistema_existente:
-        #     raise HTTPException(status_code=400, detail="Sistema com este nome já existe.")
+        existente = await self.repo.get_by_nome(sistema_data.nome)
+        if existente:
+            raise HTTPException(status_code=400, detail=f"Sistema com nome '{sistema_data.nome}' já existe.")
 
         novo_sistema = await self.repo.create_sistema(sistema_data)
         return novo_sistema

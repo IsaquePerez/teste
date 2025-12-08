@@ -25,5 +25,7 @@ class CicloTesteResponse(CicloTesteBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    total_testes: int = 0
+    testes_concluidos: int = 0
 
     model_config = ConfigDict(from_attributes=True)

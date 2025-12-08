@@ -90,7 +90,7 @@ export function AdminModulos() {
         <h2 className="section-title">Módulos Cadastrados</h2>
         <div className="table-wrap">
             <table>
-                <thead><tr><th>Sistema</th><th>Módulo</th><th>Status</th></tr></thead>
+                <thead><tr><th>Módulo</th><th>Sistema</th><th>Status</th></tr></thead>
                 <tbody>
                     {modulos.map(m => (
                         <tr 
@@ -99,8 +99,8 @@ export function AdminModulos() {
                             className={editingId === m.id ? 'selected' : 'selectable'}
                             style={{opacity: m.ativo ? 1 : 0.6}}
                         >
-                            <td><span className="badge" style={{backgroundColor: '#e0f2fe', color: '#0369a1'}}>{getSistemaName(m.sistema_id)}</span></td>
                             <td><strong>{m.nome}</strong></td>
+                            <td><span className="badge" style={{backgroundColor: '#e0f2fe', color: '#0369a1'}}>{getSistemaName(m.sistema_id)}</span></td>
                             
                             <td>
                                 <span 

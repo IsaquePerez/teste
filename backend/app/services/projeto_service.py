@@ -25,17 +25,12 @@ class ProjetoService:
                 raise HTTPException(status_code=400, detail="Não é possível atribuir um utilizador INATIVO como responsável.")
 
     async def create(self, data: ProjetoCreate) -> ProjetoResponse:
-        # Valida ANTES de criar
         await self._validar_responsavel(data.responsavel_id)
-
-        db_obj = Projeto(
-            nome=data.nome,
-            descricao=data.descricao,
-            status=data.status,
-            modulo_id=data.modulo_id,
-            sistema_id=data.sistema_id,
-            responsavel_id=data.responsavel_id
-        )
+        existente = await self.repo.get_by_nome(data.nome)
+        if existente:
+            raise HTTPException(status_code=400, detail="Já existe um Projeto com este nome.")
+        
+        db_obj = Projeto(**data.model_dump())        
         created = await self.repo.create(db_obj)
         return ProjetoResponse.model_validate(created)
 

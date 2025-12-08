@@ -63,6 +63,17 @@ class CicloTeste(Base):
     execucoes = relationship("ExecucaoTeste", back_populates="ciclo", cascade="all, delete-orphan")
     metricas = relationship("Metrica", back_populates="ciclo")
 
+    @property
+    def total_testes(self):
+        return len(self.execucoes) if self.execucoes else 0
+
+    @property
+    def testes_concluidos(self):
+        if not self.execucoes:
+            return 0
+        # Consideramos concluído: Passou, Falhou ou Bloqueado (ignora Pendente/Em Progresso)
+        return sum(1 for e in self.execucoes if e.status_geral.value in ['passou', 'falhou', 'bloqueado'])
+    
 #Casos de Teste
 
 class CasoTeste(Base):

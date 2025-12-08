@@ -24,6 +24,14 @@ class ModuloRepository:
     async def get_modulo_by_id(self, modulo_id: int) -> Optional[Modulo]:
         result = await self.db.execute(select(Modulo).where(Modulo.id == modulo_id))
         return result.scalars().first()
+    
+    async def get_by_nome_e_sistema(self, nome: str, sistema_id: int) -> Optional[Modulo]:
+        query = select(Modulo).where(
+            Modulo.nome == nome, 
+            Modulo.sistema_id == sistema_id
+        )
+        result = await self.db.execute(query)
+        return result.scalars().first()
 
     async def update_modulo(self, modulo_id: int, modulo_data: ModuloUpdate) -> Optional[Modulo]:
         update_data = modulo_data.model_dump(exclude_unset=True)
