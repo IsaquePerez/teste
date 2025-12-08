@@ -12,6 +12,13 @@ class PassoCasoTesteBase(BaseModel):
 class PassoCasoTesteCreate(PassoCasoTesteBase):
     pass
 
+# Adicione este Schema para atualização individual de passos 
+class PassoCasoTesteUpdate(BaseModel):
+    id: Optional[int] = None 
+    ordem: int
+    acao: str
+    resultado_esperado: str
+
 class PassoCasoTesteResponse(PassoCasoTesteBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
@@ -37,6 +44,7 @@ class CasoTesteUpdate(BaseModel):
     criterios_aceitacao: Optional[str] = None
     prioridade: Optional[PrioridadeEnum] = None
     responsavel_id: Optional[int] = None
+    passos: Optional[List[PassoCasoTesteUpdate]] = None 
 
 class CasoTesteResponse(CasoTesteBase):
     id: int

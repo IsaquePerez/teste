@@ -12,7 +12,7 @@ export const getSession = () => ({
 
 export const clearSession = () => {
   sessionStorage.clear();
-  window.location.href = "/"; // Força recarregamento para limpar estados
+  window.location.href = "/"; 
 };
 
 async function request(endpoint, options = {}) {

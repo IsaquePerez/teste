@@ -17,19 +17,14 @@ class DefeitoRepository:
         self.db.add(db_obj)
         await self.db.commit()
         
-        # --- CORREÇÃO CRÍTICA AQUI ---
-        # Não podemos apenas fazer refresh(db_obj) porque ele não traz os relacionamentos.
-        # Temos de buscar o objeto completo com as mesmas options do 'listar_todos'.
         return await self.get_by_id_full(db_obj.id)
 
     async def get_by_id(self, id: int) -> Optional[Defeito]:
-        # Busca simples (se não precisar de relações profundas)
         query = select(Defeito).where(Defeito.id == id)
         result = await self.db.execute(query)
         return result.scalars().first()
     
     async def get_by_id_full(self, id: int) -> Optional[Defeito]:
-        # Busca completa para satisfazer o DefeitoResponse
         query = (
             select(Defeito)
             .options(
@@ -52,7 +47,7 @@ class DefeitoRepository:
             update(Defeito)
             .where(Defeito.id == id)
             .values(**dados)
-            .returning(Defeito.id) # Retorna apenas o ID para recarregar depois
+            .returning(Defeito.id) 
         )
         result = await self.db.execute(query)
         await self.db.commit()

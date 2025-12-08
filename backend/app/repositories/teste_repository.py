@@ -98,8 +98,8 @@ class TesteRepository:
         
         updated_id = result.scalars().first()
         
+        # 3. Processa os passos (Adicionar ou Editar)
         if updated_id and passos_data is not None:
-            # Lógica simples de atualização de passos (pode ser melhorada)
             for passo in passos_data:
                 if 'id' in passo and passo['id']:
                     await self.db.execute(
