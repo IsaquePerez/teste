@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../services/api';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
+/* ==========================================================================
+   COMPONENTE: ADMIN USUÁRIOS
+   Gestão de acessos, criação de logins e permissões.
+   ========================================================================== */
 export function AdminUsers() {
+  /* ==========================================================================
+     ESTADOS
+     ========================================================================== */
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Estado de Seleção (Edição)
   const [selectedUser, setSelectedUser] = useState(null);
   
   const [form, setForm] = useState({
@@ -14,6 +25,13 @@ export function AdminUsers() {
     nivel_acesso_id: 2 
   });
 
+  // Estados do Modal de Exclusão
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+
+  /* ==========================================================================
+     CARREGAMENTO INICIAL
+     ========================================================================== */
   useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
@@ -23,19 +41,22 @@ export function AdminUsers() {
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      alert("Erro ao carregar utilizadores.");
+      toast.error("Erro ao carregar lista de utilizadores.");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ==========================================================================
+     GESTÃO DO FORMULÁRIO
+     ========================================================================== */
   const handleSelect = (user) => {
     setSelectedUser(user);
     setForm({
       nome: user.nome || '',
       username: user.username || '', 
       email: user.email || '',
-      senha: '',
+      senha: '', // Senha nunca vem do backend por segurança
       nivel_acesso_id: user.nivel_acesso_id || 2
     });
   };
@@ -47,8 +68,20 @@ export function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // --- VALIDAÇÃO MANUAL (Substitui o 'required' do navegador) ---
+    if (!form.nome.trim()) return toast.warning("O Nome Completo é obrigatório.");
+    if (!form.username.trim()) return toast.warning("O Username é obrigatório.");
+    if (!form.email.trim()) return toast.warning("O Email é obrigatório.");
+    
+    // Validação de senha apenas para novos usuários
+    if (!selectedUser && !form.senha) {
+        return toast.warning("A senha é obrigatória para novos utilizadores.");
+    }
+
     try {
       if (selectedUser) {
+        // Edição: Monta payload dinâmico (só envia senha se foi alterada)
         const payload = {
           nome: form.nome,
           username: form.username,
@@ -58,9 +91,9 @@ export function AdminUsers() {
         if (form.senha) payload.senha = form.senha;
 
         await api.put(`/usuarios/${selectedUser.id}`, payload);
-        alert("Utilizador atualizado com sucesso!");
+        toast.success("Utilizador atualizado com sucesso!");
       } else {
-        if (!form.senha) return alert("Senha obrigatória para novos utilizadores.");
+        // Criação
         const payload = {
           nome: form.nome,
           username: form.username,
@@ -70,47 +103,91 @@ export function AdminUsers() {
           ativo: true
         };
         await api.post("/usuarios/", payload);
-        alert("Utilizador criado com sucesso!");
+        toast.success("Novo utilizador criado!");
       }
+      
       handleClear();
       loadUsers(); 
     } catch (error) {
-      alert(`Erro: ${error.message}`);
+      // Exibe mensagem de erro do backend (ex: Email duplicado)
+      toast.error(error.message || "Erro ao salvar utilizador.");
     }
   };
 
+  /* ==========================================================================
+     AÇÕES DE STATUS E EXCLUSÃO
+     ========================================================================== */
   const toggleActive = async (user) => {
       try {
-          await api.put(`/usuarios/${user.id}`, { ativo: !user.ativo });
-          setSelectedUser({ ...user, ativo: !user.ativo });
-          loadUsers();
+          const novoStatus = !user.ativo;
+          await api.put(`/usuarios/${user.id}`, { ativo: novoStatus });
+          
+          toast.success(`Acesso de ${user.nome.split(' ')[0]} ${novoStatus ? 'ativado' : 'bloqueado'}.`);
+          
+          // Atualiza lista e seleção localmente
+          setUsers(prev => prev.map(u => u.id === user.id ? { ...u, ativo: novoStatus } : u));
+          if (selectedUser?.id === user.id) {
+              setSelectedUser(prev => ({ ...prev, ativo: novoStatus }));
+          }
       } catch (error) { 
-          alert("Erro ao alterar status."); 
+          toast.error("Erro ao alterar status."); 
       }
-  }
+  };
 
-  const handleDelete = async () => {
-      if (!selectedUser || !confirm(`Tem a certeza que deseja apagar ${selectedUser.nome}?`)) return;
+  const requestDelete = () => {
+      if (!selectedUser) return;
+      
+      // Regra de segurança visual
+      if (selectedUser.nivel_acesso?.nome === 'admin') {
+          return toast.error("Não é permitido excluir contas de Administrador.");
+      }
+
+      setUserToDelete(selectedUser);
+      setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+      if (!userToDelete) return;
       try {
-          await api.delete(`/usuarios/${selectedUser.id}`);
-          alert("Apagado com sucesso!");
+          await api.delete(`/usuarios/${userToDelete.id}`);
+          toast.success("Utilizador excluído.");
           handleClear();
           loadUsers();
-      } catch (error) { alert("O usuário possui vínculos e não pode ser excluído."); }
-  }
+      } catch (error) { 
+          toast.error(error.message || "O usuário possui vínculos e não pode ser excluído."); 
+      } finally {
+          setUserToDelete(null);
+      }
+  };
 
+  /* ==========================================================================
+     RENDERIZAÇÃO
+     ========================================================================== */
   return (
     <main className="container grid">
+      
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Utilizador?"
+        message={`Tem a certeza que deseja apagar a conta de "${userToDelete?.nome}"?`}
+        confirmText="Sim, Excluir"
+        isDanger={true}
+      />
+
+      {/* COLUNA 1: FORMULÁRIO */}
       <section className="card">
         <h2 className="section-title">
           {selectedUser ? 'Editar Utilizador' : 'Novo User'}
         </h2>
         <form onSubmit={handleSubmit}>
-          <div className="form-grid">
+          <div className="form-grid" style={{gridTemplateColumns: '1fr'}}>
             <div>
               <label>Nome Completo</label>
+              {/* REMOVIDO 'required' */}
               <input 
-                type="text" required
+                type="text"
                 value={form.nome} 
                 onChange={e => setForm({...form, nome: e.target.value})} 
                 placeholder="ex.: João Silva"
@@ -119,8 +196,9 @@ export function AdminUsers() {
             </div>
             <div>
               <label>Username / ID (Único)</label>
+              {/* REMOVIDO 'required' */}
               <input 
-                type="text" required
+                type="text"
                 value={form.username} 
                 onChange={e => setForm({...form, username: e.target.value})} 
                 placeholder="ex.: jsilva"
@@ -130,8 +208,9 @@ export function AdminUsers() {
             </div>
             <div>
               <label>Email (Login)</label>
+              {/* REMOVIDO 'required' */}
               <input 
-                type="email" required
+                type="email"
                 value={form.email} 
                 onChange={e => setForm({...form, email: e.target.value})} 
                 placeholder="ex.: joao@empresa.com"
@@ -142,13 +221,12 @@ export function AdminUsers() {
               <select 
                 value={form.nivel_acesso_id} 
                 onChange={e => setForm({...form, nivel_acesso_id: e.target.value})}
-                required
               >
                 <option value="2">Testador (Padrão)</option>
                 <option value="1">Administrador</option>
               </select>
             </div>
-            <div style={{gridColumn: '1/-1'}}>
+            <div>
               <label>
                 {selectedUser ? 'Nova Senha (opcional)' : 'Senha'}
               </label>
@@ -160,20 +238,31 @@ export function AdminUsers() {
               />
             </div>
           </div>
-          <div className="actions" style={{justifyContent: 'flex-start', gap: '10px', display: 'flex', marginTop: '20px'}}>
+          
+          <div className="actions" style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
             <button type="submit" className="btn primary">
               {selectedUser ? 'Atualizar' : 'Salvar'}
             </button>
+            
             {selectedUser && (
               <>
-                <button type="button" onClick={() => toggleActive(selectedUser)} className="btn" style={{backgroundColor: selectedUser.ativo ? '#f59e0b' : '#10b981', color: 'white'}}>
-                    {selectedUser.ativo ? 'Desativar' : 'Ativar'}
+                <button 
+                    type="button" 
+                    onClick={() => toggleActive(selectedUser)} 
+                    className="btn" 
+                    style={{backgroundColor: selectedUser.ativo ? '#f59e0b' : '#10b981', color: 'white'}}
+                >
+                    {selectedUser.ativo ? 'Bloquear' : 'Ativar'}
                 </button>
-                {selectedUser.nivel_acesso?.nome !== 'admin' && (
-                  <button type="button" onClick={handleDelete} className="btn danger">
-                      Excluir
-                  </button>
-                )}
+                
+                <button 
+                    type="button" 
+                    onClick={requestDelete} 
+                    className="btn danger"
+                >
+                    Excluir
+                </button>
+                
                 <button type="button" onClick={handleClear} className="btn">
                     Cancelar
                 </button>
@@ -182,10 +271,12 @@ export function AdminUsers() {
           </div>
         </form>
       </section>
+
+      {/* COLUNA 2: LISTA DE UTILIZADORES */}
       <section className="card">
         <h2 className="section-title">Utilizadores</h2>
         <div className="table-wrap">
-          {loading ? <p>A carregar...</p> : (
+          {loading ? <p style={{textAlign:'center', padding:'20px'}} className="muted">A carregar...</p> : (
             <table>
               <thead>
                 <tr>
@@ -202,20 +293,20 @@ export function AdminUsers() {
                     key={u.id} 
                     onClick={() => handleSelect(u)} 
                     className={selectedUser?.id === u.id ? 'selected' : 'selectable'}
+                    title="Clique para editar"
                   >
                     <td>
                         <strong style={{color: '#0369a1', fontFamily: 'monospace'}}>
                             {u.username || '-'}
                         </strong>
                     </td>
-                    <td title={u.nome}>
+                    <td>
                         {u.nome?.split(' ')[0]}
                     </td>
                     <td style={{fontSize: '0.85rem'}}>{u.email}</td>
                     <td>
-                      <span style={{
+                      <span className="badge" style={{
                           backgroundColor: u.nivel_acesso?.nome === 'admin' ? '#fee2e2' : '#e0f2fe', 
-                          padding: '2px 6px', borderRadius: '10px', fontSize: '0.75rem', 
                           color: u.nivel_acesso?.nome === 'admin' ? '#991b1b' : '#075985'
                       }}>
                          {u.nivel_acesso?.nome || 'N/A'}
@@ -223,7 +314,7 @@ export function AdminUsers() {
                     </td>
                     <td>
                       <span className={`badge ${u.ativo ? 'on' : 'off'}`}>
-                        {u.ativo ? 'Ativo' : 'Inativo'}
+                        {u.ativo ? 'Ativo' : 'Bloq.'}
                       </span>
                     </td>
                   </tr>

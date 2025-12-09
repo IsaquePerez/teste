@@ -1,27 +1,49 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { api } from '../services/api';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
+/* ==========================================================================
+   COMPONENTE: ADMIN CICLOS (SPRINTS)
+   Gestão de períodos de teste (Ciclos/Sprints) dentro de um Projeto.
+   ========================================================================== */
 export function AdminCiclos() {
+  /* ==========================================================================
+     ESTADOS
+     ========================================================================== */
   const [projetos, setProjetos] = useState([]);
   const [selectedProjeto, setSelectedProjeto] = useState('');
   const [ciclos, setCiclos] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  const [view, setView] = useState('list');
+  const [view, setView] = useState('list'); // 'list' | 'form'
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     nome: '', descricao: '', data_inicio: '', data_fim: '', status: 'planejado'
   });
 
-  // --- CARREGAMENTO ---
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [cicloToDelete, setCicloToDelete] = useState(null);
+
+  /* ==========================================================================
+     CARREGAMENTO INICIAL
+     ========================================================================== */
   useEffect(() => {
-    api.get("/projetos").then(data => {
-      setProjetos(data);
-      const ativos = data.filter(p => p.status === 'ativo');
-      if (ativos.length > 0) setSelectedProjeto(ativos[0].id);
-    });
+    const fetchProjetos = async () => {
+        try {
+            const data = await api.get("/projetos");
+            setProjetos(data || []);
+            
+            const ativos = data.filter(p => p.status === 'ativo');
+            if (ativos.length > 0) setSelectedProjeto(ativos[0].id);
+        } catch (e) {
+            console.error(e);
+            toast.error("Erro ao carregar lista de projetos.");
+        }
+    };
+    fetchProjetos();
   }, []);
 
   useEffect(() => {
@@ -33,14 +55,20 @@ export function AdminCiclos() {
     try {
       const data = await api.get(`/testes/projetos/${projId}/ciclos`);
       setCiclos(Array.isArray(data) ? data : []);
-    } catch (error) { console.error(error); }
-    finally { setLoading(false); }
+    } catch (error) { 
+        console.error(error); 
+        toast.error("Erro ao carregar ciclos.");
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   const currentProject = projetos.find(p => p.id == selectedProjeto);
   const isProjectActive = currentProject?.status === 'ativo';
 
-  // --- HELPERS VISUAIS ---
+  /* ==========================================================================
+     HELPERS E UTILITÁRIOS VISUAIS
+     ========================================================================== */
   const formatForInput = (dateString) => dateString ? dateString.split('T')[0] : '';
   const formatDateTable = (dateString) => dateString ? new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
   const getHojeISO = () => new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -54,13 +82,11 @@ export function AdminCiclos() {
       }
   };
 
-  // --- COMPONENTE DE BARRA DE PROGRESSO ---
   const renderProgress = (concluidos, total) => {
       if (!total || total === 0) return <span style={{fontSize:'0.8rem', color:'#94a3b8'}}>Sem testes</span>;
       const pct = Math.round((concluidos / total) * 100);
-      
-      let color = '#3b82f6'; // Azul
-      if (pct === 100) color = '#10b981'; // Verde
+      let color = '#3b82f6';
+      if (pct === 100) color = '#10b981';
       
       return (
           <div style={{width: '100%', maxWidth: '120px'}}>
@@ -75,10 +101,15 @@ export function AdminCiclos() {
       );
   };
 
-  // --- AÇÕES ---
+  /* ==========================================================================
+     AÇÕES DE INTERFACE
+     ========================================================================== */
   const handleNew = () => {
-      if (!isProjectActive) return alert(`Projeto ${currentProject?.status}. Criação bloqueada.`);
-      setView('form'); setEditingId(null);
+      if (!isProjectActive) {
+          return toast.warning(`Projeto ${currentProject?.status?.toUpperCase()}. Criação de ciclos bloqueada.`);
+      }
+      setView('form'); 
+      setEditingId(null);
       setForm({ nome: '', descricao: '', data_inicio: '', data_fim: '', status: 'planejado' });
   };
 
@@ -94,17 +125,28 @@ export function AdminCiclos() {
     setView('form');
   };
 
-  const handleDelete = async (id) => {
-    if(!confirm("Tem a certeza?")) return;
-    try { await api.delete(`/testes/ciclos/${id}`); loadCiclos(selectedProjeto); } catch (e) { alert("Erro ao excluir."); }
-  };
-
   const handleCancel = () => { setView('list'); setEditingId(null); };
 
+  /* ==========================================================================
+     PERSISTÊNCIA E EXCLUSÃO
+     ========================================================================== */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedProjeto) return alert("Selecione um projeto!");
-    if (!form.data_inicio || !form.data_fim) return alert("Preencha as datas.");
+    
+    // Validação Manual (Agora vai funcionar pois removemos o 'required' do HTML)
+    if (!selectedProjeto) return toast.warning("Selecione um projeto!");
+    
+    if (!form.nome.trim()) {
+        return toast.warning("O nome do ciclo é obrigatório.");
+    }
+
+    if (!form.data_inicio || !form.data_fim) {
+        return toast.warning("As datas de início e fim são obrigatórias.");
+    }
+    
+    if (form.data_inicio > form.data_fim) {
+        return toast.warning("A data de início não pode ser maior que a data fim.");
+    }
 
     try {
       const payload = { 
@@ -112,19 +154,59 @@ export function AdminCiclos() {
           data_inicio: new Date(form.data_inicio).toISOString(),
           data_fim: new Date(form.data_fim).toISOString()
       };
-      if (editingId) { await api.put(`/testes/ciclos/${editingId}`, payload); alert("Atualizado!"); } 
-      else { await api.post(`/testes/projetos/${selectedProjeto}/ciclos`, payload); alert("Criado!"); }
-      handleCancel(); loadCiclos(selectedProjeto);
-    } catch (error) { alert("Erro ao salvar."); }
+      
+      if (editingId) { 
+          await api.put(`/testes/ciclos/${editingId}`, payload); 
+          toast.success("Ciclo atualizado com sucesso!"); 
+      } else { 
+          await api.post(`/testes/projetos/${selectedProjeto}/ciclos`, payload); 
+          toast.success("Ciclo criado com sucesso!"); 
+      }
+      
+      handleCancel(); 
+      loadCiclos(selectedProjeto);
+    } catch (error) { 
+        toast.error(error.message || "Erro ao salvar ciclo."); 
+    }
+  };
+
+  const requestDelete = (ciclo) => {
+      setCicloToDelete(ciclo);
+      setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+      if (!cicloToDelete) return;
+      try { 
+          await api.delete(`/testes/ciclos/${cicloToDelete.id}`); 
+          toast.success("Ciclo excluído."); 
+          loadCiclos(selectedProjeto); 
+      } catch (e) { 
+          toast.error("Erro ao excluir ciclo (verifique execuções vinculadas)."); 
+      } finally {
+          setCicloToDelete(null);
+      }
   };
 
   const navbarTarget = document.getElementById('header-actions');
 
+  /* ==========================================================================
+     RENDERIZAÇÃO
+     ========================================================================== */
   return (
     <main className="container">
       <style>{`tr.hover-row:hover { background-color: #f1f5f9 !important; cursor: pointer; }`}</style>
 
-      {/* HEADER via Portal */}
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Ciclo?"
+        message={`Tem a certeza que deseja excluir o ciclo "${cicloToDelete?.nome}"? Todo o histórico de execução vinculado será perdido.`}
+        confirmText="Sim, Excluir"
+        isDanger={true}
+      />
+
       {navbarTarget && createPortal(
         <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -137,7 +219,14 @@ export function AdminCiclos() {
              </select>
            </div>
            {view === 'list' ? (
-             <button onClick={handleNew} className="btn primary" disabled={!isProjectActive} style={{height: '34px', opacity: isProjectActive ? 1 : 0.5, cursor: isProjectActive ? 'pointer' : 'not-allowed', fontSize: '0.9rem'}}>Novo Ciclo</button>
+             <button 
+                onClick={handleNew} 
+                className="btn primary" 
+                disabled={!isProjectActive} 
+                style={{height: '34px', opacity: isProjectActive ? 1 : 0.5, cursor: isProjectActive ? 'pointer' : 'not-allowed', fontSize: '0.9rem'}}
+             >
+                Novo Ciclo
+             </button>
            ) : (
              <button onClick={handleCancel} className="btn" style={{height: '34px', fontSize: '0.9rem'}}>Voltar</button>
            )}
@@ -145,7 +234,6 @@ export function AdminCiclos() {
         navbarTarget
       )}
 
-      {/* FORMULÁRIO */}
       {view === 'form' && (
         <section className="card">
           <h3 style={{marginTop:0}}>{editingId ? 'Editar Ciclo' : 'Novo Ciclo'}</h3>
@@ -153,7 +241,12 @@ export function AdminCiclos() {
             <div className="form-grid">
                <div style={{gridColumn: '1/-1'}}>
                  <label>Nome do Ciclo / Sprint</label>
-                 <input required value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Sprint 32" />
+                 {/* ATENÇÃO: 'required' foi removido aqui */}
+                 <input 
+                    value={form.nome} 
+                    onChange={e => setForm({...form, nome: e.target.value})} 
+                    placeholder="Ex: Sprint 32" 
+                 />
                </div>
                <div style={{gridColumn: '1/-1'}}>
                  <label>Descrição</label>
@@ -161,11 +254,23 @@ export function AdminCiclos() {
                </div>
                <div>
                  <label>Início</label>
-                 <input type="date" required value={form.data_inicio} onChange={e => setForm({...form, data_inicio: e.target.value})} min={!editingId ? getHojeISO() : undefined}/>
+                 {/* 'required' removido */}
+                 <input 
+                    type="date" 
+                    value={form.data_inicio} 
+                    onChange={e => setForm({...form, data_inicio: e.target.value})} 
+                    min={!editingId ? getHojeISO() : undefined}
+                 />
                </div>
                <div>
                  <label>Fim</label>
-                 <input type="date" required value={form.data_fim} onChange={e => setForm({...form, data_fim: e.target.value})} min={form.data_inicio}/>
+                 {/* 'required' removido */}
+                 <input 
+                    type="date" 
+                    value={form.data_fim} 
+                    onChange={e => setForm({...form, data_fim: e.target.value})} 
+                    min={form.data_inicio}
+                 />
                </div>
                <div>
                  <label>Status</label>
@@ -185,14 +290,26 @@ export function AdminCiclos() {
         </section>
       )}
 
-      {/* LISTA COM PROGRESSO */}
       {view === 'list' && (
         <section className="card" style={{marginTop:'20px'}}>
            {loading ? <p>Carregando...</p> : (
              <div className="table-wrap">
-               {ciclos.length === 0 ? <div style={{textAlign: 'center', padding: '40px', color: '#94a3b8'}}><p>Nenhum ciclo encontrado.</p>{isProjectActive && <button onClick={handleNew} className="btn primary">Criar primeiro</button>}</div> : (
+               {ciclos.length === 0 ? (
+                   <div style={{textAlign: 'center', padding: '40px', color: '#94a3b8'}}>
+                       <p>Nenhum ciclo encontrado.</p>
+                       {isProjectActive && <button onClick={handleNew} className="btn primary">Criar primeiro ciclo</button>}
+                   </div>
+               ) : (
                  <table>
-                   <thead><tr><th>Nome</th><th>Período</th><th>Status</th><th>Progresso</th><th style={{textAlign: 'right'}}>Ações</th></tr></thead>
+                   <thead>
+                       <tr>
+                           <th>Nome</th>
+                           <th>Período</th>
+                           <th>Status</th>
+                           <th>Progresso</th>
+                           <th style={{textAlign: 'right'}}>Ações</th>
+                       </tr>
+                   </thead>
                    <tbody>
                      {ciclos.map(c => (
                        <tr key={c.id} className="hover-row" onClick={() => handleEdit(c)} title="Clique para editar">
@@ -201,15 +318,25 @@ export function AdminCiclos() {
                              <div style={{fontSize:'0.8rem', color:'#94a3b8'}}>#{c.id} • {c.descricao}</div>
                          </td>
                          <td>{formatDateTable(c.data_inicio)} até {formatDateTable(c.data_fim)}</td>
-                         <td><span className="badge" style={{backgroundColor: getStatusColor(c.status)}}>{c.status.replace('_', ' ').toUpperCase()}</span></td>
-                         
-                         {/* NOVA COLUNA DE PROGRESSO */}
+                         <td>
+                             <span className="badge" style={{backgroundColor: getStatusColor(c.status)}}>
+                                 {c.status.replace('_', ' ').toUpperCase()}
+                             </span>
+                         </td>
                          <td style={{minWidth: '140px'}}>
                              {renderProgress(c.testes_concluidos, c.total_testes)}
                          </td>
-
                          <td style={{textAlign: 'right'}}>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }} className="btn danger" style={{fontSize: '0.8rem', padding: '4px 8px'}}>Excluir</button>
+                            <button 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    requestDelete(c); 
+                                }} 
+                                className="btn danger small" 
+                                style={{fontSize: '0.8rem', padding: '4px 8px'}}
+                            >
+                                Excluir
+                            </button>
                          </td>
                        </tr>
                      ))}

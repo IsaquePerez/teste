@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './pages/Login';
 import { AdminUsers } from './pages/AdminUsers';
@@ -12,21 +14,35 @@ import { QARunner } from './pages/QARunner';
 import { Dashboard } from './pages/Dashboard'; 
 import './index.css';
 
-// --- HEADER GLOBAL ---
-function TopHeader() {
+/* ==========================================================================
+   COMPONENTE: CABEÇALHO SUPERIOR (TOP HEADER)
+   ========================================================================== */
+function TopHeader({ toggleSidebar }) {
   const { user, logout } = useAuth();
 
   return (
     <header className="top-header">
-      <nav className="top-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 20px' }}>
+      <nav className="top-actions">
         
-        {/* --- AQUI É O ALVO DO PORTAL --- */}
-        {/* Os botões de "Novo", "Voltar", "Filtros" das páginas aparecerão AQUI magicamente */}
-        <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
-            {/* Vazio por padrão. As páginas preenchem isso. */}
+        {/* Área Esquerda: Menu Mobile e Portal de Ações */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
+            
+            {/* Botão de Menu Mobile (Visível apenas em telas pequenas via CSS) */}
+            <button 
+                className="btn-mobile-menu"
+                onClick={toggleSidebar}
+                title="Abrir Menu"
+            >
+                ☰
+            </button>
+
+            {/* Portal Target: Botões de ação das páginas são renderizados aqui */}
+            <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
+                {/* Vazio por padrão */}
+            </div>
         </div>
 
-        {/* Lado Direito: Informações do Usuário (Fixo) */}
+        {/* Área Direita: Informações do Usuário */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <span className="badge" style={{backgroundColor: '#eef2ff', color: '#3730a3'}}>
                 {user?.nome}
@@ -40,20 +56,31 @@ function TopHeader() {
   );
 }
 
-function Sidebar({ role }) {
+/* ==========================================================================
+   COMPONENTE: BARRA LATERAL (SIDEBAR)
+   ========================================================================== */
+function Sidebar({ role, isOpen, closeSidebar }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path ? 'active' : '';
 
+  // Fecha o sidebar ao clicar em um link (Melhoria de UX Mobile)
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      closeSidebar();
+    }
+  };
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
        <div className="brand-wrap">
          <img src="/logoge.svg" alt="GE" className="brand-logo-ge" />
        </div>
-       <div className="brand-wrap">
+       <div className="brand-wrap" style={{borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '10px'}}>
          <img src="/logoveritus.png" alt="Veritus" className="brand-logo-vt" />
          <div className="brand">Veritus</div>
        </div>
-       <nav>
+       
+       <nav onClick={handleNavClick}>
          {role === 'admin' && (
            <>
              <div className="nav-section">ADMINISTRAÇÃO</div>
@@ -74,7 +101,6 @@ function Sidebar({ role }) {
            </>
          )}
          
-         {/* VISÃO DO TESTADOR (EXECUÇÃO) */}
          {role === 'user' && (
            <>
               <div className="nav-section">MINHA ÁREA</div>
@@ -89,19 +115,34 @@ function Sidebar({ role }) {
   );
 }
 
+/* ==========================================================================
+   LAYOUT PROTEGIDO: GERENCIA ESTADO DE AUTENTICAÇÃO E SIDEBAR
+   ========================================================================== */
 function ProtectedLayout({ roles }) {
   const { user, isAuthenticated } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (!isAuthenticated) return <Navigate to="/" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
 
   return (
     <div className="app-layout">
-      <Sidebar role={user.role} />
+      {/* Overlay Escuro para Mobile */}
+      <div 
+        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} 
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
+      <Sidebar 
+        role={user.role} 
+        isOpen={isSidebarOpen}
+        closeSidebar={() => setIsSidebarOpen(false)}
+      />
+      
       <div className="main-content">
-         <TopHeader /> 
-         {/* Adicionei padding 20px aqui para o conteúdo não colar na borda */}
-         <div style={{ padding: '20px', overflowY: 'auto', height: 'calc(100vh - 60px)' }}> 
+         <TopHeader toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} /> 
+         
+         <div style={{ padding: '20px', overflowY: 'auto', height: 'calc(100vh - 64px)' }}> 
             <Outlet />
          </div>
       </div>
@@ -109,12 +150,20 @@ function ProtectedLayout({ roles }) {
   );
 }
 
+/* ==========================================================================
+   COMPONENTE PRINCIPAL (ROOT)
+   ========================================================================== */
 function App() {
   return (
     <AuthProvider>
+      {/* Componente Global de Notificações (Toasts) */}
+      <Toaster richColors position="top-right" />
+      
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          
+          {/* Rotas de Administrador */}
           <Route element={<ProtectedLayout roles={['admin']} />}>
             <Route path="/admin" element={<Dashboard />} />
             <Route path="/admin/users" element={<AdminUsers />} />
@@ -124,12 +173,17 @@ function App() {
             <Route path="/admin/casos" element={<AdminCasosTeste />} />
             <Route path="/admin/ciclos" element={<AdminCiclos />} />
           </Route>
+          
+          {/* Rotas de Testador (User) */}
           <Route element={<ProtectedLayout roles={['user']} />}>
             <Route path="/qa/runner" element={<QARunner />} />
           </Route>
+          
+          {/* Rotas Comuns */}
           <Route element={<ProtectedLayout roles={['user', 'admin']} />}>
             <Route path="/qa/defeitos" element={<QADefeitos />} />
           </Route>
+          
            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

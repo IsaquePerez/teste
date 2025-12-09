@@ -2,19 +2,26 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+/* ==========================================================================
+   COMPONENTE: QA RUNNER (EXECUTOR DE TESTES)
+   ========================================================================== */
 export function QARunner() {
   const { user } = useAuth();
   
+  // Estados de Dados
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeExecucao, setActiveExecucao] = useState(null);
 
+  // Estados de Interface (Modais e Formulários)
   const [showDefectModal, setShowDefectModal] = useState(false);
   const [currentFailedStep, setCurrentFailedStep] = useState(null);
   const [defeitoForm, setDefeitoForm] = useState({ titulo: '', descricao: '', severidade: 'medio', evidencias: '' });
-
   const [galleryImages, setGalleryImages] = useState(null);
 
+  /* ==========================================================================
+     CARREGAMENTO INICIAL
+     ========================================================================== */
   useEffect(() => { loadMinhasTarefas(); }, []);
 
   const loadMinhasTarefas = async () => {
@@ -26,14 +33,16 @@ export function QARunner() {
     finally { setLoading(false); }
   };
 
+  /* ==========================================================================
+     LÓGICA DE SELEÇÃO E EXECUÇÃO
+     ========================================================================== */
   const selectTask = async (t) => {
       if (activeExecucao?.id === t.id) return;
       try {
           const data = await api.get(`/testes/execucoes/${t.id}`);
           setActiveExecucao(data);
           
-          // Se estava pendente, muda para em_progresso. 
-          // Se já estava Concluído/Falhou, NÃO muda o status (apenas abre para revisão).
+          // Inicia a execução automaticamente se estiver pendente
           if (data.status_geral === 'pendente') {
               api.put(`/testes/execucoes/${t.id}/finalizar?status=em_progresso`);
               setTarefas(prev => prev.map(task => task.id === t.id ? {...task, status_geral: 'em_progresso'} : task));
@@ -60,6 +69,19 @@ export function QARunner() {
       setActiveExecucao(prev => ({ ...prev, passos_executados: updatedPassos }));
   };
 
+  const finalizarExecucao = async () => {
+      if(!confirm("Finalizar teste?")) return;
+      const allPassed = activeExecucao.passos_executados.every(p => p.status === 'aprovado');
+      const statusFinal = allPassed ? 'passou' : 'falhou';
+      await api.put(`/testes/execucoes/${activeExecucao.id}/finalizar?status=${statusFinal}`);
+      
+      setActiveExecucao(prev => ({ ...prev, status_geral: statusFinal }));
+      loadMinhasTarefas(); 
+  };
+
+  /* ==========================================================================
+     GERENCIAMENTO DE EVIDÊNCIAS (IMAGENS)
+     ========================================================================== */
   const parseEvidencias = (evidenciaString) => {
       if (!evidenciaString) return [];
       try {
@@ -116,6 +138,9 @@ export function QARunner() {
       } catch (error) { alert("Erro ao remover."); }
   };
 
+  /* ==========================================================================
+     GERENCIAMENTO DE DEFEITOS
+     ========================================================================== */
   const saveDefect = async (e) => {
       e.preventDefault();
       try {
@@ -138,33 +163,24 @@ export function QARunner() {
       } catch (error) { alert("Erro ao registrar defeito."); }
   };
 
-  const finalizarExecucao = async () => {
-      if(!confirm("Finalizar teste?")) return;
-      const allPassed = activeExecucao.passos_executados.every(p => p.status === 'aprovado');
-      const statusFinal = allPassed ? 'passou' : 'falhou';
-      await api.put(`/testes/execucoes/${activeExecucao.id}/finalizar?status=${statusFinal}`);
-      // Atualiza o status na lista local para 'passou' ou 'falhou' sem remover da tela
-      setActiveExecucao(prev => ({ ...prev, status_geral: statusFinal }));
-      loadMinhasTarefas(); 
-  };
-
-  // Helper de Cores para a Lista
+  // Helper de Cores
   const getCardColor = (status) => {
       switch(status) {
-          case 'passou': return '#10b981'; // Verde
-          case 'falhou': return '#ef4444'; // Vermelho
-          case 'em_progresso': return '#3b82f6'; // Azul
-          default: return '#cbd5e1'; // Cinza
+          case 'passou': return '#10b981';
+          case 'falhou': return '#ef4444'; 
+          case 'em_progresso': return '#3b82f6'; 
+          default: return '#cbd5e1'; 
       }
   };
 
   return (
-    <main className="container" style={{maxWidth: '100%', padding: '20px'}}>
+    <main className="container">
       <h2 className="section-title">Minhas Tarefas</h2>
       
-      <div style={{display: 'grid', gridTemplateColumns: '350px 1fr', gap: '25px', alignItems: 'start', height: 'calc(100vh - 150px)'}}>
+      {/* GRID RESPONSIVO (Layout controlado via CSS 'qa-runner-grid') */}
+      <div className="qa-runner-grid">
           
-          {/* LISTA (Esquerda) */}
+          {/* COLUNA 1: LISTA DE TAREFAS */}
           <div style={{overflowY: 'auto', height: '100%', paddingRight: '5px'}}>
               {loading ? <p>A carregar...</p> : (
                   tarefas.length === 0 ? <div className="card muted">Sem tarefas.</div> : (
@@ -187,7 +203,7 @@ export function QARunner() {
               )}
           </div>
 
-          {/* PLAYER (Direita) */}
+          {/* COLUNA 2: PLAYER DE EXECUÇÃO */}
           <div style={{height: '100%', overflowY: 'auto'}}>
               {activeExecucao ? (
                   <div className="card" style={{minHeight: '100%'}}>
@@ -241,6 +257,7 @@ export function QARunner() {
           </div>
       </div>
 
+      {/* MODAL DE GALERIA */}
       {galleryImages && (
           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}} onClick={() => setGalleryImages(null)}>
               <div style={{display:'flex', gap:'20px', overflowX: 'auto', maxWidth: '90%', padding:'20px'}}>
@@ -255,6 +272,7 @@ export function QARunner() {
           </div>
       )}
 
+      {/* MODAL DE DEFEITOS */}
       {showDefectModal && (
           <div style={{position: 'fixed', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000}}>
               <div className="card" style={{width:'500px', maxWidth:'90%'}}>

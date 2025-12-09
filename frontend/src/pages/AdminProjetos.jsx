@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../services/api';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
+/* ==========================================================================
+   COMPONENTE: ADMIN PROJETOS
+   Gerenciamento de projetos de teste (vinculados a módulos).
+   ========================================================================== */
 export function AdminProjetos() {
+  /* ==========================================================================
+     ESTADOS
+     ========================================================================== */
   const [projetos, setProjetos] = useState([]);
   const [modulos, setModulos] = useState([]);
   const [usuarios, setUsuarios] = useState([]); 
@@ -15,6 +24,12 @@ export function AdminProjetos() {
   });
   const [editingId, setEditingId] = useState(null);
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+
+  /* ==========================================================================
+     CARREGAMENTO DE DADOS
+     ========================================================================== */
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -36,14 +51,36 @@ export function AdminProjetos() {
         setUsuarios(userData);
         
         const primeiroAtivo = modData.find(m => m.ativo !== false);
-        if (primeiroAtivo) setForm(f => ({ ...f, modulo_id: primeiroAtivo.id }));
+        if (primeiroAtivo && !form.modulo_id) {
+            setForm(f => ({ ...f, modulo_id: primeiroAtivo.id }));
+        }
         
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        toast.error("Erro ao carregar dados do projeto.");
+    }
   };
 
+  /* ==========================================================================
+     PERSISTÊNCIA DE DADOS (CRIAR / ATUALIZAR)
+     ========================================================================== */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.modulo_id) return alert("Selecione um módulo!");
+    
+    if (!form.modulo_id) {
+        return toast.warning("Por favor, selecione um Módulo.");
+    }
+
+    /* Validação de Integridade:
+       Impede a edição se o status atual na lista for 'finalizado', 
+       prevenindo inconsistência de estado entre formulário e banco.
+    */
+    if (editingId) {
+        const projetoReal = projetos.find(p => p.id === editingId);
+        if (projetoReal && projetoReal.status === 'finalizado') {
+            return toast.info("Projeto finalizado. Reative-o na tabela para permitir edições.");
+        }
+    }
 
     const payload = {
         ...form,
@@ -53,13 +90,19 @@ export function AdminProjetos() {
     };
 
     try {
-        if (editingId) await api.put(`/projetos/${editingId}`, payload);
-        else await api.post("/projetos/", payload);
+        if (editingId) {
+            await api.put(`/projetos/${editingId}`, payload);
+            toast.success("Projeto atualizado com sucesso!");
+        } else {
+            await api.post("/projetos/", payload);
+            toast.success("Projeto criado com sucesso!");
+        }
         
-        alert("Projeto salvo!");
         handleCancel();
         loadAll(); 
-    } catch (err) { alert("Erro ao salvar: " + err.message); }
+    } catch (err) { 
+        toast.error(err.message || "Erro ao salvar projeto."); 
+    }
   };
 
   const handleCancel = () => {
@@ -68,7 +111,9 @@ export function AdminProjetos() {
   };
 
   const handleSelectRow = (projeto) => {
-      if (projeto.status === 'finalizado') return alert("Reative o projeto clicando no status para editá-lo.");
+      if (projeto.status === 'finalizado') {
+          return toast.info("Reative o projeto clicando no status para editá-lo.");
+      }
 
       setForm({
           nome: projeto.nome,
@@ -80,36 +125,53 @@ export function AdminProjetos() {
       setEditingId(projeto.id);
   };
 
+  /* ==========================================================================
+     GESTÃO DE STATUS E EXCLUSÃO
+     ========================================================================== */
   const cycleStatus = async (projeto) => {
       const fluxo = { 'ativo': 'pausado', 'pausado': 'finalizado', 'finalizado': 'ativo' };
       const novoStatus = fluxo[projeto.status] || 'ativo';
       
       try {
-          await api.put(`/projetos/${projeto.id}`, { 
-              ...projeto, 
-              status: novoStatus 
-          });
-          loadAll(); 
-      } catch(e) { alert("Erro ao mudar status."); }
-  };
+          await api.put(`/projetos/${projeto.id}`, { ...projeto, status: novoStatus });
+          toast.success(`Status alterado para: ${novoStatus.toUpperCase()}`);
+          
+          setProjetos(prev => prev.map(p => 
+              p.id === projeto.id ? { ...p, status: novoStatus } : p
+          ));
+          
+          if (editingId === projeto.id) {
+              setForm(prev => ({ ...prev, status: novoStatus }));
+          }
 
-  const handleDelete = async (id, nome) => {
-      const confirmacao = prompt(
-          `ATENÇÃO CRÍTICA!\n\nVocê está prestes a apagar o projeto "${nome}".\nIsso apagará TODOS os ciclos, casos de teste e execuções vinculados.\n\nPara confirmar, digite "DELETAR" abaixo:`
-      );
-
-      if (confirmacao !== "DELETAR") return;
-
-      try {
-          await api.delete(`/projetos/${id}`);
-          alert("Projeto e dados vinculados excluídos.");
-          loadAll();
-          if (editingId === id) handleCancel();
-      } catch (error) {
-          alert(error.message);
+      } catch(e) { 
+          toast.error("Erro ao mudar status."); 
       }
   };
 
+  const requestDelete = (projeto) => {
+      setProjectToDelete(projeto);
+      setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+      if (!projectToDelete) return;
+
+      try {
+          await api.delete(`/projetos/${projectToDelete.id}`);
+          toast.success("Projeto e dados vinculados excluídos.");
+          loadAll();
+          if (editingId === projectToDelete.id) handleCancel();
+      } catch (error) {
+          toast.error(error.message || "Não foi possível excluir o projeto.");
+      } finally {
+          setProjectToDelete(null);
+      }
+  };
+
+  /* ==========================================================================
+     HELPERS DE RENDERIZAÇÃO
+     ========================================================================== */
   const renderModuloBadge = (id) => {
       const mod = modulos.find(m => m.id === id);
       if (!mod) return <span style={{color: '#cbd5e1'}}>-</span>;
@@ -117,10 +179,8 @@ export function AdminProjetos() {
       if (mod.ativo === false) {
           return (
               <span className="badge" style={{
-                  backgroundColor: '#fee2e2', 
-                  color: '#b91c1c',
-                  border: '1px solid rgba(185, 28, 28, 0.2)',
-                  fontSize: '0.75rem'
+                  backgroundColor: '#fee2e2', color: '#b91c1c',
+                  border: '1px solid rgba(185, 28, 28, 0.2)'
               }}>
                   {mod.nome} (Inativo)
               </span>
@@ -128,10 +188,8 @@ export function AdminProjetos() {
       }
       return (
           <span className="badge" style={{
-              backgroundColor: '#eef2ff', 
-              color: '#3730a3',
-              border: '1px solid rgba(55, 48, 163, 0.2)',
-              fontSize: '0.75rem'
+              backgroundColor: '#eef2ff', color: '#3730a3',
+              border: '1px solid rgba(55, 48, 163, 0.2)'
           }}>
               {mod.nome}
           </span>
@@ -140,7 +198,7 @@ export function AdminProjetos() {
   
   const getStatusStyle = (status) => {
       switch(status) {
-          case 'ativo': return { bg: '#eef2ff', color: '#3730a3' }; 
+          case 'ativo': return { bg: '#dcfce7', color: '#166534' }; 
           case 'pausado': return { bg: '#fef3c7', color: '#92400e' }; 
           case 'finalizado': return { bg: '#f1f5f9', color: '#64748b' }; 
           default: return { bg: '#f3f4f6', color: '#6b7280' };
@@ -152,52 +210,35 @@ export function AdminProjetos() {
       const user = usuarios.find(u => u.id === id);
       if (!user) return <span style={{color: '#94a3b8'}}>Desconhecido</span>;
       
-      if (user.ativo === false) {
-          return (
-            <span className="badge" style={{
-                backgroundColor: '#fee2e2', 
-                color: '#b91c1c', 
-                border: '1px solid rgba(185, 28, 28, 0.2)',
-                fontSize: '0.75rem'
-            }}>
-                {user.nome} (Inativo)
-            </span>
-          );
-      }
       return (
         <span className="badge" style={{
-            backgroundColor: '#eef2ff', 
-            color: '#3730a3', 
-            border: '1px solid rgba(55, 48, 163, 0.2)',
-            fontSize: '0.75rem'
+            backgroundColor: user.ativo ? '#f3f4f6' : '#fee2e2', 
+            color: user.ativo ? '#374151' : '#b91c1c'
         }}>
-            {user.nome}
+            {user.nome} {user.ativo ? '' : '(Inativo)'}
         </span>
       );
   };
 
+  /* ==========================================================================
+     INTERFACE (JSX)
+     ========================================================================== */
   return (
     <main className="container grid">
       <style>{`
-        .status-hover {
-          transition: all 0.2s ease-in-out;
-        }
-        .status-hover:hover {
-          filter: brightness(0.95);
-          transform: scale(1.05);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        tr.selectable {
-            transition: background-color 0.2s;
-        }
-        tr.selectable:hover {
-            background-color: #f1f5f9 !important;
-            cursor: pointer;
-        }
-        tr.selected {
-            background-color: #e0f2fe !important; 
-        }
+        .status-hover { transition: all 0.2s ease-in-out; }
+        .status-hover:hover { filter: brightness(0.95); transform: scale(1.05); cursor: pointer; }
       `}</style>
+
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Projeto?"
+        message={`ATENÇÃO: Apagar o projeto "${projectToDelete?.nome}" excluirá TODOS os ciclos, casos de teste e execuções vinculados a ele.`}
+        confirmText="Sim, Excluir Tudo"
+        isDanger={true}
+      />
 
       <section className="card">
         <h2 className="section-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h2>
@@ -205,7 +246,10 @@ export function AdminProjetos() {
           <div className="form-grid">
             <div>
                 <label>Módulo Pai</label>
-                <select value={form.modulo_id} onChange={e => setForm({...form, modulo_id: e.target.value})} required>
+                <select 
+                    value={form.modulo_id} 
+                    onChange={e => setForm({...form, modulo_id: e.target.value})}
+                >
                     <option value="">Selecione...</option>
                     {modulos.map(m => (
                         <option 
@@ -231,7 +275,7 @@ export function AdminProjetos() {
             </div>
             <div style={{gridColumn: '1/-1'}}>
                 <label>Descrição</label>
-                <textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} />
+                <textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} rows={3} />
             </div>
           </div>
           <div className="actions" style={{marginTop:'15px', display:'flex', gap:'10px'}}>
@@ -244,70 +288,63 @@ export function AdminProjetos() {
       <section className="card">
         <h2 className="section-title">Lista de Projetos</h2>
         <div className="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Projeto</th>
-                        <th>Módulo</th>
-                        <th>Status</th>
-                        <th>Responsável</th>
-                        <th style={{textAlign: 'right'}}>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {projetos.map(p => {
-                        const style = getStatusStyle(p.status);
-                        const isFinalizado = p.status === 'finalizado';
-                        
-                        return (
-                            <tr 
-                                key={p.id} 
-                                onClick={() => handleSelectRow(p)}
-                                className={editingId === p.id ? 'selected' : 'selectable'}
-                                title="Clique na linha para editar, ou no status para alterar estado"
-                                style={{ 
-                                    opacity: isFinalizado ? 0.6 : 1, 
-                                    backgroundColor: isFinalizado ? '#f9fafb' : 'transparent'
-                                }}
-                            >
-                                <td><strong>{p.nome}</strong></td>
-                                <td>{renderModuloBadge(p.modulo_id)}</td>
-                                <td>
-                                    <span 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            cycleStatus(p); 
-                                        }}
-                                        className="badge status-hover"
-                                        style={{
-                                            backgroundColor: style.bg, 
-                                            color: style.color,
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            border: '1px solid transparent',
-                                            display: 'inline-block',
-                                            minWidth: '80px',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {p.status.toUpperCase()}
-                                    </span>
-                                </td>
-                                <td>{renderResponsavel(p.responsavel_id)}</td>
-                                <td style={{textAlign: 'right'}}>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id, p.nome); }}
-                                        className="btn danger"
-                                        style={{padding: '4px 8px', fontSize: '0.75rem'}}
-                                    >
-                                        Excluir
-                                    </button>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+            {projetos.length === 0 ? <p className="muted" style={{textAlign:'center', padding:'20px'}}>Nenhum projeto encontrado.</p> : (
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Projeto</th>
+                            <th>Módulo</th>
+                            <th>Status</th>
+                            <th>Responsável</th>
+                            <th style={{textAlign: 'right'}}>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {projetos.map(p => {
+                            const style = getStatusStyle(p.status);
+                            const isFinalizado = p.status === 'finalizado';
+                            
+                            return (
+                                <tr 
+                                    key={p.id} 
+                                    onClick={() => handleSelectRow(p)}
+                                    className={editingId === p.id ? 'selected' : 'selectable'}
+                                    style={{ 
+                                        opacity: isFinalizado ? 0.6 : 1, 
+                                        backgroundColor: isFinalizado ? '#f9fafb' : 'transparent'
+                                    }}
+                                >
+                                    <td><strong>{p.nome}</strong></td>
+                                    <td>{renderModuloBadge(p.modulo_id)}</td>
+                                    <td>
+                                        <span 
+                                            onClick={(e) => { e.stopPropagation(); cycleStatus(p); }}
+                                            className="badge status-hover"
+                                            style={{
+                                                backgroundColor: style.bg, 
+                                                color: style.color,
+                                                minWidth: '80px',
+                                                textAlign: 'center'
+                                            }}
+                                        >
+                                            {p.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td>{renderResponsavel(p.responsavel_id)}</td>
+                                    <td style={{textAlign: 'right'}}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); requestDelete(p); }}
+                                            className="btn danger small"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            )}
         </div>
       </section>
     </main>

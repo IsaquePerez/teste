@@ -8,7 +8,7 @@ from sqlalchemy import func, delete, update as sqlalchemy_update
 from app.models.testing import (
     CicloTeste, CasoTeste, PassoCasoTeste, 
     ExecucaoTeste, ExecucaoPasso, 
-    StatusExecucaoEnum
+    StatusExecucaoEnum, Defeito
 )
 from app.models.usuario import Usuario 
 
@@ -98,8 +98,9 @@ class TesteRepository:
         
         updated_id = result.scalars().first()
         
-        # 3. Processa os passos (Adicionar ou Editar)
         if updated_id and passos_data is not None:
+            # Remove passos antigos para substituir pelos novos (estratégia simples)
+            # ou atualiza se tiver ID. Aqui mantemos a lógica original de atualização.
             for passo in passos_data:
                 if 'id' in passo and passo['id']:
                     await self.db.execute(
@@ -126,13 +127,34 @@ class TesteRepository:
              return await self.get_caso_teste_by_id(updated_id)
         return None
 
+    # --- CORREÇÃO AQUI: DELETE EM CASCATA MANUAL ---
     async def delete_caso_teste(self, caso_id: int) -> bool:
+        # 1. Encontrar e apagar execuções vinculadas (e seus passos/defeitos)
+        # O banco pode ter cascade configurado, mas se não tiver, forçamos aqui.
+        
+        # Busca execuções deste caso
+        query_execs = select(ExecucaoTeste.id).where(ExecucaoTeste.caso_teste_id == caso_id)
+        result_execs = await self.db.execute(query_execs)
+        execs_ids = result_execs.scalars().all()
+
+        if execs_ids:
+            # Apaga passos executados
+            await self.db.execute(delete(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id.in_(execs_ids)))
+            # Apaga defeitos
+            await self.db.execute(delete(Defeito).where(Defeito.execucao_teste_id.in_(execs_ids)))
+            # Apaga a execução em si
+            await self.db.execute(delete(ExecucaoTeste).where(ExecucaoTeste.id.in_(execs_ids)))
+
+        # 2. Apaga os passos do template do caso
+        await self.db.execute(delete(PassoCasoTeste).where(PassoCasoTeste.caso_teste_id == caso_id))
+
+        # 3. Finalmente apaga o Caso de Teste
         query = delete(CasoTeste).where(CasoTeste.id == caso_id)
         result = await self.db.execute(query)
         await self.db.commit()
         return result.rowcount > 0
 
-    # --- CICLOS DE TESTE (CORREÇÕES AQUI) ---
+    # --- CICLOS DE TESTE ---
 
     async def get_ciclo_by_nome_projeto(self, nome: str, projeto_id: int) -> Optional[CicloTeste]:
         query = select(CicloTeste).where(
@@ -145,12 +167,9 @@ class TesteRepository:
     async def create_ciclo(self, projeto_id: int, ciclo_data: CicloTesteCreate) -> CicloTeste:
         dados_ciclo = ciclo_data.model_dump(exclude={'projeto_id'})
         db_ciclo = CicloTeste(projeto_id=projeto_id, **dados_ciclo)
-        
         self.db.add(db_ciclo)
         await self.db.commit()
         
-        # NÃO use refresh() nem atribuição manual aqui.
-        # Faça uma query completa para retornar o objeto com as relações carregadas.
         query = (
             select(CicloTeste)
             .options(
@@ -165,7 +184,6 @@ class TesteRepository:
         query = (
             select(CicloTeste)
             .options(
-                # Traz as execuções e seus responsáveis para popular "Equipe" e "Progresso"
                 selectinload(CicloTeste.execucoes).selectinload(ExecucaoTeste.responsavel)
             )
             .where(CicloTeste.projeto_id == projeto_id)
@@ -177,7 +195,6 @@ class TesteRepository:
         return result.unique().scalars().all()
 
     async def update_ciclo(self, ciclo_id: int, dados: dict) -> Optional[CicloTeste]:
-        # 1. Update
         query = (
             sqlalchemy_update(CicloTeste)
             .where(CicloTeste.id == ciclo_id)
@@ -186,7 +203,6 @@ class TesteRepository:
         await self.db.execute(query)
         await self.db.commit()
         
-        # 2. Re-select com carregamento (para não quebrar a resposta)
         query_get = (
             select(CicloTeste)
             .options(selectinload(CicloTeste.execucoes).selectinload(ExecucaoTeste.responsavel))
@@ -196,6 +212,7 @@ class TesteRepository:
         return result.scalars().first()
 
     async def delete_ciclo(self, ciclo_id: int) -> bool:
+        # Cascade manual se necessário, mas geralmente ciclos apagam tudo
         query = delete(CicloTeste).where(CicloTeste.id == ciclo_id)
         result = await self.db.execute(query)
         await self.db.commit()
@@ -204,7 +221,6 @@ class TesteRepository:
     # --- EXECUÇÃO ---
     
     async def verificar_pendencias_ciclo(self, ciclo_id: int) -> bool:
-        """Verifica se ainda há testes não finalizados no ciclo"""
         query = select(ExecucaoTeste).where(
             ExecucaoTeste.ciclo_teste_id == ciclo_id,
             ExecucaoTeste.status_geral.in_([
