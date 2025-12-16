@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { api } from '../services/api';
 
+/* ==========================================================================
+   COMPONENTE: DASHBOARD (VISÃO GERAL)
+   ========================================================================== */
 export function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +20,7 @@ export function Dashboard() {
         setData(response);
       } catch (error) {
         console.error("Erro no dashboard:", error);
+        toast.error("Erro ao carregar dados do Dashboard.");
       } finally {
         setLoading(false);
       }

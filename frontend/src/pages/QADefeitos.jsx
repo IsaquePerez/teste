@@ -1,40 +1,83 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { toast } from 'sonner';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
+/* ==========================================================================
+   COMPONENTE: QA DEFEITOS
+   ========================================================================== */
 export function QADefeitos() {
   const [defeitos, setDefeitos] = useState([]);
   const [loading, setLoading] = useState(false);
-  // openMenuId controla qual dropdown está aberto no momento
   const [openMenuId, setOpenMenuId] = useState(null);
   const [galleryImages, setGalleryImages] = useState(null);
 
-  useEffect(() => { loadDefeitos(); }, []);
+  // ESTADOS DO MODAL DE EXCLUSÃO
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [defectToDelete, setDefectToDelete] = useState(null);
+
+  useEffect(() => { 
+    loadDefeitos(); 
+    // Fecha o menu suspenso ao clicar fora
+    const handleClickOutside = (event) => {
+        if (!event.target.closest('td[style*="position: relative"]')) {
+            setOpenMenuId(null);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const loadDefeitos = async () => {
     setLoading(true);
     try {
       const data = await api.get("/defeitos/");
       setDefeitos(Array.isArray(data) ? data : []);
-    } catch (error) { console.error(error); alert("Erro ao carregar defeitos."); }
+    } catch (error) { 
+        console.error(error); 
+        toast.error("Erro ao carregar defeitos.");
+    }
     finally { setLoading(false); }
   };
 
-  // Agora recebe o novo status diretamente ao clicar na opção
   const handleUpdateStatus = async (id, newStatus) => {
-    // UI otimista: fecha o menu imediatamente
     setOpenMenuId(null); 
     
     try {
         await api.put(`/defeitos/${id}`, { status: newStatus });
-        // Recarrega lista para confirmar
+        toast.success(`Status do Defeito #${id} atualizado para ${newStatus.toUpperCase()}`);
         loadDefeitos(); 
     } catch (e) { 
-        alert("Erro ao atualizar status."); 
+        toast.error("Erro ao atualizar status."); 
         console.error(e);
     }
   };
+  
+  /* ==========================================================================
+     LÓGICA DE EXCLUSÃO
+     ========================================================================== */
+  const requestDelete = (defeito) => {
+      setDefectToDelete(defeito);
+      setIsDeleteModalOpen(true);
+  };
 
-  // --- HELPERS VISUAIS ---
+  const confirmDelete = async () => {
+      if (!defectToDelete) return;
+      try {
+          await api.delete(`/defeitos/${defectToDelete.id}`);
+          toast.success(`Defeito #${defectToDelete.id} excluído com sucesso.`);
+          loadDefeitos();
+      } catch (error) {
+          toast.error(error.message || "Erro ao excluir o defeito.");
+          console.error(error);
+      } finally {
+          setDefectToDelete(null); 
+      }
+  };
+  
+  /* ==========================================================================
+     HELPERS VISUAIS
+     ========================================================================== */
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -74,7 +117,7 @@ export function QADefeitos() {
         case 'aberto': return { bg: '#fee2e2', color: '#b91c1c' };
         case 'corrigido': return { bg: '#d1fae5', color: '#065f46' };
         case 'fechado': return { bg: '#f1f5f9', color: '#475569' };
-        default: return { bg: '#eff6ff', color: '#1e40af' }; // em_teste e outros
+        default: return { bg: '#eff6ff', color: '#1e40af' };
     }
   };
 
@@ -102,12 +145,23 @@ export function QADefeitos() {
 
   return (
     <main className="container">
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => { confirmDelete(); setIsDeleteModalOpen(false); }}
+        title="Excluir Defeito?"
+        message={`Tem a certeza que deseja excluir o defeito "${defectToDelete?.titulo || ''}" (ID: #${defectToDelete?.id})? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, Excluir"
+        isDanger={true}
+      />
+      
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
         <h2 className="section-title" style={{border:'none', margin:0}}>Gestão de Defeitos</h2>
         <button onClick={loadDefeitos} className="btn">Atualizar Lista</button>
       </div>
 
-      <section className="card" style={{overflow: 'visible'}}> {/* overflow visible para o menu não cortar */}
+      <section className="card" style={{overflow: 'visible'}}>
         {loading ? <p>A carregar...</p> : (
           <div className="table-wrap" style={{overflowX: 'visible'}}>
             {defeitos.length === 0 ? <p className="muted">Nenhum defeito registado.</p> : (
@@ -119,9 +173,9 @@ export function QADefeitos() {
                     <th>Erro</th>
                     <th>Evidências</th>
                     <th>Severidade</th>
-                    <th>Status & Ações</th> {/* Coluna fundida */}
-                    <th>Registado em</th>
-                    {/* Coluna Ações removida */}
+                    <th>Status & Ações</th>
+                    <th style={{textAlign: 'right'}}>Registado em</th>
+                    <th style={{textAlign: 'right'}}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,8 +274,22 @@ export function QADefeitos() {
                                 )}
                             </td>
 
-                            <td style={{fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap'}}>
+                            <td style={{fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap', textAlign: 'right'}}>
                                 {formatDate(d.created_at)}
+                            </td>
+                            
+                            {/* --- COLUNA DE EXCLUSÃO --- */}
+                            <td style={{textAlign: 'right'}}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        requestDelete(d);
+                                    }}
+                                    className="btn danger small"
+                                    title="Excluir Defeito"
+                                >
+                                    🗑️
+                                </button>
                             </td>
                         </tr>
                     );

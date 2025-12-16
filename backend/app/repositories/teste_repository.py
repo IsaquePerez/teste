@@ -1,4 +1,4 @@
-# backend/app/repositories/teste_repository.py
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -132,10 +132,8 @@ class TesteRepository:
         
         return None
 
-    # --- CORREÇÃO AQUI: DELETE EM CASCATA MANUAL ---
+    # --- DELETE EM CASCATA MANUAL (CASO DE TESTE) ---
     async def delete_caso_teste(self, caso_id: int) -> bool:
-        # 1. Encontrar e apagar execuções vinculadas (e seus passos/defeitos)
-        # O banco pode ter cascade configurado, mas se não tiver, forçamos aqui.
         
         # Busca execuções deste caso
         query_execs = select(ExecucaoTeste.id).where(ExecucaoTeste.caso_teste_id == caso_id)
@@ -143,17 +141,17 @@ class TesteRepository:
         execs_ids = result_execs.scalars().all()
 
         if execs_ids:
-            # Apaga passos executados
+            # Apaga passos executados (Netos)
             await self.db.execute(delete(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id.in_(execs_ids)))
-            # Apaga defeitos
+            # Apaga defeitos (Netos)
             await self.db.execute(delete(Defeito).where(Defeito.execucao_teste_id.in_(execs_ids)))
-            # Apaga a execução em si
+            # Apaga a execução em si (Filhos)
             await self.db.execute(delete(ExecucaoTeste).where(ExecucaoTeste.id.in_(execs_ids)))
 
-        # 2. Apaga os passos do template do caso
+        # Apaga os passos do template do caso
         await self.db.execute(delete(PassoCasoTeste).where(PassoCasoTeste.caso_teste_id == caso_id))
 
-        # 3. Finalmente apaga o Caso de Teste
+        # Finalmente apaga o Caso de Teste
         query = delete(CasoTeste).where(CasoTeste.id == caso_id)
         result = await self.db.execute(query)
         await self.db.commit()
@@ -217,7 +215,20 @@ class TesteRepository:
         return result.scalars().first()
 
     async def delete_ciclo(self, ciclo_id: int) -> bool:
-        # Cascade manual se necessário, mas geralmente ciclos apagam tudo
+        # 1. Busca execuções deste ciclo (Filhos)
+        query_execs = select(ExecucaoTeste.id).where(ExecucaoTeste.ciclo_teste_id == ciclo_id)
+        result_execs = await self.db.execute(query_execs)
+        execs_ids = result_execs.scalars().all()
+
+        if execs_ids:
+            # Apaga passos executados (Netos)
+            await self.db.execute(delete(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id.in_(execs_ids)))
+            # Apaga defeitos (Netos)
+            await self.db.execute(delete(Defeito).where(Defeito.execucao_teste_id.in_(execs_ids)))
+            # Apaga a execução em si (Filhos)
+            await self.db.execute(delete(ExecucaoTeste).where(ExecucaoTeste.id.in_(execs_ids)))
+
+        # 2. Finalmente apaga o Ciclo de Teste (Pai)
         query = delete(CicloTeste).where(CicloTeste.id == ciclo_id)
         result = await self.db.execute(query)
         await self.db.commit()
