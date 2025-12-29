@@ -28,7 +28,7 @@ export function AdminCasosTeste() {
     passos: [{ ordem: 1, acao: '', resultado_esperado: '' }]
   });
 
-  // --- BUSCA ---
+  // Busca e Autocomplete
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
@@ -42,7 +42,6 @@ export function AdminCasosTeste() {
       c.prioridade.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- AUXILIARES ---
   const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
   
   const inputStyle = {
@@ -50,7 +49,6 @@ export function AdminCasosTeste() {
     fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box'
   };
 
-  // --- DATA FETCHING ---
   useEffect(() => {
     const loadBasics = async () => {
       try {
@@ -61,6 +59,7 @@ export function AdminCasosTeste() {
         setProjetos(projData || []);
         setUsuarios(userData || []);
         
+        // Seleciona o primeiro projeto ativo
         const ativos = (projData || []).filter(p => p.status === 'ativo');
         if (ativos.length > 0) {
           setSelectedProjeto(ativos[0].id);
@@ -76,6 +75,7 @@ export function AdminCasosTeste() {
     if (selectedProjeto) loadDadosProjeto(selectedProjeto);
   }, [selectedProjeto]);
 
+  // Fecha dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -105,7 +105,6 @@ export function AdminCasosTeste() {
   const currentProject = projetos.find(p => p.id == selectedProjeto);
   const isProjectActive = currentProject?.status === 'ativo';
 
-  // --- HANDLERS ---
   const handleReset = () => {
     setForm({
       nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '',
@@ -203,22 +202,6 @@ export function AdminCasosTeste() {
 
   return (
     <main className="container">
-      <style>{`
-        tr.hover-row:hover { background-color: #f8fafc !important; cursor: pointer; }
-        .custom-dropdown {
-          position: absolute; top: 105%; left: 0; width: 100%;
-          background: white; border: 1px solid #e2e8f0; border-radius: 6px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 50;
-          max-height: 250px; overflow-y: auto; padding: 5px 0;
-        }
-        .custom-dropdown li {
-          padding: 10px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer;
-          font-size: 0.9rem; color: #334155; display: flex; align-items: center;
-        }
-        .custom-dropdown li:hover { background-color: #f1f5f9; color: #0f172a; font-weight: 500; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-      `}</style>
-      
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -229,12 +212,11 @@ export function AdminCasosTeste() {
         isDanger={true}
       />
 
-      {/* --- FORMULÁRIO --- */}
       {view === 'form' && (
         <div style={{maxWidth: '100%', margin: '0 auto'}}>
           <form onSubmit={handleSubmit}>
             
-            {/* Detalhes */}
+            {/* Bloco de Detalhes */}
             <section className="card" style={{marginBottom: '20px'}}>
               <div style={{borderBottom:'1px solid #f1f5f9', paddingBottom:'15px', marginBottom:'20px'}}>
                  <h3 style={{margin:0, color: '#1e293b'}}>{editingId ? 'Editar Cenário' : 'Novo Cenário'}</h3>
@@ -302,7 +284,7 @@ export function AdminCasosTeste() {
               </div>
             </section>
 
-            {/* Passos */}
+            {/* Steps do Teste */}
             <section className="card">
                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
                  <h3 style={{margin: 0, color: '#334155', fontSize: '1.1rem'}}>Passos do Teste</h3>
@@ -341,16 +323,14 @@ export function AdminCasosTeste() {
       {view === 'list' && (
         <section className="card" style={{marginTop: 0}}>
            
-           {/* HEADER TOOLBAR */}
+           {/* Toolbar de Filtros */}
            <div style={{paddingBottom: '15px', borderBottom: '1px solid #f1f5f9', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px'}}>
                
-               {/* LADO ESQUERDO: Título */}
                <h3 style={{margin: 0, fontSize: '1.25rem', color: '#1e293b'}}>Casos de Teste</h3>
                
-               {/* LADO DIREITO: Controles Agrupados (Projeto -> Novo -> Busca) */}
                <div style={{display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap'}}>
                    
-                   {/* Seletor de Projeto */}
+                   {/* Filtro de Projeto */}
                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                        <span style={{fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase'}}>PROJETO:</span>
                        <select 
@@ -373,7 +353,6 @@ export function AdminCasosTeste() {
                        </select>
                    </div>
                    
-                   {/* Botão Novo */}
                    <button 
                         onClick={handleNew} className="btn primary" disabled={!isProjectActive} 
                         style={{
@@ -388,11 +367,10 @@ export function AdminCasosTeste() {
                     Novo Cenário
                    </button>
                    
-                   {/* Separador */}
                    <div style={{width: '1px', height: '24px', backgroundColor: '#e2e8f0', display: 'none', '@media (min-width: 768px)': {display: 'block'}}}></div>
 
-                   {/* Busca */}
-                   <div ref={wrapperRef} style={{position: 'relative', width: '220px'}}>
+                   {/* Busca com Dropdown Global */}
+                   <div ref={wrapperRef} className="search-wrapper" style={{width: '220px'}}>
                         <input 
                             type="text" placeholder="Buscar..." value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)}
@@ -424,7 +402,6 @@ export function AdminCasosTeste() {
                </div>
            </div>
 
-           {/* TABELA */}
            {loading ? <div style={{padding:'20px', textAlign:'center', color:'#64748b'}}>Carregando dados...</div> : (
              <div className="table-wrap">
                {casos.length === 0 ? (
@@ -449,7 +426,7 @@ export function AdminCasosTeste() {
                        <tr><td colSpan="6" style={{textAlign:'center', padding:'20px', color: '#64748b'}}>Sem resultados para "{searchTerm}"</td></tr>
                      ) : (
                        filteredCasos.map(c => (
-                           <tr key={c.id} className="hover-row" onClick={() => handleEdit(c)}>
+                           <tr key={c.id} className="selectable" onClick={() => handleEdit(c)}>
                                <td style={{color: '#64748b'}}>#{c.id}</td>
                                <td>
                                    <div style={{fontWeight: 600, color:'#334155'}} title={c.nome}>{truncate(c.nome, 40)}</div>

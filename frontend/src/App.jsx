@@ -5,10 +5,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './pages/Login';
 import './styles/index.css';
 
-// --- IMPORT NOVO ---
 import ScrollToTop from './components/ScrollToTop'; 
 
-// Imports das páginas (Mantenha seus imports)
 import { AdminUsers } from './pages/AdminUsers';
 import { AdminSistemas } from './pages/AdminSistemas';
 import { AdminModulos } from './pages/AdminModulos';
@@ -19,9 +17,6 @@ import { QADefeitos } from './pages/QADefeitos';
 import { QARunner } from './pages/QARunner';
 import { Dashboard } from './pages/Dashboard'; 
 
-/* ==========================================================================
-   TOP HEADER
-   ========================================================================== */
 function TopHeader({ toggleSidebar }) {
   const { user, logout } = useAuth();
   return (
@@ -47,9 +42,6 @@ function TopHeader({ toggleSidebar }) {
   );
 }
 
-/* ==========================================================================
-   SIDEBAR
-   ========================================================================== */
 function Sidebar({ role, isOpen, closeSidebar }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path ? 'active' : '';
@@ -91,9 +83,6 @@ function Sidebar({ role, isOpen, closeSidebar }) {
   );
 }
 
-/* ==========================================================================
-   LAYOUT PROTEGIDO
-   ========================================================================== */
 function ProtectedLayout({ roles }) {
   const { user, isAuthenticated, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -112,7 +101,6 @@ function ProtectedLayout({ roles }) {
       <div className="main-content" style={{backgroundColor: '#F3F4F6'}}>
          <TopHeader toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} /> 
          
-         {/* ADICIONADO O ID AQUI PARA O COMPONENTE ScrollToTop ENCONTRAR */}
          <div 
             id="main-content-scroll" 
             style={{ padding: '30px', overflowY: 'auto', height: 'calc(100vh - 64px)' }}
@@ -124,15 +112,11 @@ function ProtectedLayout({ roles }) {
   );
 }
 
-/* ==========================================================================
-   APP ROOT
-   ========================================================================== */
 function App() {
   return (
     <AuthProvider>
       <Toaster richColors position="top-right" />
       <BrowserRouter>
-        {/* --- COMPONENTE DE SCROLL AQUI DENTRO DO ROUTER --- */}
         <ScrollToTop />
         
         <Routes>

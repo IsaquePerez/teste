@@ -1,6 +1,4 @@
-/* ==========================================================================
-   VARIÁVEIS GERAIS E RESET
-   ========================================================================== */
+/* --- Variaveis e Reset --- */
 :root {
   --dark-blue: #001C42;
   --light-blue: #1E3A8A;
@@ -15,7 +13,7 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
   background-color: var(--gray-bg);
@@ -30,9 +28,7 @@ body {
   min-height: 100vh;
 }
 
-/* ==========================================================================
-   ESTRUTURA DO LAYOUT: BARRA LATERAL (SIDEBAR) E CABEÇALHO
-   ========================================================================== */
+/* --- Layout Principal --- */
 .app-layout {
   display: flex;
   width: 100%;
@@ -40,6 +36,15 @@ body {
   position: relative;
 }
 
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* --- Sidebar --- */
 .sidebar {
   width: var(--sidebar-width);
   background-color: var(--dark-blue);
@@ -50,13 +55,11 @@ body {
   position: sticky;
   top: 0;
   overflow-y: auto;
-  transition: transform 0.3s ease;
   z-index: 50;
   display: flex;
   flex-direction: column;
 }
 
-/* Bloco da Marca: Ajustado para alinhar com o Header */
 .brand-wrap {
   display: flex;
   align-items: center;
@@ -68,20 +71,8 @@ body {
   flex-shrink: 0;
 }
 
-/* Remove margem do último elemento de marca se houver múltiplos */
-.brand-wrap:last-of-type {
-  margin-bottom: 10px; 
-}
-
-.brand-logo-ge {
-  width: 140px; 
-  height: auto;
-}
-
-.brand-logo-vt {
-  width: 32px; 
-  height: auto;
-}
+.brand-logo-ge { width: 140px; height: auto; }
+.brand-logo-vt { width: 32px; height: auto; }
 
 .brand {
   font-size: 1.1rem; 
@@ -89,9 +80,7 @@ body {
   white-space: nowrap;
 }
 
-.sidebar nav {
-  padding-top: 10px;
-}
+.sidebar nav { padding-top: 10px; }
 
 .sidebar nav a {
   display: block;
@@ -120,18 +109,10 @@ body {
   font-size: 0.7rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
-.main-content {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  overflow-x: hidden;
-}
-
+/* --- Header --- */
 .top-header {
   background-color: var(--white);
   padding: 0 30px;
@@ -149,9 +130,7 @@ body {
   width: 100%;
 }
 
-/* ==========================================================================
-   COMPONENTES DE UI: CARDS, FORMULÁRIOS E BOTÕES
-   ========================================================================== */
+/* --- UI Geral (Cards, Inputs, Buttons) --- */
 .container { 
   padding: 30px; 
   max-width: 1400px;
@@ -170,24 +149,18 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: var(--primary-shadow);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .section-title {
   font-size: 1.5rem; 
   font-weight: 700; 
-  margin-top: 0; 
-  margin-bottom: 24px;
+  margin: 0 0 24px 0;
   color: #1E293B;
-  letter-spacing: -0.5px;
 }
 
-.muted { 
-  color: #64748B; 
-  font-size: 0.9rem;
-}
+.muted { color: #64748B; font-size: 0.9rem; }
 
-/* Estilos de Formulário */
+/* Forms */
 .form-grid {
   display: grid; 
   grid-template-columns: 1fr 1fr; 
@@ -212,19 +185,16 @@ body {
   border-radius: 6px; 
   box-sizing: border-box;
   font-size: 0.95rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
   background-color: #fff;
 }
 
 .form-grid input:focus, 
-.form-grid select:focus, 
-.form-grid textarea:focus {
+.form-grid select:focus {
   outline: none;
   border-color: var(--light-blue);
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
-/* Estilos de Botões */
+/* Botoes */
 .btn {
   padding: 10px 16px; 
   border: none; 
@@ -239,34 +209,14 @@ body {
   gap: 8px;
 }
 
-.btn.primary { 
-  background-color: var(--light-blue); 
-  color: var(--white); 
-}
+.btn.primary { background-color: var(--light-blue); color: var(--white); }
+.btn.primary:hover { background-color: #1E3A8A; transform: translateY(-1px); }
 
-.btn.primary:hover { 
-  background-color: #1E3A8A; 
-  transform: translateY(-1px);
-}
+.btn.danger { background-color: #1E3A8A; color: var(--white); }
 
-.btn.danger { 
-  background-color: #1E3A8A; 
-  color: var(--white); 
-}
+.btn.small { padding: 6px 12px; font-size: 0.8rem; }
 
-
-.btn.danger:hover {
-  background-color: #1E3A8A;
-}
-
-.btn.small {
-  padding: 6px 12px;
-  font-size: 0.8rem;
-}
-
-/* ==========================================================================
-   EXIBIÇÃO DE DADOS: TABELAS E BADGES
-   ========================================================================== */
+/* --- Tabelas --- */
 .table-wrap { 
   overflow-x: auto; 
   margin-bottom: 10px;
@@ -274,11 +224,7 @@ body {
   border: 1px solid var(--border-color);
 }
 
-table { 
-  width: 100%; 
-  border-collapse: collapse; 
-  font-size: 0.9rem; 
-}
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 
 th, td { 
   padding: 14px 16px; 
@@ -292,23 +238,15 @@ th {
   color: #475569; 
   text-transform: uppercase;
   font-size: 0.75rem;
-  letter-spacing: 0.5px;
 }
 
 tr:last-child td { border-bottom: none; }
-
-tr.selectable:hover { 
-  background-color: #F1F5F9; 
-  cursor: pointer; 
-}
-
-tr.selected { 
-  background-color: #EFF6FF; 
-}
+tr.selectable:hover { background-color: #F1F5F9; cursor: pointer; }
+tr.selected { background-color: #EFF6FF; }
 
 .badge { 
   padding: 4px 10px; 
-  border-radius: 9999px; 
+  border-radius: 99px; 
   font-size: 0.75rem; 
   font-weight: 600; 
   display: inline-block;
@@ -317,27 +255,7 @@ tr.selected {
 .badge.on { background-color: #DCFCE7; color: #166534; }
 .badge.off { background-color: #FEE2E2; color: #991B1B; }
 
-.info-block {
-  background-color: #F0F9FF;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  border: 1px solid #BAE6FD;
-  font-size: 0.9rem;
-  color: #0C4A6E;
-}
-
-.info-block code {
-  background-color: rgba(255,255,255,0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-weight: 600;
-}
-
-/* ==========================================================================
-   ESTILOS ESPECÍFICOS: QA RUNNER (EXECUTOR DE TESTES)
-   ========================================================================== */
+/* --- Pagina QA Runner --- */
 .qa-runner-grid {
   display: grid;
   grid-template-columns: 350px 1fr;
@@ -355,7 +273,6 @@ tr.selected {
   border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 .btn-approve:hover { background-color: #059669; }
 
@@ -368,7 +285,6 @@ tr.selected {
   border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 .btn-reject:hover { background-color: #DC2626; }
 
@@ -382,33 +298,55 @@ tr.selected {
   padding: 4px 10px;
   border-radius: 16px;
   font-size: 0.8rem;
+}
+
+.delete-btn { cursor: pointer; opacity: 0.6; }
+.delete-btn:hover { opacity: 1; color: #DC2626; }
+
+/* --- Dropdown --- */
+.search-wrapper { position: relative; width: 250px; }
+
+.custom-dropdown {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  max-height: 250px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 5px 0;
+  margin: 0;
+}
+
+.custom-dropdown li {
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--gray-bg);
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #334155;
+  display: flex;
+  align-items: center;
+}
+
+.custom-dropdown li:last-child { border-bottom: none; }
+
+.custom-dropdown li:hover {
+  background-color: var(--gray-bg);
+  color: var(--text-color);
   font-weight: 500;
 }
 
-.delete-btn {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-.delete-btn:hover { opacity: 1; color: #DC2626; }
-
-/* ==========================================================================
-   RESPONSIVIDADE E LAYOUT MOBILE
-   ========================================================================== */
-.btn-mobile-menu {
-  display: none; 
-}
-
-.sidebar-overlay {
-  display: none;
-}
+/* --- Mobile --- */
+.btn-mobile-menu, .sidebar-overlay { display: none; }
 
 @media (max-width: 768px) {
-  /* Transformação do Layout para Mobile */
-  .app-layout {
-    flex-direction: column;
-  }
-
+  .app-layout { flex-direction: column; }
+  
   .sidebar {
     position: fixed;
     top: 0;
@@ -416,11 +354,10 @@ tr.selected {
     height: 100vh;
     z-index: 1000;
     box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+    transition: left 0.3s;
   }
 
-  .sidebar.open {
-    left: 0; 
-  }
+  .sidebar.open { left: 0; }
 
   .sidebar-overlay.open {
     display: block;
@@ -431,24 +368,9 @@ tr.selected {
     backdrop-filter: blur(2px);
   }
 
-  .main-content {
-    width: 100%;
-  }
-
-  .container {
-    padding: 16px;
-  }
-
-  .container.grid, 
-  .form-grid {
-    grid-template-columns: 1fr; 
-    gap: 16px;
-  }
-
-  /* Ajustes do Cabeçalho Mobile */
-  .top-header {
-    padding: 0 16px;
-  }
+  .container { padding: 16px; }
+  .container.grid, .form-grid { grid-template-columns: 1fr; gap: 16px; }
+  .top-header { padding: 0 16px; }
 
   .btn-mobile-menu {
     display: block;
@@ -460,19 +382,16 @@ tr.selected {
     margin-right: 12px;
   }
 
-  /* Ajustes do QA Runner Mobile */
   .qa-runner-grid {
     grid-template-columns: 1fr;
     height: auto;
     gap: 16px;
   }
 
-  /* A lista de tarefas no mobile se torna uma seção rolável no topo */
   .qa-runner-grid > div:first-child {
     max-height: 250px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
     padding: 10px;
     background-color: #fff;
   }

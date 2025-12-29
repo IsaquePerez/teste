@@ -3,9 +3,6 @@ import { api, getSession } from '../services/api';
 import { toast } from 'sonner';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 
-/* ==========================================================================
-   COMPONENTE: QA DEFEITOS
-   ========================================================================== */
 export function QADefeitos() {
   const isAdmin = getSession().role === 'admin';
   const [defeitos, setDefeitos] = useState([]);
@@ -13,14 +10,13 @@ export function QADefeitos() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [galleryImages, setGalleryImages] = useState(null);
 
-  // ESTADOS DO MODAL DE EXCLUSÃO
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [defectToDelete, setDefectToDelete] = useState(null);
 
   useEffect(() => { 
     loadDefeitos(); 
     
-    // Fecha o menu suspenso ao clicar fora
+    // Fecha menu ao clicar fora
     const handleClickOutside = (event) => {
         if (!event.target.closest('td[style*="position: relative"]')) {
             setOpenMenuId(null);
@@ -44,20 +40,15 @@ export function QADefeitos() {
 
   const handleUpdateStatus = async (id, newStatus) => {    
     setOpenMenuId(null); 
-    
     try {
         await api.put(`/defeitos/${id}`, { status: newStatus });        
-        toast.success(`Status do Defeito #${id} atualizado para ${newStatus.toUpperCase()}`);
+        toast.success(`Status atualizado para ${newStatus.toUpperCase()}`);
         loadDefeitos(); 
     } catch (e) { 
         toast.error("Erro ao atualizar status."); 
-        console.error(e);
     }
   };
   
-  /* ==========================================================================
-     LÓGICA DE EXCLUSÃO
-     ========================================================================== */
   const requestDelete = (defeito) => {
       setDefectToDelete(defeito);
       setIsDeleteModalOpen(true);
@@ -67,19 +58,14 @@ export function QADefeitos() {
       if (!defectToDelete) return;
       try {
           await api.delete(`/defeitos/${defectToDelete.id}`);
-          toast.success(`Defeito #${defectToDelete.id} excluído com sucesso.`);
+          toast.success(`Defeito excluído.`);
           loadDefeitos();
       } catch (error) {
-          toast.error(error.message || "Erro ao excluir o defeito.");
-          console.error(error);
+          toast.error("Erro ao excluir.");
       } finally {
           setDefectToDelete(null); 
       }
   };
-
-  /* ==========================================================================
-     HELPERS VISUAIS
-     ========================================================================== */
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -93,7 +79,7 @@ export function QADefeitos() {
       if (!responsavel) return <span style={{color: '#94a3b8', fontSize: '0.8rem'}}>Desconhecido</span>;
       if (responsavel.ativo === false) {
           return (
-              <span className="badge" style={{backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.75rem'}} title="Utilizador Inativo">
+              <span className="badge" style={{backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.75rem'}} title="Inativo">
                   {responsavel.nome} (Inativo)
               </span>
           );
@@ -123,7 +109,6 @@ export function QADefeitos() {
     }
   };
 
-  // --- GALERIA ---
   const parseEvidencias = (evidenciaString) => {
       if (!evidenciaString) return [];
       if (typeof evidenciaString === 'string' && evidenciaString.trim().startsWith('http') && !evidenciaString.trim().startsWith('[')) {
@@ -148,36 +133,35 @@ export function QADefeitos() {
 
   return (
     <main className="container">
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={() => { confirmDelete(); setIsDeleteModalOpen(false); }}
         title="Excluir Defeito?"
-        message={`Tem a certeza que deseja excluir o defeito "${defectToDelete?.titulo || ''}" (ID: #${defectToDelete?.id})? Esta ação não pode ser desfeita.`}
+        message={`Deseja excluir o defeito "${defectToDelete?.titulo || ''}"?`}
         confirmText="Sim, Excluir"
         isDanger={true}
       />
       
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-        <h2 className="section-title" style={{border:'none', margin:0}}>Gestão de Defeitos</h2>
-        <button onClick={loadDefeitos} className="btn">Atualizar Lista</button>
+        <h2 className="section-title" style={{margin:0}}>Gestão de Defeitos</h2>
+        <button onClick={loadDefeitos} className="btn">Atualizar</button>
       </div>
 
-      <section className="card" style={{overflow: 'visible'}}>
-        {loading ? <p>A carregar...</p> : (
-          <div className="table-wrap" style={{overflowX: 'visible'}}>
-            {defeitos.length === 0 ? <p className="muted">Nenhum defeito registado.</p> : (
+      <section className="card">
+        {loading ? <p>Carregando...</p> : (
+          <div className="table-wrap">
+            {defeitos.length === 0 ? <p className="muted">Nenhum defeito registrado.</p> : (
               <table style={{ borderCollapse: 'separate', borderSpacing: '0 5px' }}>
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>Origem (Teste/Responsável)</th>
+                    <th>Origem</th>
                     <th>Erro</th>
                     <th>Evidências</th>
                     <th>Severidade</th>
-                    <th>Status & Ações</th>
-                    <th style={{textAlign: 'right'}}>Registado em</th>
+                    <th>Status</th>
+                    <th style={{textAlign: 'right'}}>Data</th>
                     <th style={{textAlign: 'right'}}>Ações</th>
                   </tr>
                 </thead>
@@ -242,24 +226,14 @@ export function QADefeitos() {
                                         </button>
 
                                         {openMenuId === d.id && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '100%',
-                                                left: 0,
-                                                backgroundColor: 'white',
-                                                border: '1px solid #e2e8f0',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                                borderRadius: '6px',
-                                                zIndex: 50,
-                                                minWidth: '120px',
-                                                overflow: 'hidden'
-                                            }}>
+                                            /* Reutiliza a classe custom-dropdown do index.css, mas ajusta largura */
+                                            <div className="custom-dropdown" style={{ width: 'auto', minWidth: '130px', top: '110%' }}>
                                                 {['aberto', 'em_teste', 'corrigido', 'fechado'].map(opt => (
                                                     <div 
                                                         key={opt}
                                                         onClick={() => handleUpdateStatus(d.id, opt)}
                                                         style={{
-                                                            padding: '8px 12px',
+                                                            padding: '10px',
                                                             cursor: 'pointer',
                                                             fontSize: '0.85rem',
                                                             color: '#334155',
@@ -282,12 +256,10 @@ export function QADefeitos() {
                                             backgroundColor: styleStatus.bg,
                                             color: styleStatus.color,
                                             border: 'none',
-                                            display: 'inline-block',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold',
                                             padding: '4px 8px',
-                                            borderRadius: '15px',
-                                            cursor: 'default' 
+                                            borderRadius: '15px'
                                         }}
                                     >
                                         {d.status}
@@ -299,7 +271,6 @@ export function QADefeitos() {
                                 {formatDate(d.created_at)}
                             </td>
                             
-                            {/* --- COLUNA DE EXCLUSÃO --- */}
                             <td style={{textAlign: 'right'}}>
                                 <button
                                     onClick={(e) => {
@@ -307,7 +278,7 @@ export function QADefeitos() {
                                         requestDelete(d);
                                     }}
                                     className="btn danger small"
-                                    title="Excluir Defeito"
+                                    title="Excluir"
                                 >
                                     🗑️
                                 </button>
@@ -322,7 +293,7 @@ export function QADefeitos() {
         )}
       </section>
 
-      {/* MODAL DE IMAGENS */}
+      {/* Galeria Full Screen */}
       {galleryImages && (
           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}} onClick={() => setGalleryImages(null)}>
               <div style={{display:'flex', gap:'20px', overflowX: 'auto', maxWidth: '90%', padding:'20px'}}>

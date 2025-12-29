@@ -5,26 +5,19 @@ import { useAuth } from '../context/AuthContext';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { DefectModal } from '../components/DefectModal';
 
-/* ==========================================================================
-   COMPONENTE: QA RUNNER (EXECUTOR DE TESTES)
-   Refatorado para Clean Code e UX Moderno (Sonner + Modais)
-   ========================================================================== */
 export function QARunner() {
   const { user } = useAuth();
   
-  // --- ESTADOS DE DADOS ---
+  // Variaveis de estado para guardar os dados
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeExecucao, setActiveExecucao] = useState(null);
 
-  // --- ESTADOS DE INTERFACE & CONTROLE ---
+  // Variaveis para controlar os modais e a galeria de fotos
   const [galleryImages, setGalleryImages] = useState(null);
-  
-  // Controle do Passo Falho (para abrir o modal de defeito)
   const [currentFailedStep, setCurrentFailedStep] = useState(null);
   const [isDefectModalOpen, setIsDefectModalOpen] = useState(false);
 
-  // Controle Genérico do Modal de Confirmação
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -33,10 +26,10 @@ export function QARunner() {
     isDanger: false
   });
 
-  /* ==========================================================================
-     CARREGAMENTO INICIAL
-     ========================================================================== */
-  useEffect(() => { loadMinhasTarefas(); }, []);
+  // Carrega as tarefas assim que a tela abre
+  useEffect(() => { 
+    loadMinhasTarefas(); 
+  }, []);
 
   const loadMinhasTarefas = async () => {
     setLoading(true);
@@ -51,9 +44,7 @@ export function QARunner() {
     }
   };
 
-  /* ==========================================================================
-     LÓGICA DE SELEÇÃO E EXECUÇÃO
-     ========================================================================== */
+  // Função chamada quando clica em uma tarefa na lista lateral
   const selectTask = async (t) => {
       if (activeExecucao?.id === t.id) return;
       
@@ -61,10 +52,10 @@ export function QARunner() {
           const data = await api.get(`/testes/execucoes/${t.id}`);
           setActiveExecucao(data);
           
-          // Inicia a execução automaticamente se estiver pendente
+          // Se for a primeira vez, muda o status para em progresso
           if (data.status_geral === 'pendente') {
               await api.put(`/testes/execucoes/${t.id}/finalizar?status=em_progresso`);
-              // Atualiza status localmente na lista lateral
+              
               setTarefas(prev => prev.map(task => 
                 task.id === t.id ? {...task, status_geral: 'em_progresso'} : task
               ));
@@ -75,17 +66,18 @@ export function QARunner() {
       }
   };
 
+  // Botões de aprovar ou reprovar um passo
   const handleStepAction = (passoId, acao) => {
       if (acao === 'aprovado') {
           updatePasso(passoId, 'aprovado');
           toast.success("Passo aprovado.");
       } else {
-          // Abre modal de defeito
           setCurrentFailedStep(passoId);
           setIsDefectModalOpen(true);
       }
   };
 
+  // Atualiza o status do passo no backend
   const updatePasso = async (passoId, status) => {
       try {
           await api.put(`/testes/execucoes/passos/${passoId}`, { status });
@@ -100,9 +92,8 @@ export function QARunner() {
       }
   };
 
-  // --- FINALIZAÇÃO DO TESTE ---
+  // Lógica para finalizar o teste inteiro
   const requestFinishExecution = () => {
-    // Verificação de segurança: garante que passos_executados existe antes de usar 'every'
     const passos = activeExecucao?.passos_executados || [];
     const allPassed = passos.length > 0 && passos.every(p => p.status === 'aprovado');
     const statusFinal = allPassed ? 'passou' : 'falhou';
@@ -127,9 +118,7 @@ export function QARunner() {
       }
   };
 
-  /* ==========================================================================
-     GERENCIAMENTO DE EVIDÊNCIAS (IMAGENS)
-     ========================================================================== */
+  // Funções para lidar com as imagens (evidencias)
   const parseEvidencias = (evidenciaString) => {
       if (!evidenciaString) return [];
       try {
@@ -145,6 +134,7 @@ export function QARunner() {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Faz o upload da imagem
       const promise = fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/testes/passos/${passoId}/evidencia`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` },
@@ -169,7 +159,7 @@ export function QARunner() {
       });
   };
 
-  // --- REMOÇÃO DE EVIDÊNCIA ---
+  // Remove a imagem
   const requestDeleteEvidence = (passoId, urlToDelete) => {
       setConfirmModal({
           isOpen: true,
@@ -195,22 +185,20 @@ export function QARunner() {
           });
           setActiveExecucao(prev => ({ ...prev, passos_executados: updatedPassos }));
           
-          if (galleryImages) setGalleryImages(null); // Fecha galeria se aberta
+          if (galleryImages) setGalleryImages(null);
           toast.success("Evidência removida.");
       } catch (error) { 
           toast.error("Erro ao remover evidência."); 
       }
   };
 
-  /* ==========================================================================
-     GERENCIAMENTO DE DEFEITOS (CALLBACK DO MODAL)
-     ========================================================================== */
+  // Salva o defeito quando confirma no modal
   const handleDefectConfirm = async (defectData) => {
       try {
           const passoFalho = activeExecucao.passos_executados.find(p => p.id === currentFailedStep);
-          // Usa evidências do passo se o defeito não tiver específicas (simplificação)
+          // Usa a imagem do passo se o usuario nao mandou outra
           let evidenciasFinais = defectData.evidencias;
-          if (!evidenciasFinais && passoFalho && passoFalho.evidencias) {
+          if (!evidenciasFinais && passoFalho?.evidencias) {
               evidenciasFinais = passoFalho.evidencias;
           }
 
@@ -230,19 +218,18 @@ export function QARunner() {
       }
   };
 
-  // --- HELPERS VISUAIS ---
+  // Escolhe a cor do card lateral
   const getCardColor = (status) => {
-      switch(status) {
-          case 'passou': return '#10b981';
-          case 'falhou': return '#ef4444'; 
-          case 'em_progresso': return '#3b82f6'; 
-          default: return '#cbd5e1'; 
-      }
+      const colors = {
+          'passou': '#10b981',
+          'falhou': '#ef4444',
+          'em_progresso': '#3b82f6'
+      };
+      return colors[status] || '#cbd5e1';
   };
 
   return (
     <main className="container">
-      {/* MODAIS GLOBAIS DA PÁGINA */}
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -258,14 +245,13 @@ export function QARunner() {
         onConfirm={handleDefectConfirm}
       />
 
-      {/* TELA PRINCIPAL */}
       <h2 className="section-title">Minhas Tarefas</h2>
       
       <div className="qa-runner-grid">
           
-          {/* COLUNA 1: LISTA DE TAREFAS */}
+          {/* Lista Lateral */}
           <div style={{overflowY: 'auto', height: '100%', paddingRight: '5px'}}>
-              {loading ? <p>A carregar...</p> : (
+              {loading ? <p>Carregando...</p> : (
                   tarefas.length === 0 ? <div className="card muted">Você não tem tarefas atribuídas.</div> : (
                       tarefas.map(t => (
                           <div key={t.id} onClick={() => selectTask(t)} className="card" 
@@ -288,7 +274,7 @@ export function QARunner() {
               )}
           </div>
 
-          {/* COLUNA 2: PLAYER DE EXECUÇÃO */}
+          {/* Tela Principal (Player de Teste) */}
           <div style={{height: '100%', overflowY: 'auto'}}>
               {activeExecucao ? (
                   <div className="card" style={{minHeight: '100%'}}>
@@ -298,26 +284,20 @@ export function QARunner() {
                             <span className="muted" style={{fontSize:'0.9rem'}}>{activeExecucao.caso_teste.descricao}</span>
                           </div>
                           
-                          {activeExecucao.status_geral !== 'passou' && activeExecucao.status_geral !== 'falhou' && (
+                          {['passou', 'falhou'].indexOf(activeExecucao.status_geral) === -1 && (
                              <button onClick={requestFinishExecution} className="btn primary">
                                 Finalizar Teste
                              </button>
                           )}
                       </div>
 
-                      {/* --- CORREÇÃO DE SEGURANÇA AQUI (Prevent White Screen) --- */}
                       <div className="steps-list">
                         {Array.isArray(activeExecucao.passos_executados) && activeExecucao.passos_executados.length > 0 ? (
                             [...activeExecucao.passos_executados]
-                                .sort((a, b) => {
-                                    // Fallback caso passo_template não tenha carregado
-                                    const ordemA = a.passo_template?.ordem || 0;
-                                    const ordemB = b.passo_template?.ordem || 0;
-                                    return ordemA - ordemB;
-                                })
+                                .sort((a, b) => (a.passo_template?.ordem || 0) - (b.passo_template?.ordem || 0))
                                 .map((p) => {
                                     const evidenciasList = parseEvidencias(p.evidencias);
-                                    // Fallback caso o template seja nulo
+                                    // Evita quebrar se o template sumiu
                                     const template = p.passo_template || { acao: "Erro ao carregar passo", resultado_esperado: "---", ordem: 0 };
 
                                     return (
@@ -329,14 +309,13 @@ export function QARunner() {
                                         }}>
                                             <div style={{ fontWeight: 'bold', color: '#001C42', fontSize: '1.2rem' }}>#{template.ordem}</div>
 
-                                            {/* DETALHES DO PASSO */}
+                                            {/* Infos do passo */}
                                             <div>
                                                 <div style={{ fontWeight: 600, fontSize: '1.05rem', marginBottom: '5px' }}>{template.acao}</div>
                                                 <div style={{ color: '#059669', fontSize: '0.95rem', marginBottom: '15px', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '6px' }}>
                                                     <strong>Esperado:</strong> {template.resultado_esperado}
                                                 </div>
 
-                                                {/* EVIDÊNCIAS */}
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                                                     {evidenciasList.length < 3 && (
                                                         <label className="btn small" style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -359,7 +338,7 @@ export function QARunner() {
                                                 </div>
                                             </div>
 
-                                            {/* AÇÕES */}
+                                            {/* Botões Aprovado/Falhou */}
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                 <button
                                                     onClick={() => handleStepAction(p.id, 'aprovado')}
@@ -397,7 +376,7 @@ export function QARunner() {
           </div>
       </div>
 
-      {/* MODAL DE GALERIA (Full Screen) */}
+      {/* Galeria de imagens */}
       {galleryImages && (
           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}} onClick={() => setGalleryImages(null)}>
               <div style={{display:'flex', gap:'20px', overflowX: 'auto', maxWidth: '90%', padding:'20px', scrollSnapType: 'x mandatory'}}>

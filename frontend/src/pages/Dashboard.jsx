@@ -5,22 +5,18 @@ import {
 } from 'recharts';
 import { api } from '../services/api';
 
-/* ==========================================================================
-   COMPONENTE: DASHBOARD (VISÃO GERAL)
-   ========================================================================== */
 export function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Busca dados agregados do backend
   useEffect(() => {
     async function loadDashboard() {
       try {
         const response = await api.get('/dashboard/');
         setData(response);
       } catch (error) {
-        console.error("Erro no dashboard:", error);
-        toast.error("Erro ao carregar dados do Dashboard.");
+        console.error(error);
+        toast.error("Erro ao carregar dashboard.");
       } finally {
         setLoading(false);
       }
@@ -29,13 +25,13 @@ export function Dashboard() {
   }, []);
 
   if (loading) return <div className="container">Carregando...</div>;
-  if (!data) return <div className="container">Sem dados disponíveis.</div>;
+  if (!data) return <div className="container">Sem dados.</div>;
 
   return (
     <main className="container">
       <h2 className="section-title">Visão Geral do QA</h2>
 
-      {/* Indicadores Principais (KPIs) */}
+      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
         <KpiCard value={data.kpis.total_projetos} label="PROJETOS ATIVOS" color="#3b82f6" />
         <KpiCard value={data.kpis.total_ciclos_ativos} label="CICLOS RODANDO" color="#10b981" />
@@ -43,10 +39,9 @@ export function Dashboard() {
         <KpiCard value={data.kpis.total_defeitos_abertos} label="BUGS ABERTOS" color="#ef4444" />
       </div>
 
-      {/* Área de Gráficos */}
       <div className="grid">
         
-        {/* Gráfico 1: Status das Execuções (Rosca) */}
+        {/* Status Execução */}
         <div className="card" style={{ minHeight: '400px' }}>
           <h3 style={{ marginTop: 0 }}>Status de Execução</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -70,7 +65,7 @@ export function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Gráfico 2: Defeitos por Severidade (Barras) */}
+        {/* Severidade dos Defeitos */}
         <div className="card" style={{ minHeight: '400px' }}>
           <h3 style={{ marginTop: 0 }}>Defeitos por Severidade</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -93,7 +88,6 @@ export function Dashboard() {
   );
 }
 
-// Componente auxiliar para os Cards de KPI
 function KpiCard({ value, label, color }) {
   return (
     <div className="card" style={{ textAlign: 'center', borderTop: `4px solid ${color}` }}>

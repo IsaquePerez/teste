@@ -12,7 +12,7 @@ export function AdminModulos() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [moduloToDelete, setModuloToDelete] = useState(null);
     
-  // --- ESTADOS DA BUSCA CUSTOMIZADA ---
+  // Busca
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null); 
@@ -22,14 +22,13 @@ export function AdminModulos() {
       m.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Truncate (cortar texto)
   const truncate = (str, n = 30) => {
     return (str && str.length > n) ? str.substr(0, n - 1) + '...' : str;
   };
 
   useEffect(() => { loadData(); }, []);
 
-  // Fecha sugestões ao clicar fora
+  // Fecha dropdown se clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -49,6 +48,7 @@ export function AdminModulos() {
         setModulos(mods);
         setSistemas(sis);
         
+        // Seleciona o primeiro sistema ativo por padrao
         const ativos = sis.filter(s => s.ativo);
         if (ativos.length > 0 && !form.sistema_id) {
             setForm(f => ({ ...f, sistema_id: ativos[0].id }));
@@ -66,6 +66,7 @@ export function AdminModulos() {
     const nomeNormalizado = form.nome.trim().toLowerCase();
     const sistemaIdSelecionado = parseInt(form.sistema_id);
 
+    // Valida duplicidade
     const duplicado = modulos.some(m => {
         const mesmoSistema = m.sistema_id === sistemaIdSelecionado;
         const mesmoNome = m.nome.trim().toLowerCase() === nomeNormalizado;
@@ -73,7 +74,7 @@ export function AdminModulos() {
         return mesmoSistema && mesmoNome && naoEhOProprio;
     });
 
-    if (duplicado) return toast.warning("Já existe um módulo com este nome neste sistema.");
+    if (duplicado) return toast.warning("Já existe um módulo com este nome.");
 
     try {
       const payload = { ...form, sistema_id: sistemaIdSelecionado };
@@ -120,65 +121,30 @@ export function AdminModulos() {
       if (!moduloToDelete) return;
       try {
           await api.delete(`/modulos/${moduloToDelete.id}`);
-          toast.success("Módulo excluído.");
+          toast.success("Excluído.");
           setModulos(prev => prev.filter(m => m.id !== moduloToDelete.id));
           if (editingId === moduloToDelete.id) handleCancel();
       } catch (error) { toast.error(error.message || "Não foi possível excluir."); } 
       finally { setModuloToDelete(null); }
   };
 
-  const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || 'Sistema Removido';
+  const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || '-';
   const sistemasAtivos = sistemas.filter(s => s.ativo);
 
-  // Lógica: Se vazio, pega os 5 últimos (maior ID). Se tem texto, filtra.
+  // Dropdown: 5 recentes ou filtrados pela busca
   const opcoesParaMostrar = searchTerm === '' 
     ? [...modulos].sort((a, b) => b.id - a.id).slice(0, 5) 
     : modulos.filter(m => m.nome.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
 
   return (
     <main className="container grid">
-      {/* CSS DO MENU CUSTOMIZADO SIMPLIFICADO */}
-      <style>{`
-        .custom-dropdown {
-          position: absolute;
-          top: 105%;
-          left: 0;
-          width: 100%;
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          z-index: 50;
-          max-height: 250px;
-          overflow-y: auto;
-          list-style: none;
-          padding: 5px 0; /* Padding leve na lista */
-          margin: 0;
-        }
-        .custom-dropdown li {
-          padding: 10px 15px; /* Espaçamento interno confortável */
-          border-bottom: 1px solid #f1f5f9;
-          cursor: pointer;
-          font-size: 0.9rem;
-          color: #334155;
-          display: flex;
-          align-items: center; /* Centraliza texto verticalmente */
-        }
-        .custom-dropdown li:last-child { border-bottom: none; }
-        .custom-dropdown li:hover { 
-            background-color: #f1f5f9; 
-            color: #0f172a; 
-            font-weight: 500; /* Leve destaque ao passar o mouse */
-        }
-      `}</style>
-      
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Excluir Módulo?"
-        message={`Tem a certeza que deseja excluir "${moduloToDelete?.nome}"?`}
-        confirmText="Sim, Excluir"
+        title="Excluir?"
+        message={`Confirmar exclusão de "${moduloToDelete?.nome}"?`}
+        confirmText="Sim"
         isDanger={true}
       />
 
@@ -199,7 +165,7 @@ export function AdminModulos() {
             </div>
             <div>
                 <label>Descrição</label>
-                <input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição..." />
+                <input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição opcional..." />
             </div>
           </div>
           <div className="actions" style={{marginTop: '15px', display: 'flex', gap: '10px'}}>
@@ -210,11 +176,11 @@ export function AdminModulos() {
       </section>
 
       <section className="card">
-        {/* BUSCA COM DROPDOWN CUSTOMIZADO */}
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px'}}>
             <h2 className="section-title" style={{margin: 0, whiteSpace: 'nowrap'}}>Módulos</h2>
             
-            <div ref={wrapperRef} style={{position: 'relative', width: '300px'}}>
+            {/* Wrapper padrao do index.css */}
+            <div ref={wrapperRef} className="search-wrapper">
                 <input 
                     type="text" 
                     placeholder="Buscar..." 
@@ -233,7 +199,6 @@ export function AdminModulos() {
                 />
                 <span style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8'}}>🔍</span>
                 
-                {/* MENU SUSPENSO - SOMENTE NOMES */}
                 {showSuggestions && opcoesParaMostrar.length > 0 && (
                     <ul className="custom-dropdown">
                         {opcoesParaMostrar.map(m => (
@@ -244,7 +209,6 @@ export function AdminModulos() {
                                     setShowSuggestions(false);
                                 }}
                             >
-                                {/* EXIBE APENAS O NOME DO MÓDULO, COM LIMITE DE CARACTERES */}
                                 {truncate(m.nome, 30)}
                             </li>
                         ))}

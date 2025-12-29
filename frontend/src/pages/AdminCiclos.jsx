@@ -19,12 +19,11 @@ export function AdminCiclos() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [cicloToDelete, setCicloToDelete] = useState(null);
 
-  //ESTADOS DA BUSCA 
+  // Busca
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
-  //LÓGICA DE FILTRO E BUSCA
   const opcoesParaMostrar = searchTerm === '' 
     ? [...ciclos].sort((a, b) => b.id - a.id).slice(0, 5) 
     : ciclos.filter(c => c.nome.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
@@ -33,7 +32,6 @@ export function AdminCiclos() {
       c.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- AUXILIARES ---
   const truncate = (str, n = 40) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str;
   const formatForInput = (dateString) => dateString ? dateString.split('T')[0] : '';
   const formatDateTable = (dateString) => dateString ? new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
@@ -67,7 +65,6 @@ export function AdminCiclos() {
       );
   };
 
-  //DATA FETCHING 
   useEffect(() => {
     const fetchProjetos = async () => {
         try {
@@ -87,6 +84,7 @@ export function AdminCiclos() {
     if (selectedProjeto) loadCiclos(selectedProjeto);
   }, [selectedProjeto]);
 
+  // Fecha dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -112,7 +110,6 @@ export function AdminCiclos() {
   const currentProject = projetos.find(p => p.id == selectedProjeto);
   const isProjectActive = currentProject?.status === 'ativo';
 
-  // --- ACTIONS ---
   const handleNew = () => {
       if (!isProjectActive) return toast.warning(`Projeto ${currentProject?.status?.toUpperCase()}. Criação bloqueada.`);
       setView('form'); 
@@ -176,21 +173,6 @@ export function AdminCiclos() {
 
   return (
     <main className="container">
-      <style>{`
-        tr.hover-row:hover { background-color: #f8fafc !important; cursor: pointer; }
-        .custom-dropdown {
-          position: absolute; top: 105%; left: 0; width: 100%;
-          background: white; border: 1px solid #e2e8f0; border-radius: 6px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 50;
-          max-height: 250px; overflow-y: auto; padding: 5px 0;
-        }
-        .custom-dropdown li {
-          padding: 10px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer;
-          font-size: 0.9rem; color: #334155; display: flex; align-items: center;
-        }
-        .custom-dropdown li:hover { background-color: #f1f5f9; color: #0f172a; font-weight: 500; }
-      `}</style>
-
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -201,7 +183,6 @@ export function AdminCiclos() {
         isDanger={true}
       />
 
-      {/* FORMULÁRIO */}
       {view === 'form' && (
         <section className="card">
           <div style={{borderBottom:'1px solid #f1f5f9', paddingBottom:'15px', marginBottom:'20px'}}>
@@ -247,7 +228,6 @@ export function AdminCiclos() {
       {view === 'list' && (
         <section className="card" style={{marginTop: 0}}>
            
-           {/* HEADER TOOLBAR */}
            <div style={{
                paddingBottom: '15px', 
                borderBottom: '1px solid #f1f5f9', 
@@ -259,13 +239,10 @@ export function AdminCiclos() {
                gap: '15px'
            }}>
                
-               {/* LADO ESQUERDO: Apenas o Título */}
                <h3 style={{margin: 0, fontSize: '1.25rem', color: '#1e293b'}}>Gestão de Ciclos</h3>
                
-               {/* LADO DIREITO: Agrupamento de Ferramentas (Projeto -> Novo -> Busca) */}
                <div style={{display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap'}}>
 
-                   {/* 1. Seletor de Projeto */}
                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                        <span style={{fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px'}}>PROJETO:</span>
                        <select 
@@ -289,7 +266,6 @@ export function AdminCiclos() {
                        </select>
                    </div>
 
-                   {/* 2. Botão Novo (agora ao lado do seletor) */}
                    <button 
                         onClick={handleNew} 
                         className="btn primary" 
@@ -307,11 +283,9 @@ export function AdminCiclos() {
                         Novo Ciclo
                    </button>
 
-                   {/* Divisor Visual Vertical */}
                    <div style={{width: '1px', height: '24px', backgroundColor: '#e2e8f0', margin: '0 5px'}}></div>
 
-                   {/* 3. Busca */}
-                   <div ref={wrapperRef} style={{position: 'relative', width: '220px'}}>
+                   <div ref={wrapperRef} className="search-wrapper" style={{width: '220px'}}>
                         <input 
                             type="text" 
                             placeholder="Buscar..." 
@@ -324,14 +298,13 @@ export function AdminCiclos() {
                                 borderRadius: '6px', 
                                 border: '1px solid #cbd5e1', 
                                 fontSize: '0.85rem',
-                                height: '34px', // Mesma altura do botão
+                                height: '34px',
                                 boxSizing: 'border-box',
                                 backgroundColor: '#fff'
                             }}
                         />
                         <span style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4, fontSize: '0.85rem'}}>🔍</span>
 
-                        {/* Sugestões */}
                         {showSuggestions && opcoesParaMostrar.length > 0 && (
                             <ul className="custom-dropdown">
                                 {opcoesParaMostrar.map(c => (
@@ -350,7 +323,6 @@ export function AdminCiclos() {
                </div>
            </div>
 
-           {/* TABELA DE DADOS */}
            {loading ? <div style={{padding:'20px', textAlign:'center', color:'#64748b'}}>Carregando dados...</div> : (
              <div className="table-wrap">
                {ciclos.length === 0 ? (
@@ -374,7 +346,7 @@ export function AdminCiclos() {
                        <tr><td colSpan="5" style={{textAlign:'center', padding:'20px', color: '#64748b'}}>Nenhum resultado para "{searchTerm}"</td></tr>
                      ) : (
                         filteredCiclos.map(c => (
-                           <tr key={c.id} className="hover-row" onClick={() => handleEdit(c)}>
+                           <tr key={c.id} className="selectable" onClick={() => handleEdit(c)}>
                                <td>
                                    <div style={{fontWeight:600, color:'#334155', marginBottom:'2px'}}>{truncate(c.nome, 35)}</div>
                                    <div style={{fontSize:'0.75rem', color:'#94a3b8'}}>{truncate(c.descricao, 50) || 'Sem descrição'}</div>

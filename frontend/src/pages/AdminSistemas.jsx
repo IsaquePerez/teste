@@ -1,50 +1,40 @@
-import { useState, useEffect, useRef } from 'react'; // 1. Adicionado useRef
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api } from '../services/api';
 import { ConfirmationModal } from '../components/ConfirmationModal'; 
 
-/* ==========================================================================
-   COMPONENTE: ADMIN SISTEMAS
-   ========================================================================== */
 export function AdminSistemas() {
-  // --- ESTADOS ---
   const [sistemas, setSistemas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ nome: '', descricao: '' });
   const [editingId, setEditingId] = useState(null);
   
-  // Estados para Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [sistemaToDelete, setSistemaToDelete] = useState(null);
   
-  // --- ESTADOS DA BUSCA CUSTOMIZADA (NOVO) ---
+  // Busca
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
   const LIMITS = { nome: 50, descricao: 100 };
 
-  // --- LÓGICA DO DROPDOWN ---
-  // Se vazio: mostra os 5 últimos criados (ID decrescente)
-  // Se tem texto: filtra e mostra até 8 resultados
+  // Dropdown: 5 recentes ou filtrados
   const opcoesParaMostrar = searchTerm === '' 
     ? [...sistemas].sort((a, b) => b.id - a.id).slice(0, 5) 
     : sistemas.filter(s => s.nome.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 8);
 
-  // --- FILTRO DA TABELA (Mantém a tabela reativa) ---
   const filteredSistemas = sistemas.filter(s => 
       s.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- FUNÇÃO AUXILIAR DE TRUNCATE ---
   const truncate = (str, n = 40) => {
     return (str && str.length > n) ? str.substr(0, n - 1) + '...' : str;
   };
 
-  // --- CARREGAMENTO INICIAL ---
   useEffect(() => { loadSistemas(); }, []);
 
-  // --- FECHAR SUGESTÕES AO CLICAR FORA ---
+  // Fecha dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -68,11 +58,10 @@ export function AdminSistemas() {
     }
   };
 
-  // --- HANDLERS (AÇÕES) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validação de Duplicidade
+    // Valida duplicidade
     const nomeNormalizado = form.nome.trim().toLowerCase();
     const duplicado = sistemas.some(s => 
         s.nome.trim().toLowerCase() === nomeNormalizado && 
@@ -128,7 +117,7 @@ export function AdminSistemas() {
       if (!sistemaToDelete) return;
       try {
           await api.delete(`/sistemas/${sistemaToDelete.id}`);
-          toast.success(`Sistema excluído com sucesso.`);
+          toast.success(`Sistema excluído.`);
           loadSistemas();
           if (editingId === sistemaToDelete.id) handleCancel();
       } catch (error) {
@@ -138,50 +127,8 @@ export function AdminSistemas() {
       }
   };
 
-  /* ==========================================================================
-     RENDERIZAÇÃO (JSX)
-     ========================================================================== */
   return (
     <main className="container grid">
-      <style>{`
-        tr.selectable { transition: background-color 0.2s; }
-        tr.selectable:hover { background-color: #f1f5f9 !important; cursor: pointer; }
-        tr.selected { background-color: #e0f2fe !important; }
-
-        /* CSS DO DROPDOWN (IGUAL AS OUTRAS PAGINAS) */
-        .custom-dropdown {
-          position: absolute;
-          top: 105%;
-          left: 0;
-          width: 100%;
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          z-index: 50;
-          max-height: 250px;
-          overflow-y: auto;
-          list-style: none;
-          padding: 5px 0;
-          margin: 0;
-        }
-        .custom-dropdown li {
-          padding: 10px 15px;
-          border-bottom: 1px solid #f1f5f9;
-          cursor: pointer;
-          font-size: 0.9rem;
-          color: #334155;
-          display: flex;
-          align-items: center;
-        }
-        .custom-dropdown li:last-child { border-bottom: none; }
-        .custom-dropdown li:hover { 
-            background-color: #f1f5f9; 
-            color: #0f172a; 
-            font-weight: 500;
-        }
-      `}</style>
-      
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -192,7 +139,6 @@ export function AdminSistemas() {
         isDanger={true}
       />
 
-      {/* --- FORMULÁRIO DE CADASTRO --- */}
       <section className="card">
         <h2 className="section-title">{editingId ? 'Editar' : 'Novo Sistema'}</h2>
         <form onSubmit={handleSubmit}>
@@ -213,13 +159,12 @@ export function AdminSistemas() {
         </form>
       </section>
 
-      {/* --- TABELA DE LISTAGEM --- */}
       <section className="card">
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
             <h2 className="section-title" style={{margin: 0}}>Sistemas</h2>
             
-            {/* Input de Busca com Dropdown */}
-            <div ref={wrapperRef} style={{position: 'relative', width: '250px'}}>
+            {/* Input de Busca com Dropdown Global */}
+            <div ref={wrapperRef} className="search-wrapper" style={{width: '250px'}}>
                 <input 
                     type="text" 
                     placeholder="Buscar..." 
@@ -240,7 +185,6 @@ export function AdminSistemas() {
                     🔍
                 </span>
 
-                {/* MENU SUSPENSO */}
                 {showSuggestions && opcoesParaMostrar.length > 0 && (
                     <ul className="custom-dropdown">
                         {opcoesParaMostrar.map(s => (

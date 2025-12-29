@@ -1,22 +1,21 @@
-import { useState, useEffect, useRef } from 'react'; // Adicionado useRef
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api } from '../services/api';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 
-/* ==========================================================================
-   COMPONENTE: ADMIN USUÁRIOS
-   Gestão de acessos, criação de logins e permissões.
-   ========================================================================== */
 export function AdminUsers() {
-  /* ==========================================================================
-     ESTADOS
-     ========================================================================== */
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // Estado de Seleção (Edição)
   const [selectedUser, setSelectedUser] = useState(null);
   
+  // Busca e Filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const wrapperRef = useRef(null); 
+  
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+
   const [form, setForm] = useState({
     nome: '',
     username: '',
@@ -25,16 +24,7 @@ export function AdminUsers() {
     nivel_acesso_id: 2 
   });
 
-  // Estados do Modal de Exclusão
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-
-  // --- ESTADOS DA BUSCA CUSTOMIZADA (IGUAL MODULOS) ---
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const wrapperRef = useRef(null); 
-
-  // 1. Lógica do Dropdown (Se vazio = 5 recentes; Se busca = 8 filtrados)
+  // Filtra dropdown 
   const opcoesParaMostrar = searchTerm === '' 
     ? [...users].sort((a, b) => b.id - a.id).slice(0, 5) 
     : users.filter(u => 
@@ -43,25 +33,21 @@ export function AdminUsers() {
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
       ).slice(0, 8);
 
-  // 2. Filtro da Tabela (Mantém a tabela reativa ao que está escrito)
+  // Filtra tabela
   const filteredUsers = users.filter(u => 
       u.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
       u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 3. AUXILIARES
   const truncate = (str, n = 40) => {
     if (!str) return '';
     return str.length > n ? str.substr(0, n - 1) + '...' : str;
   };
 
-  /* ==========================================================================
-     EFFECTS (Carregamento e Click Outside)
-     ========================================================================== */
   useEffect(() => { loadUsers(); }, []);
 
-  // Fecha sugestões ao clicar fora
+  // Fecha dropdown ao clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -79,15 +65,12 @@ export function AdminUsers() {
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao carregar lista de utilizadores.");
+      toast.error("Erro ao carregar lista.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ==========================================================================
-     GESTÃO DO FORMULÁRIO
-     ========================================================================== */
   const handleSelect = (user) => {
     setSelectedUser(user);
     setForm({
@@ -107,12 +90,12 @@ export function AdminUsers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.nome.trim()) return toast.warning("O Nome Completo é obrigatório.");
-    if (!form.username.trim()) return toast.warning("O Username é obrigatório.");
-    if (!form.email.trim()) return toast.warning("O Email é obrigatório.");
+    if (!form.nome.trim()) return toast.warning("Nome obrigatório.");
+    if (!form.username.trim()) return toast.warning("Username obrigatório.");
+    if (!form.email.trim()) return toast.warning("Email obrigatório.");
     
     if (!selectedUser && !form.senha) {
-        return toast.warning("A senha é obrigatória para novos utilizadores.");
+        return toast.warning("Senha obrigatória.");
     }
 
     try {
@@ -126,7 +109,7 @@ export function AdminUsers() {
         if (form.senha) payload.senha = form.senha;
 
         await api.put(`/usuarios/${selectedUser.id}`, payload);
-        toast.success("Utilizador atualizado com sucesso!");
+        toast.success("Usuário atualizado.");
       } else {
         const payload = {
           nome: form.nome,
@@ -137,35 +120,34 @@ export function AdminUsers() {
           ativo: true
         };
         await api.post("/usuarios/", payload);
-        toast.success("Novo utilizador criado!");
+        toast.success("Usuário criado.");
       }
       
       handleClear();
       loadUsers(); 
     } catch (error) {
-      toast.error(error.message || "Erro ao salvar utilizador.");
+      toast.error(error.message || "Erro ao salvar.");
     }
   };
 
-  /* ==========================================================================
-     AÇÕES DE STATUS E EXCLUSÃO
-     ========================================================================== */
   const toggleActive = async (user) => {
       try {
           const novoStatus = !user.ativo;
           await api.put(`/usuarios/${user.id}`, { ativo: novoStatus });
-          toast.success(`Acesso de ${user.nome.split(' ')[0]} ${novoStatus ? 'ativado' : 'bloqueado'}.`);
+          toast.success(`Status alterado.`);
           setUsers(prev => prev.map(u => u.id === user.id ? { ...u, ativo: novoStatus } : u));
           if (selectedUser?.id === user.id) {
               setSelectedUser(prev => ({ ...prev, ativo: novoStatus }));
           }
-      } catch (error) { toast.error("Erro ao alterar status."); }
+      } catch (error) { 
+        toast.error("Erro ao alterar status."); 
+      }
   };
 
   const requestDelete = () => {
       if (!selectedUser) return;
       if (selectedUser.nivel_acesso?.nome === 'admin') {
-          return toast.error("Não é permitido excluir contas de Administrador.");
+          return toast.error("Não pode excluir admin.");
       }
       setUserToDelete(selectedUser);
       setIsDeleteModalOpen(true);
@@ -175,125 +157,82 @@ export function AdminUsers() {
       if (!userToDelete) return;
       try {
         await api.delete(`/usuarios/${userToDelete.id}`);
-        toast.success("Utilizador excluído.");
+        toast.success("Excluído.");
         handleClear();
         loadUsers();
       } catch (error) { 
-          toast.error(error.message || "O usuário possui vínculos e não pode ser excluído."); 
+          toast.error("Erro ao excluir."); 
       } finally {
           setUserToDelete(null);
       }
   };
 
-  /* ==========================================================================
-     RENDERIZAÇÃO
-     ========================================================================== */
   return (
     <main className="container grid">
-      {/* CSS DO MENU CUSTOMIZADO (Igual ao AdminModulos) */}
-      <style>{`
-        .selected { background-color: #e0f2fe !important; }
-        .selectable:hover { background-color: #f1f5f9; cursor: pointer; }
-        
-        .custom-dropdown {
-          position: absolute;
-          top: 105%;
-          left: 0;
-          width: 100%;
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          z-index: 50;
-          max-height: 250px;
-          overflow-y: auto;
-          list-style: none;
-          padding: 5px 0;
-          margin: 0;
-        }
-        .custom-dropdown li {
-          padding: 10px 15px;
-          border-bottom: 1px solid #f1f5f9;
-          cursor: pointer;
-          font-size: 0.9rem;
-          color: #334155;
-          display: flex;
-          align-items: center;
-        }
-        .custom-dropdown li:last-child { border-bottom: none; }
-        .custom-dropdown li:hover { 
-            background-color: #f1f5f9; 
-            color: #0f172a; 
-            font-weight: 500;
-        }
-      `}</style>
-      
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Excluir Utilizador?"
-        message={`Tem a certeza que deseja apagar a conta de "${userToDelete?.nome}"?`}
-        confirmText="Sim, Excluir"
+        title="Excluir?"
+        message={`Confirmar exclusão de "${userToDelete?.nome}"?`}
+        confirmText="Sim"
         isDanger={true}
       />
 
-      {/* COLUNA 1: FORMULÁRIO */}
       <section className="card">
         <h2 className="section-title">
-          {selectedUser ? 'Editar Utilizador' : 'Novo Usuário'}
+          {selectedUser ? 'Editar' : 'Novo Usuário'}
         </h2>
         <form onSubmit={handleSubmit}>
           <div className="form-grid" style={{gridTemplateColumns: '1fr'}}>
             <div>
-              <label>Nome Completo</label>
+              <label>Nome</label>
               <input 
                 type="text"
                 value={form.nome} 
                 onChange={e => setForm({...form, nome: e.target.value})} 
-                placeholder="ex.: João Silva"
+                placeholder="Nome completo"
                 maxLength={50}
               />
             </div>
             <div>
-              <label>Username / ID (Único)</label>
+              <label>Username</label>
               <input 
                 type="text"
                 value={form.username} 
                 onChange={e => setForm({...form, username: e.target.value})} 
-                placeholder="ex.: jsilva"
+                placeholder="Login"
                 maxLength={20}
-                style={{fontFamily: 'monospace'}}
               />
             </div>
             <div>
-              <label>Email (Login)</label>
+              <label>Email</label>
               <input 
                 type="email"
                 value={form.email} 
                 onChange={e => setForm({...form, email: e.target.value})} 
-                placeholder="ex.: joao@empresa.com"
+                placeholder="Email"
               />
             </div>
             <div>
-              <label>Tipo de Utilizador</label>
+              <label>Tipo</label>
               <select 
                 value={form.nivel_acesso_id} 
                 onChange={e => setForm({...form, nivel_acesso_id: e.target.value})}
               >
-                <option value="2">Testador (Padrão)</option>
+                <option value="2">Testador</option>
                 <option value="1">Administrador</option>
               </select>
             </div>
             <div>
               <label>
-                {selectedUser ? 'Nova Senha (opcional)' : 'Senha'}
+                {selectedUser ? 'Senha (opcional)' : 'Senha'}
               </label>
               <input 
                 type="password" 
                 value={form.senha} 
                 onChange={e => setForm({...form, senha: e.target.value})} 
-                placeholder={selectedUser ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}
+                placeholder={selectedUser ? "Manter atual" : "Mínimo 6 caracteres"}
               />
             </div>
           </div>
@@ -331,13 +270,11 @@ export function AdminUsers() {
         </form>
       </section>
 
-      {/* COLUNA 2: LISTA DE UTILIZADORES COM BUSCA */}
       <section className="card">
-        {/* HEADER COM BUSCA DROPDOWN CUSTOMIZADO */}
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
             <h2 className="section-title" style={{margin: 0}}>Utilizadores</h2>
             
-            <div ref={wrapperRef} style={{position: 'relative', width: '250px'}}>
+            <div ref={wrapperRef} className="search-wrapper">
                 <input 
                     type="text" 
                     placeholder="Buscar..." 
@@ -356,18 +293,16 @@ export function AdminUsers() {
                 />
                 <span style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8'}}>🔍</span>
 
-                {/* MENU SUSPENSO - SUGESTÕES */}
                 {showSuggestions && opcoesParaMostrar.length > 0 && (
                     <ul className="custom-dropdown">
                         {opcoesParaMostrar.map(u => (
                             <li 
                                 key={u.id} 
                                 onClick={() => {
-                                    setSearchTerm(u.nome); // Preenche o campo com o nome
+                                    setSearchTerm(u.nome);
                                     setShowSuggestions(false);
                                 }}
                             >
-                                {/* Exibe Nome e Username pequeno */}
                                 <span>
                                     {truncate(u.nome, 25)} 
                                     <span style={{color:'#94a3b8', fontSize:'0.75rem', marginLeft:'8px'}}>({u.username})</span>
@@ -380,7 +315,7 @@ export function AdminUsers() {
         </div>
 
         <div className="table-wrap">
-          {loading ? <p style={{textAlign:'center', padding:'20px'}} className="muted">A carregar...</p> : (
+          {loading ? <p style={{textAlign:'center', padding:'20px'}}>Carregando...</p> : (
             <table>
               <thead>
                 <tr>
@@ -393,14 +328,13 @@ export function AdminUsers() {
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
-                    <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>Nenhum usuário encontrado para "{searchTerm}".</td></tr>
+                    <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>Nenhum usuário encontrado.</td></tr>
                 ) : (
                     filteredUsers.map(u => (
                       <tr 
                         key={u.id} 
                         onClick={() => handleSelect(u)} 
                         className={selectedUser?.id === u.id ? 'selected' : 'selectable'}
-                        title="Clique para editar"
                       >
                         <td style={{verticalAlign: 'middle'}}>
                             <strong style={{color: '#0369a1', fontFamily: 'monospace'}}>

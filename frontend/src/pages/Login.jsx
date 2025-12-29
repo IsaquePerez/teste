@@ -6,7 +6,7 @@ import '../styles/login.css';
 
 export function Login() {
   const navigate = useNavigate();
-  // Adicionamos 'logout' e 'isAuthenticated' para verificar e limpar a sessão
+  // Adicionado 'logout' e 'isAuthenticated' para verificar e limpar a sessão
   const { login, logout, isAuthenticated } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
