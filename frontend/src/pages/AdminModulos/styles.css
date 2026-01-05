@@ -20,3 +20,5 @@
 .cell-name div { font-size: 0.8rem; color: #64748b; }
 .cell-actions { text-align: right; }
 .no-results { text-align: center; padding: 20px; color: #64748b; }
+
+.btn primary{ background-color: #0F2B66; color: white; }

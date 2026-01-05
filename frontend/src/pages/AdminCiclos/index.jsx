@@ -23,9 +23,29 @@ export function AdminCiclos() {
     descricao: '',
     data_inicio: '',
     data_fim: '',
-    status: 'ativo',
+    status: 'planejado',
     projeto_id: ''
   });
+
+  // Helpers de Data
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getNextDayString = (dateString) => {
+    if (!dateString) return getTodayString();
+    const date = new Date(dateString + 'T00:00:00'); 
+    date.setDate(date.getDate() + 1);
+    
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
   const opcoesParaMostrar = searchTerm === '' 
     ? [...ciclos].sort((a, b) => b.id - a.id).slice(0, 5) 
@@ -90,7 +110,7 @@ export function AdminCiclos() {
       descricao: '', 
       data_inicio: '', 
       data_fim: '', 
-      status: 'ativo', 
+      status: 'planejado', 
       projeto_id: selectedProjeto || ''
     });
     setEditingId(null);
@@ -118,14 +138,39 @@ export function AdminCiclos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.nome.trim() || !form.projeto_id) return toast.warning("Nome e Projeto são obrigatórios.");
+    
+    if (!form.nome.trim()) return toast.warning("Nome do ciclo é obrigatório.");
+    if (!form.projeto_id) return toast.warning("Selecione um projeto.");
+    if (!form.data_inicio || !form.data_fim) return toast.warning("Datas de início e fim são obrigatórias.");
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [anoIni, mesIni, diaIni] = form.data_inicio.split('-').map(Number);
+    const startDate = new Date(anoIni, mesIni - 1, diaIni);
+
+    const [anoFim, mesFim, diaFim] = form.data_fim.split('-').map(Number);
+    const endDate = new Date(anoFim, mesFim - 1, diaFim);
+
+    if (!editingId && startDate < today) {
+        return toast.warning("A data de início não pode ser anterior a hoje.");
+    }
+
+    if (endDate <= startDate) {
+        return toast.warning("A data final deve ser pelo menos um dia após a data de início.");
+    }
+
+    const payload = { 
+        ...form,
+        projeto_id: parseInt(form.projeto_id)
+    };
+    
     try {
       if (editingId) {
-        await api.put(`/testes/ciclos/${editingId}`, form);
+        await api.put(`/testes/ciclos/${editingId}`, payload);
         toast.success("Ciclo atualizado!");
       } else {
-        await api.post(`/testes/projetos/${form.projeto_id}/ciclos`, form);
+        await api.post(`/testes/projetos/${form.projeto_id}/ciclos`, payload);
         toast.success("Ciclo criado!");
       }
       handleReset();
@@ -136,7 +181,10 @@ export function AdminCiclos() {
           setSelectedProjeto(form.projeto_id);
       }
     } catch (error) {
-      toast.error("Erro ao salvar ciclo.");
+      console.error("Erro ao salvar ciclo:", error);
+      const msg = error.response?.data?.detail || "Erro ao salvar ciclo.";
+      const errorMsg = Array.isArray(msg) ? `${msg[0].loc[1]}: ${msg[0].msg}` : msg;
+      toast.error(errorMsg);
     }
   };
 
@@ -156,7 +204,7 @@ export function AdminCiclos() {
 
   const getProjetoName = (id) => projetos.find(p => p.id === id)?.nome || '-';
   const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
-  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('pt-BR') : '-';
+  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
 
   return (
     <main className="container">
@@ -211,22 +259,48 @@ export function AdminCiclos() {
                   </div>
                   
                   <div className="form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr'}}>
+                      
                       <div>
-                        <label className="input-label">Data Início</label>
-                        <input type="date" value={form.data_inicio} onChange={e => setForm({...form, data_inicio: e.target.value})} className="form-control" />
+                        <label className="input-label">Data Início <span className="required-asterisk">*</span></label>
+                        <input 
+                            type="date" 
+                            value={form.data_inicio} 
+                            min={!editingId ? getTodayString() : undefined}
+                            disabled={!!editingId}
+                            onChange={e => {
+                                const novaData = e.target.value;
+                                setForm(prev => ({
+                                    ...prev, 
+                                    data_inicio: novaData,
+                                    data_fim: prev.data_fim && prev.data_fim <= novaData ? '' : prev.data_fim
+                                }))
+                            }} 
+                            className={`form-control ${!!editingId ? 'bg-gray' : ''}`}
+                        />
                       </div>
+
                       <div>
-                        <label className="input-label">Data Fim</label>
-                        <input type="date" value={form.data_fim} onChange={e => setForm({...form, data_fim: e.target.value})} className="form-control" />
+                        <label className="input-label">Data Fim <span className="required-asterisk">*</span></label>
+                        <input 
+                            type="date" 
+                            value={form.data_fim} 
+                            min={getNextDayString(form.data_inicio)}
+                            disabled={!form.data_inicio} 
+                            onChange={e => setForm({...form, data_fim: e.target.value})} 
+                            className="form-control" 
+                        />
                       </div>
+
                       <div>
                         <label className="input-label">Status</label>
                         <select 
                             value={form.status} onChange={e => setForm({...form, status: e.target.value})}
                             className="form-control bg-gray"
                         >
-                           <option value="ativo">Ativo</option>
+                           <option value="planejado">Planejado</option>
+                           <option value="em_execucao">Em Execução</option>
                            <option value="concluido">Concluído</option>
+                           <option value="pausado">Pausado</option>
                            <option value="cancelado">Cancelado</option>
                         </select>
                       </div>
@@ -333,8 +407,8 @@ export function AdminCiclos() {
                                    {formatDate(item.data_inicio)} <span style={{margin:'0 5px'}}>à</span> {formatDate(item.data_fim)}
                                </td>
                                <td className="cell-status">
-                                   <span className={`status-badge ${item.status === 'ativo' ? 'ativo' : 'inativo'}`}>
-                                       {item.status.toUpperCase()}
+                                   <span className={`status-badge ${item.status}`}>
+                                       {item.status.replace('_', ' ').toUpperCase()}
                                    </span>
                                </td>
                                <td className="cell-actions">

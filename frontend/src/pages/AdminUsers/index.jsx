@@ -10,11 +10,16 @@ export function AdminUsers() {
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
   
+  // CONFIGURAÇÃO DA PAGINAÇÃO
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [form, setForm] = useState({
     nome: '',
+    username: '', 
     email: '',
     senha: '',
     ativo: true,
@@ -23,22 +28,30 @@ export function AdminUsers() {
 
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Carrega dados ao abrir a tela
   useEffect(() => { loadData(); }, []);
+
+  // Reseta para a página 1 sempre que o usuário pesquisar algo novo
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.get("/usuarios/");
+      const response = await api.get("/usuarios/");
+      const data = response.data || response; 
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.error("Erro ao carregar usuários.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setForm({ nome: '', email: '', senha: '', ativo: true, nivel_acesso_id: 2 });
+    setForm({ nome: '', username: '', email: '', senha: '', ativo: true, nivel_acesso_id: 2 });
     setEditingId(null);
     setView('list');
   };
@@ -46,6 +59,7 @@ export function AdminUsers() {
   const handleEdit = (item) => {
     setForm({
       nome: item.nome,
+      username: item.username || '', 
       email: item.email,
       senha: '', 
       ativo: item.ativo,
@@ -55,16 +69,49 @@ export function AdminUsers() {
     setView('form');
   };
 
+  const handleToggleStatus = () => {
+    // Busca o usuário logado no localStorage
+    const storedUser = localStorage.getItem('user');
+    const loggedUser = storedUser ? JSON.parse(storedUser) : {};
+
+    // Se o usuário estiver tentando INATIVAR (form.ativo === true)
+    // E o ID sendo editado for o mesmo do usuário logado
+    if (editingId === loggedUser.id && form.ativo === true) {
+        return toast.error("Você não pode inativar seu próprio usuário!");
+    }
+
+    // Se passou na validação, inverte o status
+    setForm({ ...form, ativo: !form.ativo });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validações
     if (!form.nome.trim() || !form.email.trim()) return toast.warning("Nome e Email são obrigatórios.");
-    
-    
     if (!editingId && !form.senha) return toast.warning("Senha é obrigatória para novos usuários.");
+
+    // Verifica duplicidade de Username
+    if (form.username && form.username.trim() !== '') {
+        const usernameExists = users.some(u => 
+            u.username?.toLowerCase() === form.username.trim().toLowerCase() && 
+            u.id !== editingId 
+        );
+        if (usernameExists) return toast.warning(`O username "${form.username}" já está em uso.`);
+    }
+
+    // Verifica duplicidade de Email
+    const emailExists = users.some(u => 
+        u.email.toLowerCase() === form.email.trim().toLowerCase() && 
+        u.id !== editingId 
+    );
+    if (emailExists) return toast.warning(`O email "${form.email}" já está cadastrado.`);
 
     try {
       const payload = { ...form };
       if (editingId && !payload.senha) delete payload.senha; 
+      if (!payload.username) delete payload.username; 
+
       if (editingId) {
         await api.put(`/usuarios/${editingId}`, payload);
         toast.success("Usuário atualizado!");
@@ -75,7 +122,9 @@ export function AdminUsers() {
       handleReset();
       loadData();
     } catch (error) {
-      toast.error("Erro ao salvar usuário.");
+      console.error(error);
+      const msg = error.response?.data?.detail || "Erro ao salvar usuário.";
+      toast.error(typeof msg === 'string' ? msg : "Erro ao salvar.");
     }
   };
 
@@ -91,6 +140,42 @@ export function AdminUsers() {
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
     }
+  };
+
+  const filteredUsers = users.filter(u => {
+    const term = searchTerm.toLowerCase();
+    const matchName = (u.nome || '').toLowerCase().includes(term);
+    const matchEmail = (u.email || '').toLowerCase().includes(term);
+    const matchUsername = (u.username || '').toLowerCase().includes(term);
+    return matchName || matchEmail || matchUsername;
+  });
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+  }
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const getPaginationGroup = () => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+
+    if (end - start + 1 < maxButtons) {
+        start = Math.max(1, end - maxButtons + 1);
+    }
+
+    const pages = [];
+    for (let i = start; i <= end; i++) {
+        pages.push(i);
+    }
+    return pages;
   };
 
   return (
@@ -116,60 +201,44 @@ export function AdminUsers() {
                   <div className="form-grid">
                     <div>
                         <label className="input-label">Nome Completo <span className="required-asterisk">*</span></label>
-                        <input 
-                        value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} 
-                        className="form-control"
-                        />
+                        <input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" />
                     </div>
                     <div>
-                        <label className="input-label">Email <span className="required-asterisk">*</span></label>
-                        <input 
-                        type="email"
-                        value={form.email} onChange={e => setForm({...form, email: e.target.value})} 
-                        className="form-control"
-                        />
+                        <label className="input-label">Username</label>
+                        <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="form-control" placeholder="Ex: joao.qa" />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="input-label">Email <span className="required-asterisk">*</span></label>
+                    <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="form-control" />
                   </div>
 
                   <div className="form-grid">
                     <div>
-                        <label className="input-label">
-                            {editingId ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}
-                        </label>
-                        <input 
-                        type="password"
-                        value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} 
-                        className="form-control"
-                        />
+                        <label className="input-label">{editingId ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}</label>
+                        <input type="password" value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} className="form-control" />
                     </div>
                     <div>
                         <label className="input-label">Nível de Acesso</label>
-                        <select 
-                            value={form.nivel_acesso_id} onChange={e => setForm({...form, nivel_acesso_id: parseInt(e.target.value)})}
-                            className="form-control bg-gray"
-                        >
+                        <select value={form.nivel_acesso_id} onChange={e => setForm({...form, nivel_acesso_id: parseInt(e.target.value)})} className="form-control bg-gray">
                         <option value={1}>Admin</option>
                         <option value={2}>User / QA</option>
                         </select>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="input-label">Status</label>
-                    <div style={{display:'flex', gap:'20px', alignItems:'center'}}>
-                        <label style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer'}}>
-                            <input type="radio" checked={form.ativo === true} onChange={() => setForm({...form, ativo: true})} />
-                            Ativo
-                        </label>
-                        <label style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer'}}>
-                            <input type="radio" checked={form.ativo === false} onChange={() => setForm({...form, ativo: false})} />
-                            Inativo
-                        </label>
-                    </div>
-                  </div>
               </div>
 
               <div className="form-actions">
+                  <button 
+                    type="button" 
+                    onClick={handleToggleStatus} 
+                    className={`btn ${form.ativo ? 'danger' : 'success'}`}
+                    style={{ marginRight: 'auto' }}
+                  >
+                    {form.ativo ? 'Inativar Usuário' : 'Ativar Usuário'}
+                  </button>
+
                   <button type="button" onClick={handleReset} className="btn">Cancelar</button>
                   <button type="submit" className="btn primary">Salvar</button>
               </div>
@@ -197,45 +266,86 @@ export function AdminUsers() {
 
            {loading ? <div className="loading-text">Carregando...</div> : (
              <div className="table-wrap">
-               <table>
-                 <thead>
-                   <tr>
-                     <th style={{width: '60px'}}>ID</th>
-                     <th>Nome</th>
-                     <th>Email</th>
-                     <th>Role</th>
-                     <th style={{textAlign: 'center'}}>Status</th>
-                     <th style={{textAlign: 'right'}}>Ações</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {users.filter(u => u.nome.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
-                     <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
-                         <td className="cell-id">#{item.id}</td>
-                         <td className="cell-name">{item.nome}</td>
-                         <td style={{color:'#64748b'}}>{item.email}</td>
-                         <td>
-                             <span style={{fontWeight:'bold', color: item.nivel_acesso_id === 1 ? '#7c3aed' : '#2563eb'}}>
-                                 {item.nivel_acesso_id === 1 ? 'ADMIN' : 'USER'}
-                             </span>
-                         </td>
-                         <td className="cell-status">
-                             <span className={`status-badge ${item.ativo ? 'ativo' : 'inativo'}`}>
-                                 {item.ativo ? 'Ativo' : 'Inativo'}
-                             </span>
-                         </td>
-                         <td className="cell-actions">
-                             <button 
-                                 onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} 
-                                 className="btn danger small btn-action-icon"
-                             >
-                                 🗑️
-                             </button>
-                         </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
+
+               <div className="content-area">
+                   {filteredUsers.length === 0 ? (
+                     <div className="empty-container">Nenhum usuário encontrado para "{searchTerm}"</div>
+                   ) : (
+                     <table>
+                       <thead>
+                         <tr>
+                           <th style={{width: '60px'}}>ID</th>
+                           <th>Nome / Username</th>
+                           <th>Email</th>
+                           <th>Role</th>
+                           <th style={{textAlign: 'center'}}>Status</th>
+                           <th style={{textAlign: 'right'}}>Ações</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {currentUsers.map(item => (
+                           <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
+                               <td className="cell-id">#{item.id}</td>
+                               <td>
+                                   <div className="cell-name">{item.nome}</div>
+                                   {item.username && (
+                                      <div style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'2px'}}>#{item.username}</div>
+                                   )}
+                               </td>
+                               <td style={{color:'#64748b'}}>{item.email}</td>
+                               <td>
+                                   <span className="roles">
+                                       {item.nivel_acesso_id === 1 ? 'ADMIN' : 'USER'}
+                                   </span>
+                               </td>
+                               <td className="cell-status">
+                                   <span 
+                                      style={{
+                                          backgroundColor: item.ativo ? '#001C42' : '#0F2B66', 
+                                          color: '#ffffff'
+                                      }} 
+                                      className="status-badge"
+                                   >
+                                       {item.ativo ? 'Ativo' : 'Inativo'}
+                                   </span>
+                               </td>
+                               <td className="cell-actions">
+                                   <button 
+                                       onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} 
+                                       className="btn danger small btn-action-icon"
+                                   >
+                                       🗑️
+                                   </button>
+                               </td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   )}
+               </div>
+
+               <div className="pagination-container">
+                  <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Primeira">«</button>
+                  <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Anterior">‹</button>
+
+                  {getPaginationGroup().map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => paginate(item)}
+                      className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+
+                  {totalPages === 0 && (
+                      <button className="pagination-btn active" disabled>1</button>
+                  )}
+
+                  <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Próxima">›</button>
+                  <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Última">»</button>
+               </div>
+               
              </div>
            )}
         </section>
