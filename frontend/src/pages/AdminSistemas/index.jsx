@@ -7,10 +7,10 @@ import './styles.css';
 export function AdminSistemas() {
   const [sistemas, setSistemas] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('list');
   const [form, setForm] = useState({ nome: '', descricao: '' });
   const [editingId, setEditingId] = useState(null);
   
-  // Pegando as funções do snackbar
   const { success, error, warning } = useSnackbar();
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -53,10 +53,27 @@ export function AdminSistemas() {
     }
   };
 
+  const handleNew = () => {
+    setForm({ nome: '', descricao: '' });
+    setEditingId(null);
+    setView('form');
+  };
+
+  const handleCancel = () => {
+      setForm({ nome: '', descricao: '' });
+      setEditingId(null);
+      setView('list');
+  };
+
+  const handleSelectRow = (s) => {
+    setForm({ nome: s.nome, descricao: s.descricao });
+    setEditingId(s.id);
+    setView('form');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validação manual (substituindo o required do HTML)
     if (!form.nome.trim()) {
         warning("Por favor, preencha o nome do sistema.");
         return;
@@ -78,22 +95,12 @@ export function AdminSistemas() {
         await api.post("/sistemas/", { ...form, ativo: true });
         success("Sistema cadastrado com sucesso!");
       }
-      handleCancel();
       loadSistemas(); 
+      handleCancel();
     } catch (err) { 
       const msg = err.response?.data?.detail || "Erro ao salvar sistema.";
       error(msg); 
     }
-  };
-
-  const handleCancel = () => {
-      setForm({ nome: '', descricao: '' });
-      setEditingId(null);
-  };
-
-  const handleSelectRow = (s) => {
-    setForm({ nome: s.nome, descricao: s.descricao });
-    setEditingId(s.id);
   };
 
   const toggleActive = async (sistema) => {
@@ -123,10 +130,10 @@ export function AdminSistemas() {
           error("Não foi possível excluir. Verifique se existem vínculos.");
       } finally {
           setSistemaToDelete(null); 
+          setIsDeleteModalOpen(false);
       }
   };
 
-  // Filtros e Paginação
   const filteredSistemas = sistemas.filter(s => 
       s.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -160,7 +167,7 @@ export function AdminSistemas() {
   };
 
   return (
-    <main className="container grid">
+    <main className="container"> 
       <ConfirmationModal 
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
@@ -171,124 +178,133 @@ export function AdminSistemas() {
         isDanger={true}
       />
 
-      <section className="card form-card">
-        <h2 className="section-title">{editingId ? 'Editar Sistema' : 'Novo Sistema'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div>
-                <label className="input-label">Nome</label>
-                {/* Tirei o required daqui pra tratar no JS com snackbar */}
-                <input 
-                    maxLength={50} 
-                    value={form.nome} 
-                    onChange={e => setForm({...form, nome: e.target.value})} 
-                    className="form-control" 
-                    placeholder="Nome do sistema"
-                />
-            </div>
-            <div>
-                <label className="input-label">Descrição</label>
-                <input 
-                    maxLength={100} 
-                    value={form.descricao} 
-                    onChange={e => setForm({...form, descricao: e.target.value})} 
-                    className="form-control" 
-                    placeholder="Descrição breve"
-                />
-            </div>
+      {view === 'form' && (
+        <section className="card form-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="form-header">
+            <h2 className="section-title">{editingId ? 'Editar Sistema' : 'Novo Sistema'}</h2>
           </div>
-          <div className="form-actions">
-            <button type="submit" className="btn primary">{editingId ? 'Salvar' : 'Criar'}</button>
-            {editingId && <button type="button" onClick={handleCancel} className="btn">Cancelar</button>}
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+              <div>
+                  <label className="input-label">Nome</label>
+                  <input 
+                      maxLength={50} 
+                      value={form.nome} 
+                      onChange={e => setForm({...form, nome: e.target.value})} 
+                      className="form-control" 
+                      placeholder="Nome do sistema"
+                  />
+              </div>
+              <div>
+                  <label className="input-label">Descrição</label>
+                  <input 
+                      maxLength={100} 
+                      value={form.descricao} 
+                      onChange={e => setForm({...form, descricao: e.target.value})} 
+                      className="form-control" 
+                      placeholder="Descrição breve"
+                  />
+              </div>
+            </div>
+            <div className="form-actions">
+              <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+              <button type="submit" className="btn primary">{editingId ? 'Salvar' : 'Criar'}</button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {view === 'list' && (
+        <section className="card" style={{marginTop: 0}}>
+          <div className="toolbar">
+              <h2 className="page-title">Sistemas</h2>
+              
+              <div className="toolbar-actions" style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                <div ref={wrapperRef} className="search-wrapper">
+                    <input 
+                        type="text" 
+                        placeholder="Buscar..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="search-input"
+                    />
+                    <span className="search-icon">🔍</span>
+                    {showSuggestions && opcoesParaMostrar.length > 0 && (
+                        <ul className="custom-dropdown">
+                            {opcoesParaMostrar.map(s => (
+                                <li key={s.id} onClick={() => { setSearchTerm(s.nome); setShowSuggestions(false); }}>
+                                    {truncate(s.nome, 30)}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <button onClick={handleNew} className="btn primary btn-new">Novo Sistema</button>
+              </div>
           </div>
-        </form>
-      </section>
 
-      <section className="card">
-        <div className="toolbar">
-            <h2 className="page-title">Sistemas</h2>
-            <div ref={wrapperRef} className="search-wrapper">
-                <input 
-                    type="text" 
-                    placeholder="Buscar..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="search-input"
-                />
-                <span className="search-icon">🔍</span>
-                {showSuggestions && opcoesParaMostrar.length > 0 && (
-                    <ul className="custom-dropdown">
-                        {opcoesParaMostrar.map(s => (
-                            <li key={s.id} onClick={() => { setSearchTerm(s.nome); setShowSuggestions(false); }}>
-                                {truncate(s.nome, 30)}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        </div>
+          <div className="table-wrap">
+              <div className="content-area">
+                  {loading ? <p style={{padding:'20px', textAlign:'center'}}>Carregando...</p> : (
+                      sistemas.length === 0 ? <p className="no-results">Nenhum sistema cadastrado.</p> : (
+                          <table>
+                              <thead>
+                                  <tr>
+                                      <th style={{textAlign: 'left'}}>Nome</th>
+                                      <th style={{textAlign: 'right'}}>Status</th>
+                                      <th style={{textAlign: 'right'}}>Ações</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {filteredSistemas.length === 0 ? (
+                                      <tr><td colSpan="3" className="no-results">Nenhum sistema encontrado.</td></tr>
+                                  ) : (
+                                      currentSistemas.map(s => (
+                                          <tr key={s.id} onClick={() => handleSelectRow(s)} className="selectable" style={{opacity: s.ativo ? 1 : 0.6}}>
+                                              <td className="cell-name">
+                                                  <strong title={s.nome}>{truncate(s.nome)}</strong>
+                                                  <div title={s.descricao}>{truncate(s.descricao, 40)}</div>
+                                              </td>
+                                              <td style={{textAlign: 'right', whiteSpace: 'nowrap'}}>
+                                                  <span onClick={(e) => { e.stopPropagation(); toggleActive(s); }} className={`badge ${s.ativo ? 'on' : 'off'}`} style={{cursor: 'pointer'}}>
+                                                      {s.ativo ? 'Ativo' : 'Inativo'}
+                                                  </span>
+                                              </td>
+                                              <td className="cell-actions">
+                                                  <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} className="btn danger small">🗑️</button>
+                                              </td>
+                                          </tr>
+                                      ))
+                                  )}
+                              </tbody>
+                          </table>
+                      )
+                  )}
+              </div>
 
-        <div className="table-wrap">
-            <div className="content-area">
-                {loading ? <p style={{padding:'20px', textAlign:'center'}}>Carregando...</p> : (
-                    sistemas.length === 0 ? <p className="no-results">Nenhum sistema cadastrado.</p> : (
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style={{textAlign: 'left'}}>Nome</th>
-                                    <th style={{textAlign: 'right'}}>Status</th>
-                                    <th style={{textAlign: 'right'}}>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSistemas.length === 0 ? (
-                                    <tr><td colSpan="3" className="no-results">Nenhum sistema encontrado.</td></tr>
-                                ) : (
-                                    currentSistemas.map(s => (
-                                        <tr key={s.id} onClick={() => handleSelectRow(s)} className={editingId === s.id ? 'selected' : 'selectable'} style={{opacity: s.ativo ? 1 : 0.6}}>
-                                            <td className="cell-name">
-                                                <strong title={s.nome}>{truncate(s.nome)}</strong>
-                                                <div title={s.descricao}>{truncate(s.descricao, 40)}</div>
-                                            </td>
-                                            <td style={{textAlign: 'right', whiteSpace: 'nowrap'}}>
-                                                <span onClick={(e) => { e.stopPropagation(); toggleActive(s); }} className={`badge ${s.ativo ? 'on' : 'off'}`} style={{cursor: 'pointer'}}>
-                                                    {s.ativo ? 'Ativo' : 'Inativo'}
-                                                </span>
-                                            </td>
-                                            <td className="cell-actions">
-                                                <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} className="btn danger small">🗑️</button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    )
-                )}
-            </div>
+              <div className="pagination-container">
+                    <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">«</button>
+                    <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">‹</button>
 
-            <div className="pagination-container">
-                  <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">«</button>
-                  <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">‹</button>
+                    {getPaginationGroup().map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => paginate(item)}
+                        className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
+                      >
+                        {item}
+                      </button>
+                    ))}
 
-                  {getPaginationGroup().map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => paginate(item)}
-                      className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                    >
-                      {item}
-                    </button>
-                  ))}
+                    {totalPages === 0 && <button className="pagination-btn active" disabled>1</button>}
 
-                  {totalPages === 0 && <button className="pagination-btn active" disabled>1</button>}
-
-                  <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">›</button>
-                  <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">»</button>
-            </div>
-        </div>
-      </section>
+                    <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">›</button>
+                    <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">»</button>
+              </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

@@ -31,7 +31,7 @@ export function Dashboard() {
 
   return (
     <main className="container dashboard-container">
-      <h2 className="section-title">Visão Geral do QA</h2>
+      <h2 className="section-title" style={{marginBottom: '15px' }}>Visão Geral do QA</h2>
 
       <div className="kpi-grid">
         <KpiCard value={data.kpis.total_projetos} label="PROJETOS ATIVOS" color="#3b82f6" />
