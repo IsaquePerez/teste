@@ -76,3 +76,161 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+/* Container do cabeçalho da tabela */
+.th-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  height: 32px; /* Altura fixa para evitar pulos no layout */
+}
+
+/* O texto "SISTEMA" quando não está editando */
+.th-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+
+.th-label:hover {
+  color: #3b82f6; /* Azul ao passar o mouse */
+}
+
+/* O ícone de filtro */
+.filter-icon {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+/* O Input Compacto e Bonito */
+.th-search-input {
+  width: 100%;
+  max-width: 180px;
+  height: 28px;
+  padding: 0 15px 0 8px; /* Espaço para o X na direita */
+  font-size: 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  background-color: white;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.th-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Estilo quando um filtro está selecionado */
+.th-search-input.active {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Botão de limpar (X) pequeno */
+.btn-clear-filter {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-clear-filter:hover {
+  color: #ef4444;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Esse margin-top serve para alinhar o botão verticalmente 
+     com os outros inputs que têm labels em cima */
+  margin-top: 28px; 
+}
+
+/* A caixa do botão */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0; /* Garante que o botão não amasse */
+}
+
+/* Esconde o checkbox original do HTML */
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* O trilho (fundo) do botão */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1; /* Cor Cinza (Inativo) */
+  transition: .4s; /* Animação suave */
+  border-radius: 34px;
+}
+
+/* A bolinha branca que desliza */
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3); /* Sombra suave na bolinha */
+}
+
+/* --- ESTADOS QUANDO ATIVADO (CHECKED) --- */
+
+/* Fundo fica verde */
+input:checked + .slider {
+  background-color: #10b981; /* Verde Esmeralda */
+}
+
+/* Sombra de foco para acessibilidade (teclado) */
+input:focus + .slider {
+  box-shadow: 0 0 1px #10b981;
+}
+
+/* Move a bolinha para a direita */
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* Estilo do texto "Ativo" ou "Inativo" ao lado */
+.toggle-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  min-width: 50px; /* Largura fixa para evitar que o layout "pule" quando o texto mudar */
+}

@@ -4,7 +4,6 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import './styles.css';
 
-// Componente Reutilizável mantido aqui por conveniência
 const SearchableSelect = ({ options, value, onChange, placeholder, disabled, labelKey = 'nome' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,24 +94,32 @@ export function AdminProjetos() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
-  
   const { success, error, warning } = useSnackbar();
   
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [form, setForm] = useState({
-    nome: '',
-    descricao: '',
-    status: 'ativo',
-    sistema_id: '', 
-    modulo_id: '',  
-    responsavel_id: '' 
+    nome: '', descricao: '', status: 'ativo',
+    sistema_id: '', modulo_id: '', responsavel_id: '' 
   });
 
+  // --- FILTRO GLOBAL ---
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
+
+  // --- FILTRO RESPONSÁVEL ---
+  const [respSearchText, setRespSearchText] = useState(''); 
+  const [selectedRespId, setSelectedRespId] = useState(''); 
+  const [isRespSearchOpen, setIsRespSearchOpen] = useState(false);
+  const respHeaderRef = useRef(null);
+
+  // --- FILTRO STATUS ---
+  const [statusSearchText, setStatusSearchText] = useState(''); 
+  const [selectedStatus, setSelectedStatus] = useState(''); 
+  const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
+  const statusHeaderRef = useRef(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -124,62 +131,87 @@ export function AdminProjetos() {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
+      
+      // Fecha Header Responsável
+      if (respHeaderRef.current && !respHeaderRef.current.contains(event.target)) {
+        if (!selectedRespId) { setIsRespSearchOpen(false); setRespSearchText(''); }
+      }
+
+      // Fecha Header Status
+      if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
+        if (!selectedStatus) { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
+  }, [selectedRespId, selectedStatus]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  // Reseta página se mudar filtros
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedRespId, selectedStatus]);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [projData, sisData, modData, userData] = await Promise.all([
-        api.get("/projetos"),
-        api.get("/sistemas/"),  
-        api.get("/modulos/"),
-        api.get("/usuarios/") 
+        api.get("/projetos"), api.get("/sistemas/"), api.get("/modulos/"), api.get("/usuarios/") 
       ]);
-
       setProjetos(Array.isArray(projData) ? projData : []);
       setSistemas(Array.isArray(sisData) ? sisData : []);
       setModulos(Array.isArray(modData) ? modData : []);
       setUsuarios(Array.isArray(userData) ? userData : []);
-
-    } catch (err) {
-      error("Erro ao carregar dados.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { error("Erro ao carregar dados."); } 
+    finally { setLoading(false); }
   };
 
+  const usersFormatted = usuarios.map(u => ({ ...u, labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}` }));
+  const getRespName = (id) => { const u = usersFormatted.find(user => user.id === id); return u ? u.nome : '-'; };
+
+  // --- FILTRAGEM PRINCIPAL ---
+  const filteredData = projetos.filter(p => {
+      // Filtro Responsável
+      if (selectedRespId && p.responsavel_id !== parseInt(selectedRespId)) return false;
+      
+      // Filtro Status (NOVO)
+      if (selectedStatus && p.status !== selectedStatus) return false;
+
+      // Filtro Global
+      if (searchTerm && !p.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      
+      return true;
+  });
+
+  // Opções Header Responsável
+  const filteredRespForHeader = usersFormatted.filter(u => u.labelCompleto.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
+
+  // Opções Header Status
+  const statusOptions = [
+      { label: 'Ativo', value: 'ativo' }, 
+      { label: 'Pausado', value: 'pausado' }, 
+      { label: 'Finalizado', value: 'finalizado' }
+  ];
+  const filteredStatusForHeader = statusOptions.filter(s => s.label.toLowerCase().includes(statusSearchText.toLowerCase()));
+
+  // Opções Search Global
+  const opcoesParaMostrar = searchTerm === '' ? [...projetos].sort((a, b) => b.id - a.id).slice(0, 5) : filteredData.slice(0, 5);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
+  const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginate = (n) => setCurrentPage(n);
+
+  // --- ACTIONS ---
   const handleReset = () => {
-    setForm({ 
-        nome: '', 
-        descricao: '', 
-        status: 'ativo',
-        sistema_id: '',
-        modulo_id: '',
-        responsavel_id: ''
-    });
+    setForm({ nome: '', descricao: '', status: 'ativo', sistema_id: '', modulo_id: '', responsavel_id: '' });
     setEditingId(null);
     setView('list');
   };
 
   const handleEdit = (item) => {
     setForm({
-      nome: item.nome,
-      descricao: item.descricao || '',
-      status: item.status,
-      sistema_id: item.sistema_id || '',
-      modulo_id: item.modulo_id || '',
-      responsavel_id: item.responsavel_id || ''
+      nome: item.nome, descricao: item.descricao || '', status: item.status,
+      sistema_id: item.sistema_id || '', modulo_id: item.modulo_id || '', responsavel_id: item.responsavel_id || ''
     });
     setEditingId(item.id);
     setView('form');
@@ -193,163 +225,50 @@ export function AdminProjetos() {
     if (!form.modulo_id) return warning("Selecione um Módulo.");
     if (!form.responsavel_id) return warning("Selecione um Responsável.");
 
-    const payload = { 
-        ...form,
-        sistema_id: parseInt(form.sistema_id),
-        modulo_id: parseInt(form.modulo_id),
-        responsavel_id: parseInt(form.responsavel_id)
-    };
+    const payload = { ...form, sistema_id: parseInt(form.sistema_id), modulo_id: parseInt(form.modulo_id), responsavel_id: parseInt(form.responsavel_id) };
 
     try {
-      if (editingId) {
-        await api.put(`/projetos/${editingId}`, payload);
-        success("Projeto atualizado!");
-      } else {
-        await api.post("/projetos", payload);
-        success("Projeto criado!");
-      }
-      handleReset();
-      loadData();
-    } catch (err) {
-      const msg = err.response?.data?.detail || "Erro ao salvar projeto.";
-      error(typeof msg === 'string' ? msg : "Erro de validação.");
-    }
+      if (editingId) { await api.put(`/projetos/${editingId}`, payload); success("Projeto atualizado!"); } 
+      else { await api.post("/projetos", payload); success("Projeto criado!"); }
+      handleReset(); loadData();
+    } catch (err) { error("Erro ao salvar projeto."); }
   };
 
   const handleDelete = async () => {
     if (!itemToDelete) return;
-    try {
-      await api.delete(`/projetos/${itemToDelete.id}`);
-      success("Projeto excluído.");
-      loadData();
-    } catch (e) {
-      error("Erro ao excluir.");
-    } finally {
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
-    }
+    try { await api.delete(`/projetos/${itemToDelete.id}`); success("Projeto excluído."); loadData(); } 
+    catch (e) { error("Erro ao excluir."); } 
+    finally { setIsDeleteModalOpen(false); setItemToDelete(null); }
   };
 
-  const modulosFiltrados = form.sistema_id 
-    ? modulos.filter(m => m.sistema_id == form.sistema_id)
-    : modulos;
-
-  const admins = usuarios
-    .filter(u => u.nivel_acesso_id === 1 && u.ativo)
-    .map(u => ({
-        ...u,
-        labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}`
-    }));
-
-  const filteredData = projetos.filter(p => 
-      p.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const opcoesParaMostrar = searchTerm === '' 
-    ? [...projetos].sort((a, b) => b.id - a.id).slice(0, 5) 
-    : filteredData.slice(0, 5);
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  
-  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  const getPaginationGroup = () => {
-    const maxButtons = 5;
-    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-    let end = Math.min(totalPages, start + maxButtons - 1);
-    if (end - start + 1 < maxButtons) {
-        start = Math.max(1, end - maxButtons + 1);
-    }
-    const pages = [];
-    for (let i = start; i <= end; i++) {
-        pages.push(i);
-    }
-    return pages;
-  };
+  const modulosFiltrados = form.sistema_id ? modulos.filter(m => m.sistema_id == form.sistema_id) : modulos;
+  const admins = usersFormatted.filter(u => u.nivel_acesso_id === 1 && u.ativo);
 
   return (
     <main className="container">
       <ConfirmationModal 
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Excluir Projeto?"
-        message={`Deseja excluir "${itemToDelete?.nome}"?`}
-        isDanger={true}
+        isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete}
+        title="Excluir Projeto?" message={`Deseja excluir "${itemToDelete?.nome}"?`} isDanger={true}
       />
 
       {view === 'form' && (
         <div style={{maxWidth: '800px', margin: '0 auto'}}>
           <form onSubmit={handleSubmit}>
             <section className="card form-section">
-              <div className="form-header">
-                 <h3 className="form-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h3>
-              </div>
-              
+              <div className="form-header"><h3 className="form-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h3></div>
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                  <div>
-                    <label className="input-label">Nome do Projeto <span className="required-asterisk">*</span></label>
-                    <input 
-                       value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} 
-                       className="form-control" placeholder="Ex: E-commerce 2.0"
-                    />
-                  </div>
-                  <div>
-                    <label className="input-label">Descrição</label>
-                    <textarea 
-                       value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} 
-                       className="form-control" rows="3"
-                    />
+                  <div><label className="input-label">Nome do Projeto *</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Ex: E-commerce 2.0" /></div>
+                  <div><label className="input-label">Descrição</label><textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control" rows="3" /></div>
+                  <div className="form-grid">
+                      <div><label className="input-label">Sistema *</label><SearchableSelect options={sistemas} value={form.sistema_id} onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })} placeholder="Busque o sistema..." labelKey="nome" /></div>
+                      <div><label className="input-label">Módulo *</label><SearchableSelect options={modulosFiltrados} value={form.modulo_id} onChange={(val) => setForm({ ...form, modulo_id: val })} placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"} disabled={!form.sistema_id} labelKey="nome" /></div>
                   </div>
                   <div className="form-grid">
-                      <div>
-                        <label className="input-label">Sistema <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={sistemas}
-                            value={form.sistema_id}
-                            onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })} 
-                            placeholder="Busque o sistema..."
-                            labelKey="nome"
-                        />
-                      </div>
-                      <div>
-                        <label className="input-label">Módulo <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={modulosFiltrados}
-                            value={form.modulo_id}
-                            onChange={(val) => setForm({ ...form, modulo_id: val })}
-                            placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"}
-                            disabled={!form.sistema_id}
-                            labelKey="nome"
-                        />
-                      </div>
-                  </div>
-                  <div className="form-grid">
-                      <div>
-                        <label className="input-label">Responsável (Admin) <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={admins}
-                            value={form.responsavel_id}
-                            onChange={(val) => setForm({ ...form, responsavel_id: val })}
-                            placeholder="Busque o responsável..."
-                            labelKey="labelCompleto" 
-                        />
-                      </div>
+                      <div><label className="input-label">Responsável (Admin) *</label><SearchableSelect options={admins} value={form.responsavel_id} onChange={(val) => setForm({ ...form, responsavel_id: val })} placeholder="Busque o responsável..." labelKey="labelCompleto" /></div>
                       <div>
                         <label className="input-label">Status</label>
-                        <select 
-                            value={form.status} onChange={e => setForm({...form, status: e.target.value})}
-                            className="form-control bg-gray"
-                        >
-                        <option value="ativo">Ativo</option>
-                        <option value="pausado">Pausado</option>
-                        <option value="finalizado">Finalizado</option>
+                        <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="form-control bg-gray">
+                            <option value="ativo">Ativo</option><option value="pausado">Pausado</option><option value="finalizado">Finalizado</option>
                         </select>
                       </div>
                   </div>
@@ -371,32 +290,19 @@ export function AdminProjetos() {
                    <button onClick={() => setView('form')} className="btn primary btn-new">Novo Projeto</button>
                    <div className="separator"></div>
                    <div ref={wrapperRef} className="search-wrapper">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onFocus={() => setShowSuggestions(true)}
-                            className="search-input"
-                        />
-                        <span className="search-icon">🔍</span>
-
-                        {showSuggestions && (
-                            <ul className="custom-dropdown">
-                                {opcoesParaMostrar.length === 0 ? (
-                                    <li style={{ color: '#999', cursor: 'default' }}>Nenhum projeto encontrado.</li>
-                                ) : (
-                                    opcoesParaMostrar.map(p => (
-                                        <li key={p.id} onClick={() => { setSearchTerm(p.nome); setShowSuggestions(false); }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <span>{truncate(p.nome, 25)}</span>
-                                                <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontStyle:'italic' }}>{p.status}</span>
-                                            </div>
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
-                        )}
+                       <input type="text" placeholder="Buscar projeto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
+                       <span className="search-icon">🔍</span>
+                       {showSuggestions && (
+                           <ul className="custom-dropdown">
+                               {opcoesParaMostrar.length === 0 ? <li style={{color:'#999'}}>Nenhum projeto encontrado.</li> : opcoesParaMostrar.map(p => (
+                                   <li key={p.id} onClick={() => { setSearchTerm(p.nome); setShowSuggestions(false); }}>
+                                       <div style={{display:'flex', justifyContent:'space-between', width:'100%'}}>
+                                           <span>{truncate(p.nome, 20)}</span><span style={{fontSize:'0.75rem', color:'#9ca3af', fontStyle:'italic'}}></span>
+                                       </div>
+                                   </li>
+                               ))}
+                           </ul>
+                       )}
                    </div>                  
                </div>
            </div>
@@ -404,83 +310,120 @@ export function AdminProjetos() {
            {loading ? <div className="loading-text">Carregando...</div> : (
              <div className="table-wrap">
                <div className="content-area">
-                   {filteredData.length === 0 ? (
-                     <div className="empty-container">Nenhum projeto cadastrado.</div>
-                   ) : (
-                     <table>
+                   <table>
                        <thead>
                          <tr>
                            <th style={{width: '60px'}}>ID</th>
                            <th>Nome</th>
-                           <th>Descrição</th>
-                           <th>Responsável</th>
-                           <th style={{textAlign: 'center'}}>Status</th>
+                           <th>Descrição</th>                           
+                           <th style={{width: '220px', verticalAlign: 'middle'}}>
+                                <div className="th-filter-container" ref={respHeaderRef}>
+                                    {isRespSearchOpen || selectedRespId ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedRespId ? 'active' : ''}`}
+                                                placeholder="Filtrar responsável..."
+                                                value={selectedRespId && respSearchText === '' ? getRespName(parseInt(selectedRespId)) : respSearchText}
+                                                onChange={(e) => { setRespSearchText(e.target.value); if(selectedRespId) setSelectedRespId(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (selectedRespId) { setSelectedRespId(''); setRespSearchText(''); } 
+                                                    else { setIsRespSearchOpen(false); setRespSearchText(''); }
+                                                }}>✕</button>
+                                            {(!selectedRespId || respSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
+                                                    <li onClick={() => { setSelectedRespId(''); setRespSearchText(''); setIsRespSearchOpen(false); }}>
+                                                        <span style={{color: '#757575', fontWeight: 'bold'}}>Todos</span>
+                                                    </li>
+                                                    {filteredRespForHeader.map(u => (
+                                                        <li key={u.id} onClick={() => { setSelectedRespId(u.id); setRespSearchText(''); setIsRespSearchOpen(true); }}>{truncate(u.labelCompleto, 20)}</li>
+                                                    ))}
+                                                    {filteredRespForHeader.length === 0 && <li style={{color:'#94a3b8'}}>Sem resultados</li>}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsRespSearchOpen(true)} title="Filtrar Responsável">
+                                            RESPONSÁVEL <span className="filter-icon">▼</span>
+                                        </div>
+                                    )}
+                                </div>
+                           </th>
+                           <th style={{width: '140px', verticalAlign: 'middle', textAlign: 'center'}}>
+                                <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
+                                    {isStatusSearchOpen || selectedStatus ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`}
+                                                placeholder="Status..."
+                                                value={selectedStatus && statusSearchText === '' ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1) : statusSearchText}
+                                                onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
+                                                    else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+                                                }}>✕</button>
+                                            {(!selectedStatus || statusSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
+                                                    <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}>
+                                                        <span style={{color: '#7c7c7c', fontWeight: 'bold'}}>Todos</span>
+                                                    </li>
+                                                    {filteredStatusForHeader.map(opt => (
+                                                        <li key={opt.value} onClick={() => { setSelectedStatus(opt.value); setStatusSearchText(''); setIsStatusSearchOpen(true); }}>{opt.label}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">
+                                            STATUS <span className="filter-icon">▼</span>
+                                        </div>
+                                    )}
+                                </div>
+                           </th>
                            <th style={{textAlign: 'right'}}>Ações</th>
                          </tr>
                        </thead>
                        <tbody>
-                         {currentData.map(item => (
-                            <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
-                                <td className="cell-id">#{item.id}</td>
-                                <td className="cell-name">{item.nome}</td>
-                                <td style={{color:'#64748b'}}>{truncate(item.descricao, 30)}</td>
-                                <td style={{fontSize: '0.85rem'}}>
-                                    {(() => {
-                                        const resp = usuarios.find(u => u.id === item.responsavel_id);
-                                        if (resp) {
-                                            return (
-                                                <div>
-                                                    <span>{resp.nome}</span>
-                                                    {resp.username && (
-                                                        <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '6px' }}>
-                                                            (@{resp.username})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        }
-                                        return '-';
-                                    })()}
-                                </td>
-                                <td className="cell-status">
-                                    <span className={`status-badge ${item.status}`}>{item.status}</span>
-                                </td>
-                                <td className="cell-actions">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} 
-                                        className="btn danger small btn-action-icon"
-                                    >
-                                        🗑️
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                         {filteredData.length === 0 ? (
+                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum projeto encontrado com os filtros atuais.</td></tr>
+                         ) : (
+                             currentData.map(item => (
+                                <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
+                                    <td className="cell-id">#{item.id}</td>
+                                    <td className="cell-name">{truncate(item.nome, 15)}</td>
+                                    <td style={{color:'#64748b'}}>{truncate(item.descricao, 30)}</td>
+                                    <td style={{fontSize: '0.85rem'}}>
+                                        {(() => {
+                                            const resp = usersFormatted.find(u => u.id === item.responsavel_id);
+                                            return resp ? (
+                                                <div><span>{resp.nome}</span>{resp.username && <span style={{color:'#64748b', fontSize:'0.75rem', marginLeft:'6px'}}>@{resp.username}</span>}</div>
+                                            ) : '-';
+                                        })()}
+                                    </td>
+                                    <td className="cell-status"><span className={`status-badge ${item.status}`}>{item.status}</span></td>
+                                    <td className="cell-actions">
+                                        <button onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon">🗑️</button>
+                                    </td>
+                                </tr>
+                             ))
+                         )}
                        </tbody>
                      </table>
-                   )}
                </div>
-
-               <div className="pagination-container">
-                    <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Primeira">«</button>
-                    <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Anterior">‹</button>
-
-                    {getPaginationGroup().map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => paginate(item)}
-                        className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-
-                    {totalPages === 0 && (
-                        <button className="pagination-btn active" disabled>1</button>
-                    )}
-
-                    <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Próxima">›</button>
-                    <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Última">»</button>
-               </div>
+               {filteredData.length > 0 && (
+                   <div className="pagination-container">
+                        <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
+                        {Array.from({length: totalPages}, (_, i) => (
+                            <button key={i+1} onClick={() => paginate(i+1)} className={`pagination-btn ${currentPage === i+1 ? 'active' : ''}`}>{i+1}</button>
+                        )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
+                        <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
+                   </div>
+               )}
              </div>
            )}
         </section>

@@ -10,14 +10,9 @@ export function AdminUsers() {
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
   
-  // 2. Extraindo as funções do contexto
   const { success, error, warning } = useSnackbar();
   
-  // ESTADOS DA BUSCA (DROPDOWN)
-  const [showDropdown, setShowDropdown] = useState(false);
-  const searchRef = useRef(null);
-
-  // CONFIGURAÇÃO DA PAGINAÇÃO
+  // --- CONFIGURAÇÃO DA PAGINAÇÃO ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -25,32 +20,56 @@ export function AdminUsers() {
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [form, setForm] = useState({
-    nome: '',
-    username: '', 
-    email: '',
-    senha: '',
-    ativo: true,
-    nivel_acesso_id: 2 
+    nome: '', username: '', email: '', senha: '', ativo: true, nivel_acesso_id: 2 
   });
 
+  // --- FILTROS GLOBAIS ---
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const globalSearchRef = useRef(null);
+
+  // --- FILTRO: ROLE (NÍVEL DE ACESSO) ---
+  const [roleSearchText, setRoleSearchText] = useState('');
+  const [selectedRoleId, setSelectedRoleId] = useState(''); 
+  const [isRoleSearchOpen, setIsRoleSearchOpen] = useState(false);
+  const roleHeaderRef = useRef(null);
+
+  // --- FILTRO: STATUS ---
+  const [statusSearchText, setStatusSearchText] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(''); 
+  const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
+  const statusHeaderRef = useRef(null);
+
+  // --- HELPERS DE TEXTO ---
+  const truncate = (str, n = 25) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+
+  const formatEmail = (email) => {
+      if (!email) return '-';
+      const parts = email.split('@');
+      if (parts.length < 2) return truncate(email, 20);
+      return `${truncate(parts[0], 15)}@${parts[1]}`;
+  };
 
   useEffect(() => { loadData(); }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedRoleId, selectedStatus]);
 
-  // Fecha o dropdown se clicar fora
+  // Click Outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowDropdown(false);
+      if (globalSearchRef.current && !globalSearchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+      if (roleHeaderRef.current && !roleHeaderRef.current.contains(event.target)) {
+        if (!selectedRoleId) { setIsRoleSearchOpen(false); setRoleSearchText(''); }
+      }
+      if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
+        if (!selectedStatus) { setIsStatusSearchOpen(false); setStatusSearchText(''); }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [selectedRoleId, selectedStatus]);
 
   const loadData = async () => {
     setLoading(true);
@@ -65,6 +84,55 @@ export function AdminUsers() {
     }
   };
 
+  // --- LÓGICA DE FILTRAGEM AVANÇADA (CORRIGIDA) ---
+
+  // 1. Primeiro, aplicamos APENAS os filtros de coluna (Role e Status)
+  const baseFilteredUsers = users.filter(u => {
+    // Filtro Role
+    if (selectedRoleId && u.nivel_acesso_id !== parseInt(selectedRoleId)) return false;
+    
+    // Filtro Status
+    if (selectedStatus !== '') {
+        const statusBool = selectedStatus === 'true';
+        if (u.ativo !== statusBool) return false;
+    }
+    return true;
+  });
+
+  // 2. Depois, aplicamos a busca global SOBRE o resultado dos filtros de coluna
+  const filteredUsers = baseFilteredUsers.filter(u => {
+    const term = searchTerm.toLowerCase();
+    if (!term) return true; // Se não tem busca, retorna tudo que passou nos filtros
+
+    return (
+        u.nome.toLowerCase().includes(term) || 
+        u.email.toLowerCase().includes(term) || 
+        (u.username || '').toLowerCase().includes(term)
+    );
+  });
+
+  // 3. Sugestões do Search Global:
+  // Agora elas respeitam os filtros ativos! 
+  // Se searchTerm vazio, sugere os top 5 da base filtrada.
+  // Se tem searchTerm, sugere os top 5 do resultado final.
+  const globalSuggestions = searchTerm === '' 
+    ? baseFilteredUsers.slice(0, 5) 
+    : filteredUsers.slice(0, 5);
+
+  // ---------------------------------------------------
+
+  const roleOptions = [{id: 1, label: 'Admin'}, {id: 2, label: 'User/QA'}];
+  const filteredRolesHeader = roleOptions.filter(r => r.label.toLowerCase().includes(roleSearchText.toLowerCase()));
+
+  const statusOptions = [{value: 'true', label: 'Ativo'}, {value: 'false', label: 'Inativo'}];
+  const filteredStatusHeader = statusOptions.filter(s => s.label.toLowerCase().includes(statusSearchText.toLowerCase()));
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
+  const currentUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginate = (n) => setCurrentPage(n);
+
+  // --- ACTIONS ---
   const handleReset = () => {
     setForm({ nome: '', username: '', email: '', senha: '', ativo: true, nivel_acesso_id: 2 });
     setEditingId(null);
@@ -73,25 +141,11 @@ export function AdminUsers() {
 
   const handleEdit = (item) => {
     setForm({
-      nome: item.nome,
-      username: item.username || '', 
-      email: item.email,
-      senha: '', 
-      ativo: item.ativo,
-      nivel_acesso_id: item.nivel_acesso_id || 2
+      nome: item.nome, username: item.username || '', email: item.email,
+      senha: '', ativo: item.ativo, nivel_acesso_id: item.nivel_acesso_id || 2
     });
     setEditingId(item.id);
     setView('form');
-  };
-
-  const handleToggleStatus = () => {
-    const storedUser = localStorage.getItem('user');
-    const loggedUser = storedUser ? JSON.parse(storedUser) : {};
-
-    if (editingId === loggedUser.id && form.ativo === true) {
-        return error("Você não pode desativar seu próprio usuário!");
-    }
-    setForm({ ...form, ativo: !form.ativo });
   };
 
   const handleSubmit = async (e) => {
@@ -132,92 +186,58 @@ export function AdminUsers() {
 
   const handleDelete = async () => {
     if (!itemToDelete) return;
-    try {
-      await api.delete(`/usuarios/${itemToDelete.id}`);
-      success("Usuário removido.");
-      loadData();
-    } catch (e) {
-      error("Erro ao excluir.");
-    } finally {
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
-    }
+    try { await api.delete(`/usuarios/${itemToDelete.id}`); success("Usuário removido."); loadData(); } 
+    catch (e) { error("Erro ao excluir."); } 
+    finally { setIsDeleteModalOpen(false); setItemToDelete(null); }
   };
-
-  // LÓGICA DE FILTRO DA TABELA
-  const filteredUsers = users.filter(u => {
-    const term = searchTerm.toLowerCase();
-    const matchName = (u.nome || '').toLowerCase().includes(term);
-    const matchEmail = (u.email || '').toLowerCase().includes(term);
-    const matchUsername = (u.username || '').toLowerCase().includes(term);
-    return matchName || matchEmail || matchUsername;
-  });
-
-  const truncate = (str, n = 25) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str;
-
-  const dropdownOptions = searchTerm === '' 
-    ? [...users].sort((a, b) => b.id - a.id).slice(0, 5) 
-    : filteredUsers.slice(0, 5);
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const getPaginationGroup = () => {
     const maxButtons = 5;
     let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
     let end = Math.min(totalPages, start + maxButtons - 1);
-    if (end - start + 1 < maxButtons) {
-        start = Math.max(1, end - maxButtons + 1);
-    }
+    if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1);
     const pages = [];
-    for (let i = start; i <= end; i++) {
-        pages.push(i);
-    }
+    for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
 
   return (
     <main className="container">
       <ConfirmationModal 
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Remover Usuário?"
-        message={`Deseja remover "${itemToDelete?.nome}"?`}
-        isDanger={true}
+        isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete}
+        title="Remover Usuário?" message={`Deseja remover "${itemToDelete?.nome}"?`} isDanger={true}
       />
 
       {view === 'form' && (
         <div style={{maxWidth: '800px', margin: '0 auto'}}>
           <form onSubmit={handleSubmit}>
             <section className="card form-section">
-              <div className="form-header">
-                 <h3 className="form-title">{editingId ? 'Editar Usuário' : 'Novo Usuário'}</h3>
-              </div>
+              <div className="form-header"><h3 className="form-title">{editingId ? 'Editar Usuário' : 'Novo Usuário'}</h3></div>
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                  <div className="form-grid">
-                    <div>
-                        <label className="input-label">Nome Completo <span className="required-asterisk">*</span></label>
+                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                    <div style={{gridColumn: '1 / -1'}}>
+                        <label className="input-label">Nome Completo *</label>
                         <input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" />
                     </div>
-                    <div>
+                    <div className="toggle-wrapper" style={{gridColumn: '3', marginTop: '28px'}}>
+                        <label className="switch">
+                            <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({...form, ativo: e.target.checked})}/>
+                            <span className="slider"></span>
+                        </label>
+                        <span className="toggle-label">{form.ativo ? 'Ativo' : 'Inativo'}</span>
+                    </div>
+                    <div style={{gridColumn: '1 / span 2'}}>
                         <label className="input-label">Username</label>
                         <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="form-control" placeholder="Ex: joao.qa" />
                     </div>
                   </div>
                   <div>
-                    <label className="input-label">Email <span className="required-asterisk">*</span></label>
+                    <label className="input-label">Email *</label>
                     <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="form-control" />
                   </div>
                   <div className="form-grid">
                     <div>
-                        <label className="input-label">{editingId ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}</label>
+                        <label className="input-label">{editingId ? 'Nova Senha (opcional)' : 'Senha *'}</label>
                         <input type="password" value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} className="form-control" />
                     </div>
                     <div>
@@ -230,14 +250,6 @@ export function AdminUsers() {
                   </div>
               </div>
               <div className="form-actions">
-                  <button 
-                    type="button" 
-                    onClick={handleToggleStatus} 
-                    className={`btn ${form.ativo ? 'danger' : 'success'}`}
-                    style={{ marginRight: 'auto' }}
-                  >
-                    {form.ativo ? 'Desativar Usuário' : 'Ativar Usuário'}
-                  </button>
                   <button type="button" onClick={handleReset} className="btn">Cancelar</button>
                   <button type="submit" className="btn primary">Salvar</button>
               </div>
@@ -253,117 +265,137 @@ export function AdminUsers() {
                <div className="toolbar-actions">
                   <button onClick={() => setView('form')} className="btn primary btn-new">Novo Usuário</button>
                   <div className="separator"></div>
-                   <div className="search-wrapper" ref={searchRef}>
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onFocus={() => setShowDropdown(true)}
-                            className="search-input"
-                        />
+                   <div className="search-wrapper" ref={globalSearchRef}>
+                        <input type="text" placeholder="Buscar usuário..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
                         <span className="search-icon">🔍</span>
-                        {showDropdown && dropdownOptions.length > 0 && (
-                            <ul className="dropdown-list">
-                                {dropdownOptions.map((u) => (
-                                    <li 
-                                        key={u.id} 
-                                        className="dropdown-item"
-                                        onClick={() => {
-                                            setSearchTerm(u.nome || u.username);
-                                            setShowDropdown(false);
-                                        }}
-                                    >
-                                        {truncate(u.nome || u.username, 25)}
+                        {showSuggestions && (
+                            <ul className="custom-dropdown">
+                                {globalSuggestions.length === 0 ? (
+                                    <li style={{color:'#999'}}>
+                                        {searchTerm ? 'Nenhum usuário encontrado.' : 'Nenhum usuário com esses filtros.'}
                                     </li>
-                                ))}
+                                ) : (
+                                    globalSuggestions.map((u) => (
+                                        <li key={u.id} onClick={() => { setSearchTerm(u.nome || u.username); setShowSuggestions(false); }}>
+                                            <div style={{display:'flex', justifyContent:'space-between', width:'100%'}}>
+                                                <span>{truncate(u.nome, 20)}</span>
+                                                <span style={{fontSize:'0.75rem', color:'#9ca3af', fontStyle:'italic'}}>{u.nivel_acesso_id === 1 ? 'Admin' : 'User'}</span>
+                                            </div>
+                                        </li>
+                                    ))
+                                )}
                             </ul>
                         )}
                    </div>
-
                </div>
            </div>
 
            {loading ? <div className="loading-text">Carregando...</div> : (
              <div className="table-wrap">
                <div className="content-area">
-                   {filteredUsers.length === 0 ? (
-                     <div className="empty-container">Nenhum usuário encontrado para "{searchTerm}"</div>
-                   ) : (
-                     <table>
+                   <table>
                        <thead>
                          <tr>
                            <th style={{width: '60px'}}>ID</th>
                            <th>Nome / Username</th>
                            <th>Email</th>
-                           <th>Role</th>
-                           <th style={{textAlign: 'center'}}>Status</th>
+                           <th style={{width: '120px', verticalAlign: 'middle'}}>
+                                <div className="th-filter-container" ref={roleHeaderRef}>
+                                    {isRoleSearchOpen || selectedRoleId ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedRoleId ? 'active' : ''}`} placeholder="Role..."
+                                                value={selectedRoleId && roleSearchText === '' ? (selectedRoleId === '1' ? 'Admin' : 'User/QA') : roleSearchText}
+                                                onChange={(e) => { setRoleSearchText(e.target.value); if(selectedRoleId) setSelectedRoleId(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                e.stopPropagation(); if(selectedRoleId){setSelectedRoleId('');setRoleSearchText('')}else{setIsRoleSearchOpen(false);setRoleSearchText('')}
+                                            }}>✕</button>
+                                            {(!selectedRoleId || roleSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
+                                                    <li onClick={() => { setSelectedRoleId(''); setRoleSearchText(''); setIsRoleSearchOpen(false); }}><span style={{color:'#3b82f6', fontWeight:'bold'}}>Todos</span></li>
+                                                    {filteredRolesHeader.map(r => (
+                                                        <li key={r.id} onClick={() => { setSelectedRoleId(String(r.id)); setRoleSearchText(''); setIsRoleSearchOpen(true); }}>{r.label}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsRoleSearchOpen(true)} title="Filtrar Role">ROLE <span className="filter-icon">▼</span></div>
+                                    )}
+                                </div>
+                           </th>
+                           <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
+                                <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
+                                    {isStatusSearchOpen || selectedStatus ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`} placeholder="Status..."
+                                                value={selectedStatus && statusSearchText === '' ? (selectedStatus === 'true' ? 'Ativo' : 'Inativo') : statusSearchText}
+                                                onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                e.stopPropagation(); if(selectedStatus){setSelectedStatus('');setStatusSearchText('')}else{setIsStatusSearchOpen(false);setStatusSearchText('')}
+                                            }}>✕</button>
+                                            {(!selectedStatus || statusSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
+                                                    <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color:'#3b82f6', fontWeight:'bold'}}>Todos</span></li>
+                                                    {filteredStatusHeader.map(s => (
+                                                        <li key={s.value} onClick={() => { setSelectedStatus(s.value); setStatusSearchText(''); setIsStatusSearchOpen(true); }}>{s.label}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">STATUS <span className="filter-icon">▼</span></div>
+                                    )}
+                                </div>
+                           </th>
                            <th style={{textAlign: 'right'}}>Ações</th>
                          </tr>
                        </thead>
                        <tbody>
-                         {currentUsers.map(item => (
-                           <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
-                               <td className="cell-id">#{item.id}</td>
-                               <td>
-                                   <div className="cell-name">{item.nome}</div>
-                                   {item.username && (
-                                      <div style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'2px'}}>#{item.username}</div>
-                                   )}
-                               </td>
-                               <td style={{color:'#64748b'}}>{item.email}</td>
-                               <td>
-                                   <span className="roles">
-                                       {item.nivel_acesso_id === 1 ? 'ADMIN' : 'USER'}
-                                   </span>
-                               </td>
-                               <td className="cell-status">
-                                   <span 
-                                      style={{
-                                          backgroundColor: item.ativo ? '#001C42' : '#0F2B66', 
-                                          color: '#ffffff'
-                                      }} 
-                                      className="status-badge"
-                                   >
-                                       {item.ativo ? 'Ativo' : 'Inativo'}
-                                   </span>
-                               </td>
-                               <td className="cell-actions">
-                                   <button 
-                                       onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} 
-                                       className="btn danger small btn-action-icon"
-                                   >
-                                       🗑️
-                                   </button>
-                               </td>
-                           </tr>
-                         ))}
+                         {filteredUsers.length === 0 ? (
+                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum usuário encontrado.</td></tr>
+                         ) : (
+                           currentUsers.map(item => (
+                            <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
+                                <td className="cell-id">#{item.id}</td>
+                                <td>
+                                    <div className="cell-name">{truncate(item.nome, 20)}</div>
+                                    {item.username && <div style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'2px'}}>#{truncate(item.username, 20)}</div>}
+                                </td>
+                                <td style={{color:'#64748b'}}>{formatEmail(item.email)}</td>
+                                <td>
+                                    <span className={`badge system`} style={{backgroundColor: item.nivel_acesso_id === 1 ? '#e0f2fe' : '#f1f5f9', color: item.nivel_acesso_id === 1 ? '#0369a1' : '#475569'}}>
+                                        {item.nivel_acesso_id === 1 ? 'ADMIN' : 'USER'}
+                                    </span>
+                                </td>
+                                <td className="cell-status" style={{textAlign: 'center'}}>
+                                    <span className={`status-badge ${item.ativo ? 'ativo' : 'inativo'}`} style={{backgroundColor: item.ativo ? '#001C42' : '#64748b', color: 'white', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem'}}>
+                                        {item.ativo ? 'Ativo' : 'Inativo'}
+                                    </span>
+                                </td>
+                                <td className="cell-actions">
+                                    <button onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon">🗑️</button>
+                                </td>
+                            </tr>
+                           ))
+                         )}
                        </tbody>
                      </table>
-                   )}
                </div>
-
-               <div className="pagination-container">
-                  <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Primeira">«</button>
-                  <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Anterior">‹</button>
-
-                  {getPaginationGroup().map((item) => (
-                    <button
-                      key={item}
-                      onClick={() => paginate(item)}
-                      className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-
-                  {totalPages === 0 && (
-                      <button className="pagination-btn active" disabled>1</button>
-                  )}
-
-                  <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Próxima">›</button>
-                  <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Última">»</button>
-               </div>
+               {filteredUsers.length > 0 && (
+                   <div className="pagination-container">
+                      <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
+                      {getPaginationGroup().map((item) => (
+                        <button key={item} onClick={() => paginate(item)} className={`pagination-btn ${currentPage === item ? 'active' : ''}`}>{item}</button>
+                      ))}
+                      <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
+                   </div>
+               )}
              </div>
            )}
         </section>
