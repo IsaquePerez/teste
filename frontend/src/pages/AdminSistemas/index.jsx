@@ -8,7 +8,7 @@ export function AdminSistemas() {
   const [sistemas, setSistemas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
-  const [form, setForm] = useState({ nome: '', descricao: '', ativo: true }); // Adicionado ativo: true no default
+  const [form, setForm] = useState({ nome: '', descricao: '', ativo: true }); 
   const [editingId, setEditingId] = useState(null);
   
   const { success, error, warning } = useSnackbar();
@@ -76,7 +76,7 @@ export function AdminSistemas() {
   });
 
   const opcoesParaMostrar = searchTerm === '' 
-    ? filteredSistemas.slice(0, 5) // Sugere baseado no filtro de status
+    ? filteredSistemas.slice(0, 5) 
     : filteredSistemas.slice(0, 5);
 
   const statusOptions = [{label: 'Ativo', value: 'true'}, {label: 'Inativo', value: 'false'}];
@@ -115,7 +115,7 @@ export function AdminSistemas() {
         await api.put(`/sistemas/${editingId}`, form);
         success("Sistema atualizado com sucesso!");
       } else {
-        await api.post("/sistemas/", form); // Envia o form que já tem ativo:true
+        await api.post("/sistemas/", form); 
         success("Sistema cadastrado com sucesso!");
       }
       loadSistemas(); 
@@ -124,15 +124,6 @@ export function AdminSistemas() {
       const msg = err.response?.data?.detail || "Erro ao salvar sistema.";
       error(msg); 
     }
-  };
-
-  const toggleActive = async (sistema) => {
-      try {
-          const novoStatus = !sistema.ativo;
-          await api.put(`/sistemas/${sistema.id}`, { ativo: novoStatus });
-          success(`Sistema ${novoStatus ? 'ativado' : 'desativado'}!`);
-          setSistemas(prev => prev.map(s => s.id === sistema.id ? {...s, ativo: novoStatus} : s));
-      } catch(e) { error("Erro ao alterar status."); }
   };
 
   const requestDelete = (sistema) => {
@@ -175,7 +166,6 @@ export function AdminSistemas() {
           </div>
           <form onSubmit={handleSubmit}>
             
-            {/* GRID DO FORMULÁRIO COM TOGGLE */}
             <div className="form-grid" style={{ gridTemplateColumns: '1fr auto' }}> 
               
               <div style={{gridColumn: '1'}}>
@@ -183,7 +173,6 @@ export function AdminSistemas() {
                   <input maxLength={50} value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Nome do sistema"/>
               </div>
 
-              {/* TOGGLE SWITCH */}
               <div className="toggle-wrapper" style={{marginTop: '28px'}}>
                   <label className="switch">
                       <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({...form, ativo: e.target.checked})}/>
@@ -191,7 +180,6 @@ export function AdminSistemas() {
                   </label>
                   <span className="toggle-label">{form.ativo ? 'Ativo' : 'Inativo'}</span>
               </div>
-              {/* ------------- */}
 
               <div style={{gridColumn: '1 / -1'}}>
                   <label className="input-label">Descrição</label>
@@ -234,47 +222,54 @@ export function AdminSistemas() {
                       <table>
                           <thead>
                               <tr>
+                                  {/* --- NOVO HEADER ID --- */}
+                                  <th style={{width: '60px', textAlign: 'center'}}>ID</th>
+                                  
                                   <th style={{textAlign: 'left'}}>Nome</th>
                                   
-                                  {/* --- HEADER STATUS INTELIGENTE --- */}
+                                  {/* --- HEADER STATUS --- */}
                                   <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
                                     <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
-                                        {isStatusSearchOpen || selectedStatus ? (
-                                            <div style={{position: 'relative', width: '100%'}}>
-                                                <input 
-                                                    autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`} placeholder="Status..."
-                                                    value={selectedStatus && statusSearchText === '' ? (selectedStatus === 'true' ? 'Ativo' : 'Inativo') : statusSearchText}
-                                                    onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                                <button className="btn-clear-filter" onClick={(e) => {
-                                                    e.stopPropagation(); if(selectedStatus){setSelectedStatus('');setStatusSearchText('')}else{setIsStatusSearchOpen(false);setStatusSearchText('')}
-                                                }}>✕</button>
-                                                {(!selectedStatus || statusSearchText) && (
-                                                    <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
-                                                        <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color:'#3b82f6', fontWeight:'bold'}}>Todos</span></li>
-                                                        {filteredStatusHeader.map(opt => (
-                                                            <li key={opt.value} onClick={() => { setSelectedStatus(opt.value); setStatusSearchText(''); setIsStatusSearchOpen(true); }}>{opt.label}</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">STATUS <span className="filter-icon">▼</span></div>
-                                        )}
+                                            {isStatusSearchOpen || selectedStatus ? (
+                                                <div style={{position: 'relative', width: '100%'}}>
+                                                    <input 
+                                                        autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`} placeholder="Status..."
+                                                        value={selectedStatus && statusSearchText === '' ? (selectedStatus === 'true' ? 'Ativo' : 'Inativo') : statusSearchText}
+                                                        onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                    <button className="btn-clear-filter" onClick={(e) => {
+                                                        e.stopPropagation(); if(selectedStatus){setSelectedStatus('');setStatusSearchText('')}else{setIsStatusSearchOpen(false);setStatusSearchText('')}
+                                                    }}>✕</button>
+                                                    {(!selectedStatus || statusSearchText) && (
+                                                        <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
+                                                                <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color:'#3b82f6', fontWeight:'bold'}}>Todos</span></li>
+                                                                {filteredStatusHeader.map(opt => (
+                                                                    <li key={opt.value} onClick={() => { setSelectedStatus(opt.value); setStatusSearchText(''); setIsStatusSearchOpen(true); }}>{opt.label}</li>
+                                                                ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">STATUS <span className="filter-icon">▼</span></div>
+                                            )}
                                     </div>
-                                  </th>
-                                  {/* ------------------------------- */}
+                                  </th>                                  
 
                                   <th style={{textAlign: 'right'}}>Ações</th>
                               </tr>
                           </thead>
                           <tbody>
                               {filteredSistemas.length === 0 ? (
-                                  <tr><td colSpan="3" className="no-results">Nenhum sistema encontrado.</td></tr>
+                                  /* Atualizado colSpan de 3 para 4 */
+                                  <tr><td colSpan="4" className="no-results">Nenhum sistema encontrado.</td></tr>
                               ) : (
                                   currentSistemas.map(s => (
                                       <tr key={s.id} onClick={() => handleSelectRow(s)} className="selectable" style={{opacity: s.ativo ? 1 : 0.6}}>
+                                          
+                                          {/* --- NOVA CÉLULA ID --- */}
+                                          <td style={{textAlign: 'center', fontWeight: 'bold', color: '#666'}}>#{s.id}</td>
+
                                           <td className="cell-name">
                                               <strong title={s.nome}>{truncate(s.nome, 30)}</strong>
                                               <div title={s.descricao}>{truncate(s.descricao, 40)}</div>

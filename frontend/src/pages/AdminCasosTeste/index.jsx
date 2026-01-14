@@ -436,7 +436,7 @@ export function AdminCasosTeste() {
                    <div ref={wrapperRef} className="search-wrapper">
                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
                        <span className="search-icon">🔍</span>
-                       {showSuggestions && <ul className="custom-dropdown">{globalSuggestions.length===0 ? <li style={{color:'#999'}}>Sem resultados.</li> : globalSuggestions.map(c => (<li key={c.id} onClick={() => { setSearchTerm(c.nome); setShowSuggestions(false); }}><div style={{display:'flex',justifyContent:'space-between'}}><span>{truncate(c.nome, 20)}</span><span style={{fontSize:'0.75rem',color:'#9ca3af',fontStyle:'italic'}}>{c.prioridade}</span></div></li>))}</ul>}
+                       {showSuggestions && <ul className="custom-dropdown">{globalSuggestions.length===0 ? <li style={{color:'#999'}}>Sem resultados.</li> : globalSuggestions.map(c => (<li key={c.id} onClick={() => { setSearchTerm(c.nome); setShowSuggestions(false); }}><div style={{display:'flex',justifyContent:'space-between'}}><span>{truncate(c.nome, 20)}</span><span style={{fontSize:'0.75rem',color:'#9ca3af',fontStyle:'italic'}}></span></div></li>))}</ul>}
                    </div>
                </div>
            </div>

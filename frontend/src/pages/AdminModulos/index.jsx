@@ -4,7 +4,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import './styles.css';
 
-// --- COMPONENTE REUTILIZÁVEL CORRIGIDO ---
+// --- COMPONENTE REUTILIZÁVEL ---
 const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,23 +12,19 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) =
 
   const truncate = (str, n = 20) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
-  // Sincroniza input com valor externo
   useEffect(() => {
     const selectedOption = options.find(opt => String(opt.id) === String(value));
     if (selectedOption) {
-      // Se tiver selecionado, mostra o nome
-      // Importante: Só atualiza se o menu estiver fechado ou se mudou externamente
       if (!isOpen) setSearchTerm(selectedOption.nome);
     } else if (!value) {
       setSearchTerm('');
     }
-  }, [value, options, isOpen]); // Adicionado isOpen para evitar loop
+  }, [value, options, isOpen]);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsOpen(false);
-        // Ao fechar, se tiver valor, restaura o nome. Se não, limpa.
         const selectedOption = options.find(opt => String(opt.id) === String(value));
         setSearchTerm(selectedOption ? selectedOption.nome : '');
       }
@@ -37,12 +33,10 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) =
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, value, options]);
 
-  // --- CORREÇÃO AQUI: Lógica de Filtro ---
   const filteredOptions = searchTerm === '' 
-    ? options // Se vazio, mostra todas as opções disponíveis
+    ? options 
     : options.filter(opt => opt.nome.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  // Limita a 5 resultados
   const displayOptions = filteredOptions.slice(0, 5);
 
   const handleSelect = (option) => {
@@ -63,22 +57,11 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) =
           setIsOpen(true);
           if (e.target.value === '') onChange('');
         }}
-        // Ao focar, limpa o texto SE não houver valor selecionado, para mostrar a lista completa
-        // OU mantém o texto para permitir edição. 
-        // A melhor UX aqui é: ao focar, abre o menu.
-        onFocus={() => {
-            if(!disabled) setIsOpen(true);
-        }}
+        onFocus={() => { if(!disabled) setIsOpen(true); }}
         disabled={disabled}
         style={{ cursor: disabled ? 'not-allowed' : 'text', paddingRight: '30px' }}
       />
-      <span 
-        className="search-icon" 
-        style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '12px' }} 
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        ▼
-      </span>
+      <span className="search-icon" style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '12px' }} onClick={() => !disabled && setIsOpen(!isOpen)}>▼</span>
 
       {isOpen && !disabled && (
         <ul className="custom-dropdown" style={{ width: '100%', top: '100%', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
@@ -110,7 +93,7 @@ export function AdminModulos() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [moduloToDelete, setModuloToDelete] = useState(null);
     
-  // Filtros Globais (Search Bar)
+  // Filtros Globais
   const [searchTerm, setSearchTerm] = useState('');
   const [showGlobalSuggestions, setShowGlobalSuggestions] = useState(false);
   const globalSearchRef = useRef(null); 
@@ -163,34 +146,24 @@ export function AdminModulos() {
     } catch (e) { error("Erro ao carregar dados."); }
   };
 
-  // --- LÓGICA DE FILTRAGEM ---
   const filteredModulos = modulos.filter(m => {
-      // 1. Filtro Coluna Sistema
       if (selectedSistemaId && m.sistema_id !== parseInt(selectedSistemaId)) return false;
-      
-      // 2. Filtro Coluna Status
       if (selectedStatus !== '') {
           const statusBool = selectedStatus === 'true';
           if (m.ativo !== statusBool) return false;
       }
-
-      // 3. Filtro Busca Global
       if (searchTerm && !m.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      
       return true;
   });
 
-  // --- SUGESTÕES GLOBAIS ---
-  // CORREÇÃO: Se não tiver termo digitado, mostra os 5 primeiros da lista JÁ FILTRADA pelos headers
   const globalSuggestions = searchTerm === '' 
     ? filteredModulos.slice(0, 5) 
-    : filteredModulos.slice(0, 5); // Com termo, filteredModulos já filtrou pelo termo também
+    : filteredModulos.slice(0, 5);
 
   const filteredSistemasForHeader = sistemas.filter(s => s.nome.toLowerCase().includes(sistemaSearchText.toLowerCase())).slice(0, 5);
   const statusOptions = [{ label: 'Ativo', value: 'true' }, { label: 'Inativo', value: 'false' }];
   const filteredStatusForHeader = statusOptions.filter(opt => opt.label.toLowerCase().includes(statusSearchText.toLowerCase()));
 
-  // --- ACTIONS ---
   const handleNew = () => { handleCancel(); setView('form'); };
   const handleCancel = () => { setEditingId(null); setForm({nome:'', descricao:'', sistema_id:'', ativo: true}); setView('list'); };
   
@@ -219,11 +192,6 @@ export function AdminModulos() {
       setView('form');
   };
 
-  const toggleActive = async (m) => {
-      try { await api.put(`/modulos/${m.id}`, { ativo: !m.ativo }); success("Status alterado."); loadData(); } 
-      catch(e) { error("Erro ao alterar status."); }
-  };
-
   const requestDelete = (m) => { setModuloToDelete(m); setIsDeleteModalOpen(true); };
   const confirmDelete = async () => {
       if(!moduloToDelete) return;
@@ -232,7 +200,6 @@ export function AdminModulos() {
       finally { setModuloToDelete(null); setIsDeleteModalOpen(false); }
   };
 
-  // --- PAGINAÇÃO ---
   const totalPages = Math.ceil(filteredModulos.length / itemsPerPage);
   if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
   const currentModulos = filteredModulos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -251,8 +218,6 @@ export function AdminModulos() {
             <h2 className="section-title">{editingId ? 'Editar Módulo' : 'Novo Módulo'}</h2>
             <form onSubmit={handleSubmit}>
                <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}> 
-                 
-                 {/* --- CAMPO SISTEMA COM SEARCHABLE SELECT --- */}
                  <div style={{gridColumn: 'span 1'}}>
                     <label className="input-label">Sistema</label>
                     <SearchableSelect 
@@ -262,7 +227,6 @@ export function AdminModulos() {
                         placeholder="Selecione o sistema..."
                     />
                  </div>
-                 {/* ----------------------------------------- */}
 
                  <div className="toggle-wrapper">
                     <label className="switch">
@@ -325,9 +289,11 @@ export function AdminModulos() {
                   <table>
                       <thead>
                           <tr>
+                              {/* --- COLUNA ID --- */}
+                              <th style={{width: '60px', textAlign: 'center'}}>ID</th>
+
                               <th style={{textAlign: 'left'}}>Módulo</th>
                               
-                              {/* --- HEADER SISTEMA INTELIGENTE (COM LIMIT 15 CHARS) --- */}
                               <th style={{width: '200px', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={sistemaHeaderRef}>
                                     {isSistemaSearchOpen || selectedSistemaId ? (
@@ -340,10 +306,10 @@ export function AdminModulos() {
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <button className="btn-clear-filter" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (selectedSistemaId) { setSelectedSistemaId(''); setSistemaSearchText(''); } 
-                                                    else { setIsSistemaSearchOpen(false); setSistemaSearchText(''); }
-                                                }}>✕</button>
+                                                e.stopPropagation();
+                                                if (selectedSistemaId) { setSelectedSistemaId(''); setSistemaSearchText(''); } 
+                                                else { setIsSistemaSearchOpen(false); setSistemaSearchText(''); }
+                                            }}>✕</button>
                                             {(!selectedSistemaId || sistemaSearchText) && (
                                                 <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
                                                     <li onClick={() => { setSelectedSistemaId(''); setSistemaSearchText(''); setIsSistemaSearchOpen(false); }}><span style={{color: '#3b82f6', fontWeight: 'bold'}}>Todos</span></li>
@@ -374,10 +340,10 @@ export function AdminModulos() {
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <button className="btn-clear-filter" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
-                                                    else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
-                                                }}>✕</button>
+                                                e.stopPropagation();
+                                                if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
+                                                else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+                                            }}>✕</button>
                                             {(!selectedStatus || statusSearchText) && (
                                                 <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
                                                     <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color: '#3b82f6', fontWeight: 'bold'}}>Todos</span></li>
@@ -393,24 +359,28 @@ export function AdminModulos() {
                                         </div>
                                     )}
                                 </div>
-                              </th>
-                              
+                              </th>                             
+
                               <th style={{textAlign: 'right'}}>Ações</th>
                           </tr>
                       </thead>
                       <tbody>
                           {filteredModulos.length === 0 ? (
-                              <tr><td colSpan="4" className="no-results">Nenhum módulo encontrado.</td></tr>
+                              <tr><td colSpan="5" className="no-results">Nenhum módulo encontrado.</td></tr>
                           ) : (
                               currentModulos.map(m => (
                                   <tr key={m.id} onClick={() => handleSelectRow(m)} className={'selectable'} style={{opacity: m.ativo ? 1 : 0.6}}>
+                                      
+                                      {/* --- CÉLULA ID --- */}
+                                      <td style={{textAlign: 'center', fontWeight: 'bold', color: '#666'}}>#{m.id}</td>
+
                                       <td className="cell-name">
                                           <strong>{truncate(m.nome, 20)}</strong>
                                           <div className="muted">{truncate(m.descricao, 30)}</div>
                                       </td>
                                       <td><span className="badge system">{truncate(getSistemaName(m.sistema_id), 20)}</span></td>
                                       <td style={{textAlign: 'center'}}>
-                                          <span className={`badge ${m.ativo ? 'on' : 'off'}`}>{m.ativo ? 'Ativo' : 'Inativo'}</span>                                    
+                                          <span className={`badge ${m.ativo ? 'on' : 'off'}`}>{m.ativo ? 'Ativo' : 'Inativo'}</span>                                      
                                       </td>
                                       <td className="cell-actions">
                                           <button onClick={(e) => { e.stopPropagation(); requestDelete(m); }} className="btn danger small">🗑️</button>
