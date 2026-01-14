@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Login } from './pages/Login';
 import './styles/index.css';
-
+import NotFound from './pages/NotFound/NotFound';
 
 import { SnackbarProvider } from './context/SnackbarContext';
 import { Snackbar } from './components/Snackbar';
@@ -52,7 +52,7 @@ function App() {
               <Route path="/qa/defeitos" element={<QADefeitos />} />
             </Route>
             
-             <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </SnackbarProvider>

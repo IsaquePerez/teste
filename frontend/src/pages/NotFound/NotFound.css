@@ -1,0 +1,115 @@
+.nao-encontrado-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.codigo-erro {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(80px, 15vw, 150px);
+  font-weight: 900;
+  color: #34495e;
+  margin-bottom: 20px;
+}
+
+/* Estrutura do Fantasminha */
+.fantasma {
+  width: 80px;
+  height: 100px;
+  background: #3498db;
+  border-radius: 50% 50% 0 0;
+  position: relative;
+  margin: 0 15px;
+  animation: flutuar 3s ease-in-out infinite;
+  box-shadow: 0 20px 30px rgba(52, 152, 219, 0.2);
+}
+
+.rosto {
+  position: absolute;
+  top: 35px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.olhos-container {
+  display: flex;
+  gap: 12px;
+}
+
+.olho {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+}
+
+.boca {
+  width: 20px;
+  height: 8px;
+  background: white;
+  border-radius: 0 0 10px 10px;
+  margin-top: 8px;
+}
+
+/* Animação */
+@keyframes flutuar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.titulo {
+  font-size: 2rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.mensagem {
+  font-size: 1.1rem;
+  color: #606770;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* Botões */
+.acoes {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.botao-primario, .botao-secundario {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  border: none;
+}
+
+.botao-primario {
+  background-color: #3498db;
+  color: white;
+}
+
+.botao-secundario {
+  background-color: #ebedf0;
+  color: #4b4f56;
+}
+
+.botao-primario:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+}
+
+.botao-secundario:hover {
+  background-color: #dadde1;
+}
