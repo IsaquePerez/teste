@@ -472,13 +472,13 @@ tr.selected {
   background-color: var(--white);
   color: var(--text-color);
   border-radius: 6px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Sombra mais forte */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
   border-left: 4px solid #cbd5e1;
   font-size: 0.9rem;
   font-weight: 500;
   pointer-events: auto;
   
-  /* MUDANÇA AQUI: Adicionado 'forwards' e removido opacidade inicial do keyframe se necessário */
+  
   animation: slideIn 0.5s ease-out forwards; 
 }
 
@@ -591,12 +591,12 @@ tr.selected {
     background-color: #fff;
   }
 }
-/* FORCE A APARIÇÃO PARA TESTE */
+
 .snackbar-container {
   position: fixed !important;
   top: 24px !important;
   right: 24px !important;
-  z-index: 99999 !important; /* Z-index bem alto para garantir que fique acima do login */
+  z-index: 99999 !important; 
   display: flex !important;
   flex-direction: column;
   gap: 12px;
@@ -612,11 +612,36 @@ tr.selected {
   animation: slideIn 0.3s ease;
 }
 
-/* Cores específicas */
+
 .snackbar-error { border-left-color: #ef4444; }
 .snackbar-success { border-left-color: #10b981; }
 
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+
+.btn-new {
+  height: 34px !important;    
+  padding: 0 25px !important; 
+  font-size: 0.80rem !important;
+  white-space: nowrap;         
+}
+
+
+.toolbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding-bottom: 20px !important;
+  margin-bottom: 20px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  min-height: 50px; 
+}
+
+.toolbar-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important; 
 }

@@ -4,7 +4,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import './styles.css';
 
-// Componente Reutilizável de Dropdown
+
 const SearchableSelect = ({ options, value, onChange, placeholder, disabled, labelKey = 'nome' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');

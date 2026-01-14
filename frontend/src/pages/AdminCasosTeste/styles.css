@@ -1,15 +1,6 @@
 
 
-.toolbar {
-  padding-bottom: 15px;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-}
+
 
 .page-title {
   margin: 0;
@@ -17,12 +8,6 @@
   color: #1e293b;
 }
 
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
 
 .filter-group {
   display: flex;
@@ -49,14 +34,6 @@
   color: #334155;
 }
 
-.btn-new {
-  height: 34px;
-  padding: 0 15px;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
 .separator {
   width: 1px;

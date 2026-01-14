@@ -1,46 +1,165 @@
-.toolbar { padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-.page-title { margin: 0; font-size: 1.25rem; color: #1e293b; }
-.toolbar-actions { display: flex; align-items: center; gap: 15px; }
-.btn-new { height: 34px; padding: 0 15px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
-.search-wrapper { position: relative; width: 220px; }
-.search-input { width: 100%; padding: 8px 30px 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; height: 34px; box-sizing: border-box; }
-.search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.4; font-size: 0.9rem; }
 
-.form-section { margin-bottom: 20px; }
-.form-header { border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px; }
-.form-title { margin: 0; color: #1e293b; }
-.input-label { display: block; margin-bottom: 8px; font-weight: 600; color: #374151; }
-.required-asterisk { color: #ef4444; }
-.form-control { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.95rem; outline: none; box-sizing: border-box; }
-.bg-gray { background-color: #f9fafb; }
-.form-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-@media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; } }
-.form-actions { margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
 
-.empty-container { text-align: center; padding: 40px; color: #94a3b8; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #e2e8f0; }
-.cell-id { color: #64748b; }
-.cell-name { font-weight: 600; color: #334155; }
-.cell-status { text-align: center; }
-.status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold; }
-.status-badge.ativo { background-color: #dcfce7; color: #166534; }
-.status-badge.inativo { background-color: #f1f5f9; color: #475569; }
-.cell-actions { text-align: right; }
-.btn-action-icon { padding: 6px 10px; line-height: 1; }
-.loading-text { padding: 20px; text-align: center; color: #64748b; }
+.page-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
+
+
+.search-wrapper {
+  position: relative;
+  width: 220px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 30px 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.4;
+  font-size: 0.9rem;
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.form-title {
+  margin: 0;
+  color: #1e293b;
+}
+
+.input-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.required-asterisk {
+  color: #ef4444;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.bg-gray {
+  background-color: #f9fafb;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-actions {
+  margin-top: 30px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.empty-container {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #e2e8f0;
+}
+
+.cell-id {
+  color: #64748b;
+}
+
+.cell-name {
+  font-weight: 600;
+  color: #334155;
+}
+
+.cell-status {
+  text-align: center;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.status-badge.ativo {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.inativo {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.cell-actions {
+  text-align: right;
+}
+
+.btn-action-icon {
+  padding: 6px 10px;
+  line-height: 1;
+}
+
+.loading-text {
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+}
 
 .pagination-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 5px; 
-  margin-top: auto; 
+  gap: 5px;
+  margin-top: auto;
   margin-bottom: 1%;
   padding-top: 15px;
   border-top: 1px solid #f1f5f9;
 }
 
 .pagination-btn {
-  min-width: 32px; 
+  min-width: 32px;
   height: 32px;
   padding: 0 6px;
   display: flex;
@@ -69,7 +188,7 @@
 }
 
 .pagination-btn.nav-btn {
-  font-size: 1.1rem; 
+  font-size: 1.1rem;
   font-weight: bold;
   background-color: #f1f5f9;
 }

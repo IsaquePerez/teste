@@ -1,38 +1,121 @@
-.toolbar { padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-.page-title { margin: 0; font-size: 1.25rem; color: #1e293b; }
-.search-wrapper { position: relative; width: 250px; }
-.search-input { width: 100%; padding: 8px 35px 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.9rem; height: 38px; box-sizing: border-box; }
-.search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
 
-.form-card { margin-bottom: 20px; }
-.form-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-.form-actions { margin-top: 20px; display: flex; gap: 10px; }
-.input-label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
-.form-control { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
 
-.table-wrap { width: 100%; overflow-x: auto; }
-.badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
-.badge.on { background-color: #dcfce7; color: #166534; }
-.badge.off { background-color: #f1f5f9; color: #475569; }
+.page-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
 
-.cell-name strong { display: block; color: #334155; }
-.cell-name div { font-size: 0.8rem; color: #64748b; }
-.cell-actions { text-align: right; }
-.no-results { text-align: center; padding: 20px; color: #64748b; }
+.search-wrapper {
+  position: relative;
+  width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 35px 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.form-card {
+  margin-bottom: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.input-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.badge.on {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge.off {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.cell-name strong {
+  display: block;
+  color: #334155;
+}
+
+.cell-name div {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.cell-actions {
+  text-align: right;
+}
+
+.no-results {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}
 
 .pagination-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 5px; 
-  margin-top: auto; 
+  gap: 5px;
+  margin-top: auto;
   margin-bottom: 1%;
   padding-top: 15px;
   border-top: 1px solid #f1f5f9;
 }
 
 .pagination-btn {
-  min-width: 32px; 
+  min-width: 32px;
   height: 32px;
   padding: 0 6px;
   display: flex;
@@ -61,7 +144,7 @@
 }
 
 .pagination-btn.nav-btn {
-  font-size: 1.1rem; 
+  font-size: 1.1rem;
   font-weight: bold;
   background-color: #f1f5f9;
 }

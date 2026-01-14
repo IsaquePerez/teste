@@ -33,7 +33,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, value, options, labelKey]);
 
-  const filteredOptions = options.filter(opt => 
+  const filteredOptions = options.filter(opt =>
     opt[labelKey].toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -61,9 +61,9 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
         disabled={disabled}
         style={{ cursor: disabled ? 'not-allowed' : 'text', paddingRight: '30px' }}
       />
-      <span 
-        className="search-icon" 
-        style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)' }} 
+      <span
+        className="search-icon"
+        style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)' }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         ▼
@@ -95,9 +95,9 @@ export function AdminProjetos() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
-  
+
   const { success, error, warning } = useSnackbar();
-  
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -105,9 +105,9 @@ export function AdminProjetos() {
     nome: '',
     descricao: '',
     status: 'ativo',
-    sistema_id: '', 
-    modulo_id: '',  
-    responsavel_id: '' 
+    sistema_id: '',
+    modulo_id: '',
+    responsavel_id: ''
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -142,9 +142,9 @@ export function AdminProjetos() {
     try {
       const [projData, sisData, modData, userData] = await Promise.all([
         api.get("/projetos"),
-        api.get("/sistemas/"),  
+        api.get("/sistemas/"),
         api.get("/modulos/"),
-        api.get("/usuarios/") 
+        api.get("/usuarios/")
       ]);
 
       setProjetos(Array.isArray(projData) ? projData : []);
@@ -160,13 +160,13 @@ export function AdminProjetos() {
   };
 
   const handleReset = () => {
-    setForm({ 
-        nome: '', 
-        descricao: '', 
-        status: 'ativo',
-        sistema_id: '',
-        modulo_id: '',
-        responsavel_id: ''
+    setForm({
+      nome: '',
+      descricao: '',
+      status: 'ativo',
+      sistema_id: '',
+      modulo_id: '',
+      responsavel_id: ''
     });
     setEditingId(null);
     setView('list');
@@ -193,11 +193,11 @@ export function AdminProjetos() {
     if (!form.modulo_id) return warning("Selecione um Módulo.");
     if (!form.responsavel_id) return warning("Selecione um Responsável.");
 
-    const payload = { 
-        ...form,
-        sistema_id: parseInt(form.sistema_id),
-        modulo_id: parseInt(form.modulo_id),
-        responsavel_id: parseInt(form.responsavel_id)
+    const payload = {
+      ...form,
+      sistema_id: parseInt(form.sistema_id),
+      modulo_id: parseInt(form.modulo_id),
+      responsavel_id: parseInt(form.responsavel_id)
     };
 
     try {
@@ -230,27 +230,27 @@ export function AdminProjetos() {
     }
   };
 
-  const modulosFiltrados = form.sistema_id 
+  const modulosFiltrados = form.sistema_id
     ? modulos.filter(m => m.sistema_id == form.sistema_id)
     : modulos;
 
   const admins = usuarios
     .filter(u => u.nivel_acesso_id === 1 && u.ativo)
     .map(u => ({
-        ...u,
-        labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}`
+      ...u,
+      labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}`
     }));
 
-  const filteredData = projetos.filter(p => 
-      p.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredData = projetos.filter(p =>
+    p.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const opcoesParaMostrar = searchTerm === '' 
-    ? [...projetos].sort((a, b) => b.id - a.id).slice(0, 5) 
+  const opcoesParaMostrar = searchTerm === ''
+    ? [...projetos].sort((a, b) => b.id - a.id).slice(0, 5)
     : filteredData.slice(0, 5);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  
+
   if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -264,18 +264,18 @@ export function AdminProjetos() {
     let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
     let end = Math.min(totalPages, start + maxButtons - 1);
     if (end - start + 1 < maxButtons) {
-        start = Math.max(1, end - maxButtons + 1);
+      start = Math.max(1, end - maxButtons + 1);
     }
     const pages = [];
     for (let i = start; i <= end; i++) {
-        pages.push(i);
+      pages.push(i);
     }
     return pages;
   };
 
   return (
     <main className="container">
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
@@ -285,78 +285,78 @@ export function AdminProjetos() {
       />
 
       {view === 'form' && (
-        <div style={{maxWidth: '800px', margin: '0 auto'}}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <form onSubmit={handleSubmit}>
             <section className="card form-section">
               <div className="form-header">
-                 <h3 className="form-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h3>
+                <h3 className="form-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h3>
               </div>
-              
-              <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <label className="input-label">Nome do Projeto <span className="required-asterisk">*</span></label>
+                  <input
+                    value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })}
+                    className="form-control" placeholder="Ex: E-commerce 2.0"
+                  />
+                </div>
+                <div>
+                  <label className="input-label">Descrição</label>
+                  <textarea
+                    value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
+                    className="form-control" rows="3"
+                  />
+                </div>
+                <div className="form-grid">
                   <div>
-                    <label className="input-label">Nome do Projeto <span className="required-asterisk">*</span></label>
-                    <input 
-                       value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} 
-                       className="form-control" placeholder="Ex: E-commerce 2.0"
+                    <label className="input-label">Sistema <span className="required-asterisk">*</span></label>
+                    <SearchableSelect
+                      options={sistemas}
+                      value={form.sistema_id}
+                      onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })}
+                      placeholder="Busque o sistema..."
+                      labelKey="nome"
                     />
                   </div>
                   <div>
-                    <label className="input-label">Descrição</label>
-                    <textarea 
-                       value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} 
-                       className="form-control" rows="3"
+                    <label className="input-label">Módulo <span className="required-asterisk">*</span></label>
+                    <SearchableSelect
+                      options={modulosFiltrados}
+                      value={form.modulo_id}
+                      onChange={(val) => setForm({ ...form, modulo_id: val })}
+                      placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"}
+                      disabled={!form.sistema_id}
+                      labelKey="nome"
                     />
                   </div>
-                  <div className="form-grid">
-                      <div>
-                        <label className="input-label">Sistema <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={sistemas}
-                            value={form.sistema_id}
-                            onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })} 
-                            placeholder="Busque o sistema..."
-                            labelKey="nome"
-                        />
-                      </div>
-                      <div>
-                        <label className="input-label">Módulo <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={modulosFiltrados}
-                            value={form.modulo_id}
-                            onChange={(val) => setForm({ ...form, modulo_id: val })}
-                            placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"}
-                            disabled={!form.sistema_id}
-                            labelKey="nome"
-                        />
-                      </div>
+                </div>
+                <div className="form-grid">
+                  <div>
+                    <label className="input-label">Responsável (Admin) <span className="required-asterisk">*</span></label>
+                    <SearchableSelect
+                      options={admins}
+                      value={form.responsavel_id}
+                      onChange={(val) => setForm({ ...form, responsavel_id: val })}
+                      placeholder="Busque o responsável..."
+                      labelKey="labelCompleto"
+                    />
                   </div>
-                  <div className="form-grid">
-                      <div>
-                        <label className="input-label">Responsável (Admin) <span className="required-asterisk">*</span></label>
-                        <SearchableSelect
-                            options={admins}
-                            value={form.responsavel_id}
-                            onChange={(val) => setForm({ ...form, responsavel_id: val })}
-                            placeholder="Busque o responsável..."
-                            labelKey="labelCompleto" 
-                        />
-                      </div>
-                      <div>
-                        <label className="input-label">Status</label>
-                        <select 
-                            value={form.status} onChange={e => setForm({...form, status: e.target.value})}
-                            className="form-control bg-gray"
-                        >
-                        <option value="ativo">Ativo</option>
-                        <option value="pausado">Pausado</option>
-                        <option value="finalizado">Finalizado</option>
-                        </select>
-                      </div>
+                  <div>
+                    <label className="input-label">Status</label>
+                    <select
+                      value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                      className="form-control bg-gray"
+                    >
+                      <option value="ativo">Ativo</option>
+                      <option value="pausado">Pausado</option>
+                      <option value="finalizado">Finalizado</option>
+                    </select>
                   </div>
+                </div>
               </div>
               <div className="form-actions">
-                  <button type="button" onClick={handleReset} className="btn">Cancelar</button>
-                  <button type="submit" className="btn primary">Salvar</button>
+                <button type="button" onClick={handleReset} className="btn">Cancelar</button>
+                <button type="submit" className="btn primary">Salvar</button>
               </div>
             </section>
           </form>
@@ -364,125 +364,124 @@ export function AdminProjetos() {
       )}
 
       {view === 'list' && (
-        <section className="card" style={{marginTop: 0}}>
-           <div className="toolbar">
-               <h3 className="page-title">Projetos</h3>
-               <div className="toolbar-actions">
-                   <button onClick={() => setView('form')} className="btn primary btn-new">Novo Projeto</button>
-                   <div className="separator"></div>
-                   <div ref={wrapperRef} className="search-wrapper">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onFocus={() => setShowSuggestions(true)}
-                            className="search-input"
-                        />
-                        <span className="search-icon">🔍</span>
+        <section className="card" style={{ marginTop: 0 }}>
+          <div className="toolbar">
+            <h2 className="page-title">Projetos</h2>
+            <div className="toolbar-actions">
+              <button onClick={() => setView('form')} className="btn primary btn-new">Novo Projeto</button>
+              <div className="separator"></div>
+              <div ref={wrapperRef} className="search-wrapper">
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="search-input"
+                />
+                <span className="search-icon">🔍</span>
 
-                        {showSuggestions && (
-                            <ul className="custom-dropdown">
-                                {opcoesParaMostrar.length === 0 ? (
-                                    <li style={{ color: '#999', cursor: 'default' }}>Nenhum projeto encontrado.</li>
-                                ) : (
-                                    opcoesParaMostrar.map(p => (
-                                        <li key={p.id} onClick={() => { setSearchTerm(p.nome); setShowSuggestions(false); }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <span>{truncate(p.nome, 25)}</span>
-                                                <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontStyle:'italic' }}>{p.status}</span>
-                                            </div>
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
-                        )}
-                   </div>                  
-               </div>
-           </div>
-
-           {loading ? <div className="loading-text">Carregando...</div> : (
-             <div className="table-wrap">
-               <div className="content-area">
-                   {filteredData.length === 0 ? (
-                     <div className="empty-container">Nenhum projeto cadastrado.</div>
-                   ) : (
-                     <table>
-                       <thead>
-                         <tr>
-                           <th style={{width: '60px'}}>ID</th>
-                           <th>Nome</th>
-                           <th>Descrição</th>
-                           <th>Responsável</th>
-                           <th style={{textAlign: 'center'}}>Status</th>
-                           <th style={{textAlign: 'right'}}>Ações</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         {currentData.map(item => (
-                            <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
-                                <td className="cell-id">#{item.id}</td>
-                                <td className="cell-name">{item.nome}</td>
-                                <td style={{color:'#64748b'}}>{truncate(item.descricao, 30)}</td>
-                                <td style={{fontSize: '0.85rem'}}>
-                                    {(() => {
-                                        const resp = usuarios.find(u => u.id === item.responsavel_id);
-                                        if (resp) {
-                                            return (
-                                                <div>
-                                                    <span>{resp.nome}</span>
-                                                    {resp.username && (
-                                                        <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '6px' }}>
-                                                            (@{resp.username})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        }
-                                        return '-';
-                                    })()}
-                                </td>
-                                <td className="cell-status">
-                                    <span className={`status-badge ${item.status}`}>{item.status}</span>
-                                </td>
-                                <td className="cell-actions">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} 
-                                        className="btn danger small btn-action-icon"
-                                    >
-                                        🗑️
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                       </tbody>
-                     </table>
-                   )}
-               </div>
-
-               <div className="pagination-container">
-                    <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Primeira">«</button>
-                    <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Anterior">‹</button>
-
-                    {getPaginationGroup().map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => paginate(item)}
-                        className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-
-                    {totalPages === 0 && (
-                        <button className="pagination-btn active" disabled>1</button>
+                {showSuggestions && (
+                  <ul className="custom-dropdown">
+                    {opcoesParaMostrar.length === 0 ? (
+                      <li style={{ color: '#999', cursor: 'default' }}>Nenhum projeto encontrado.</li>
+                    ) : (
+                      opcoesParaMostrar.map(p => (
+                        <li key={p.id} onClick={() => { setSearchTerm(p.nome); setShowSuggestions(false); }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span>{truncate(p.nome, 25)}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontStyle: 'italic' }}>{p.status}</span>
+                          </div>
+                        </li>
+                      ))
                     )}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+          {loading ? <div className="loading-text">Carregando...</div> : (
+            <div className="table-wrap">
+              <div className="content-area">
+                {filteredData.length === 0 ? (
+                  <div className="empty-container">Nenhum projeto cadastrado.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '60px' }}>ID</th>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Responsável</th>
+                        <th style={{ textAlign: 'center' }}>Status</th>
+                        <th style={{ textAlign: 'right' }}>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentData.map(item => (
+                        <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
+                          <td className="cell-id">#{item.id}</td>
+                          <td className="cell-name">{item.nome}</td>
+                          <td style={{ color: '#64748b' }}>{truncate(item.descricao, 30)}</td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            {(() => {
+                              const resp = usuarios.find(u => u.id === item.responsavel_id);
+                              if (resp) {
+                                return (
+                                  <div>
+                                    <span>{resp.nome}</span>
+                                    {resp.username && (
+                                      <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '6px' }}>
+                                        (@{resp.username})
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return '-';
+                            })()}
+                          </td>
+                          <td className="cell-status">
+                            <span className={`status-badge ${item.status}`}>{item.status}</span>
+                          </td>
+                          <td className="cell-actions">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }}
+                              className="btn danger small btn-action-icon"
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
 
-                    <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Próxima">›</button>
-                    <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Última">»</button>
-               </div>
-             </div>
-           )}
+              <div className="pagination-container">
+                <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Primeira">«</button>
+                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn" title="Anterior">‹</button>
+
+                {getPaginationGroup().map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => paginate(item)}
+                    className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+
+                {totalPages === 0 && (
+                  <button className="pagination-btn active" disabled>1</button>
+                )}
+
+                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Próxima">›</button>
+                <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn" title="Última">»</button>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </main>
