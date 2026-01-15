@@ -4,354 +4,403 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import './styles.css';
 
+// --- COMPONENTE REUTILIZÁVEL ---
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const wrapperRef = useRef(null);
+
+  const truncate = (str, n = 20) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+
+  useEffect(() => {
+    const selectedOption = options.find(opt => String(opt.id) === String(value));
+    if (selectedOption) {
+      if (!isOpen) setSearchTerm(selectedOption.nome);
+    } else if (!value) {
+      setSearchTerm('');
+    }
+  }, [value, options, isOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+        const selectedOption = options.find(opt => String(opt.id) === String(value));
+        setSearchTerm(selectedOption ? selectedOption.nome : '');
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [wrapperRef, value, options]);
+
+  const filteredOptions = searchTerm === '' 
+    ? options 
+    : options.filter(opt => opt.nome.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const displayOptions = filteredOptions.slice(0, 5);
+
+  const handleSelect = (option) => {
+    onChange(option.id);
+    setSearchTerm(option.nome);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="search-wrapper" style={{ width: '100%', position: 'relative' }}>
+      <input
+        type="text"
+        className={`form-control ${disabled ? 'bg-gray' : ''}`}
+        placeholder={placeholder}
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setIsOpen(true);
+          if (e.target.value === '') onChange('');
+        }}
+        onFocus={() => { if(!disabled) setIsOpen(true); }}
+        disabled={disabled}
+        style={{ cursor: disabled ? 'not-allowed' : 'text', paddingRight: '30px' }}
+      />
+      <span className="search-icon" style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '12px' }} onClick={() => !disabled && setIsOpen(!isOpen)}>▼</span>
+
+      {isOpen && !disabled && (
+        <ul className="custom-dropdown" style={{ width: '100%', top: '100%', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+          {displayOptions.length === 0 ? (
+            <li style={{ color: '#999', cursor: 'default', padding: '10px' }}>Sem resultados</li>
+          ) : (
+            displayOptions.map(opt => (
+              <li key={opt.id} onClick={() => handleSelect(opt)} title={opt.nome}>
+                {truncate(opt.nome, 20)}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
 export function AdminModulos() {
-    const [modulos, setModulos] = useState([]);
-    const [sistemas, setSistemas] = useState([]);
-    const [view, setView] = useState('list');
-    const [form, setForm] = useState({ nome: '', descricao: '', sistema_id: '' });
-    const [editingId, setEditingId] = useState(null);
+  const [modulos, setModulos] = useState([]);
+  const [sistemas, setSistemas] = useState([]);
+  
+  const [view, setView] = useState('list');
+  const [form, setForm] = useState({ nome: '', descricao: '', sistema_id: '', ativo: true });
+  const [editingId, setEditingId] = useState(null);
+  
+  const { success, error, warning } = useSnackbar();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [moduloToDelete, setModuloToDelete] = useState(null);
+    
+  // Filtros Globais
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showGlobalSuggestions, setShowGlobalSuggestions] = useState(false);
+  const globalSearchRef = useRef(null); 
 
-    const { success, error, warning } = useSnackbar();
+  // Filtros Header (Sistema)
+  const [sistemaSearchText, setSistemaSearchText] = useState(''); 
+  const [selectedSistemaId, setSelectedSistemaId] = useState(''); 
+  const [isSistemaSearchOpen, setIsSistemaSearchOpen] = useState(false);
+  const sistemaHeaderRef = useRef(null);
 
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [moduloToDelete, setModuloToDelete] = useState(null);
+  // Filtros Header (Status)
+  const [statusSearchText, setStatusSearchText] = useState(''); 
+  const [selectedStatus, setSelectedStatus] = useState(''); 
+  const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
+  const statusHeaderRef = useRef(null);
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const wrapperRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+  const truncate = (str, n = 25) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || '-';
 
-    const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  useEffect(() => { loadData(); }, []);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedSistemaId, selectedStatus]);
 
-    useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (globalSearchRef.current && !globalSearchRef.current.contains(event.target)) {
+        setShowGlobalSuggestions(false);
+      }
+      if (sistemaHeaderRef.current && !sistemaHeaderRef.current.contains(event.target)) {
+        if (!selectedSistemaId) { setIsSistemaSearchOpen(false); setSistemaSearchText(''); }
+      }
+      if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
+        if (!selectedStatus) { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedSistemaId, selectedStatus]);
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm]);
+  const loadData = async () => {
+    try {
+        const [modsResponse, sisResponse] = await Promise.all([
+            api.get("/modulos/"),
+            api.get("/sistemas/")
+        ]);
+        setModulos(modsResponse.data || modsResponse || []);
+        setSistemas(sisResponse.data || sisResponse || []);
+    } catch (e) { error("Erro ao carregar dados."); }
+  };
 
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setShowSuggestions(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
+  const filteredModulos = modulos.filter(m => {
+      if (selectedSistemaId && m.sistema_id !== parseInt(selectedSistemaId)) return false;
+      if (selectedStatus !== '') {
+          const statusBool = selectedStatus === 'true';
+          if (m.ativo !== statusBool) return false;
+      }
+      if (searchTerm && !m.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      return true;
+  });
 
-    const loadData = async () => {
-        try {
-            const [modsResponse, sisResponse] = await Promise.all([
-                api.get("/modulos/"),
-                api.get("/sistemas/")
-            ]);
+  const globalSuggestions = searchTerm === '' 
+    ? filteredModulos.slice(0, 5) 
+    : filteredModulos.slice(0, 5);
 
-            const mods = modsResponse.data || modsResponse;
-            const sis = sisResponse.data || sisResponse;
+  const filteredSistemasForHeader = sistemas.filter(s => s.nome.toLowerCase().includes(sistemaSearchText.toLowerCase())).slice(0, 5);
+  const statusOptions = [{ label: 'Ativo', value: 'true' }, { label: 'Inativo', value: 'false' }];
+  const filteredStatusForHeader = statusOptions.filter(opt => opt.label.toLowerCase().includes(statusSearchText.toLowerCase()));
 
-            setModulos(Array.isArray(mods) ? mods : []);
-            setSistemas(Array.isArray(sis) ? sis : []);
+  const handleNew = () => { handleCancel(); setView('form'); };
+  const handleCancel = () => { setEditingId(null); setForm({nome:'', descricao:'', sistema_id:'', ativo: true}); setView('list'); };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.sistema_id) return warning("Selecione o Sistema.");
+    if (!form.nome.trim()) return warning("Preencha o nome.");
 
-            const ativos = (Array.isArray(sis) ? sis : []).filter(s => s.ativo);
-            if (view === 'form' && !editingId && ativos.length > 0) {
-                setForm(f => ({ ...f, sistema_id: ativos[0].id }));
-            }
-        } catch (e) {
-            error("Erro ao carregar dados. Tente recarregar a página.");
-        }
-    };
+    try {
+      const payload = { ...form, sistema_id: parseInt(form.sistema_id) };
+      if (editingId) {
+          await api.put(`/modulos/${editingId}`, payload);
+          success("Atualizado!");
+      } else {
+          await api.post("/modulos/", payload);
+          success("Cadastrado!");
+      }
+      handleCancel();
+      loadData();
+    } catch (err) { error("Erro ao salvar."); }
+  };
 
-    const handleNew = () => {
-        handleCancel();
-        setView('form');
-    };
+  const handleSelectRow = (m) => {
+      setForm({ nome: m.nome, descricao: m.descricao, sistema_id: m.sistema_id, ativo: m.ativo });
+      setEditingId(m.id);
+      setView('form');
+  };
 
+  const requestDelete = (m) => { setModuloToDelete(m); setIsDeleteModalOpen(true); };
+  const confirmDelete = async () => {
+      if(!moduloToDelete) return;
+      try { await api.delete(`/modulos/${moduloToDelete.id}`); success("Excluído."); setModulos(prev => prev.filter(m => m.id !== moduloToDelete.id)); }
+      catch(e) { error("Erro ao excluir."); }
+      finally { setModuloToDelete(null); setIsDeleteModalOpen(false); }
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+  const totalPages = Math.ceil(filteredModulos.length / itemsPerPage);
+  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
+  const currentModulos = filteredModulos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginate = (n) => setCurrentPage(n);
 
-        if (!form.sistema_id) {
-            warning("Por favor, selecione o Sistema Pai.");
-            return;
-        }
+  return (
+    <main className="container">
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete}
+        title="Excluir?" message={`Excluir "${moduloToDelete?.nome}"?`} confirmText="Sim" isDanger={true}
+      />
 
-        if (!form.nome.trim()) {
-            warning("Por favor, preencha o nome do módulo.");
-            return;
-        }
+      {view === 'form' ? (
+        <div style={{maxWidth: '800px', margin: '0 auto'}}> 
+          <section className="card form-card">
+            <h2 className="section-title">{editingId ? 'Editar Módulo' : 'Novo Módulo'}</h2>
+            <form onSubmit={handleSubmit}>
+               <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}> 
+                 <div style={{gridColumn: 'span 1'}}>
+                    <label className="input-label">Sistema</label>
+                    <SearchableSelect 
+                        options={sistemas.filter(s => s.ativo)} 
+                        value={form.sistema_id}
+                        onChange={(val) => setForm({ ...form, sistema_id: val })}
+                        placeholder="Selecione o sistema..."
+                    />
+                 </div>
 
-        const nomeNormalizado = form.nome.trim().toLowerCase();
-        const sistemaIdSelecionado = parseInt(form.sistema_id);
+                 <div className="toggle-wrapper">
+                    <label className="switch">
+                        <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({...form, ativo: e.target.checked})}/>
+                        <span className="slider"></span>
+                    </label>
+                    <span className="toggle-label">{form.ativo ? 'Ativo' : 'Inativo'}</span>
+                 </div>
 
-        const duplicado = modulos.some(m =>
-            m.sistema_id === sistemaIdSelecionado &&
-            m.nome.trim().toLowerCase() === nomeNormalizado &&
-            m.id !== editingId
-        );
+                 <div style={{gridColumn: '1 / -1'}}>
+                    <label className="input-label">Nome</label>
+                    <input className="form-control" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} required />
+                 </div>
+                 
+                 <div style={{gridColumn: '1 / -1'}}>
+                    <label className="input-label">Descrição</label>
+                    <input className="form-control" value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} />
+                 </div>
+               </div>
 
-        if (duplicado) {
-            warning("Já existe um módulo com este nome neste sistema.");
-            return;
-        }
-
-        try {
-            const payload = { ...form, sistema_id: sistemaIdSelecionado };
-
-            if (editingId) {
-                await api.put(`/modulos/${editingId}`, payload);
-                success("Módulo atualizado com sucesso!");
-            } else {
-                await api.post("/modulos/", { ...payload, ativo: true });
-                success("Módulo cadastrado com sucesso!");
-            }
-
-            handleCancel();
-            loadData();
-            setView('list');
-
-        } catch (err) {
-            const msg = err.response?.data?.detail || err.message || "Erro ao salvar o registro.";
-            error(msg);
-        }
-    };
-
-    const handleCancel = () => {
-        setEditingId(null);
-        setForm(f => ({ ...f, nome: '', descricao: '' }));
-        setView('list');
-
-        const ativos = sistemas.filter(s => s.ativo);
-        if (ativos.length > 0) {
-            setForm(f => ({ ...f, sistema_id: ativos[0].id }));
-        }
-    };
-
-    const handleSelectRow = (modulo) => {
-        setForm({ nome: modulo.nome, descricao: modulo.descricao, sistema_id: modulo.sistema_id });
-        setEditingId(modulo.id);
-        setView('form');
-    };
-
-    const toggleActive = async (modulo) => {
-        try {
-            const novoStatus = !modulo.ativo;
-            await api.put(`/modulos/${modulo.id}`, { ativo: novoStatus });
-            success(`Módulo "${modulo.nome}" ${novoStatus ? 'ativado' : 'desativado'}.`);
-            setModulos(prev => prev.map(m => m.id === modulo.id ? { ...m, ativo: novoStatus } : m));
-        } catch (e) {
-            error("Não foi possível alterar o status do módulo.");
-        }
-    };
-
-    const requestDelete = (modulo) => {
-        setModuloToDelete(modulo);
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!moduloToDelete) return;
-        try {
-            await api.delete(`/modulos/${moduloToDelete.id}`);
-            success("Módulo excluído com sucesso.");
-            setModulos(prev => prev.filter(m => m.id !== moduloToDelete.id));
-            if (editingId === moduloToDelete.id) handleCancel();
-        } catch (err) {
-            error("Não é possível excluir este módulo pois ele possui dependências.");
-        } finally {
-            setModuloToDelete(null);
-            setIsDeleteModalOpen(false);
-        }
-    };
-
-    const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || '-';
-    const sistemasAtivos = sistemas.filter(s => s.ativo);
-
-    const filteredModulos = modulos.filter(m =>
-        m.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const opcoesParaMostrar = searchTerm === ''
-        ? [...modulos].sort((a, b) => b.id - a.id).slice(0, 5)
-        : filteredModulos.slice(0, 5);
-
-    const totalPages = Math.ceil(filteredModulos.length / itemsPerPage);
-
-    if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentModulos = filteredModulos.slice(indexOfFirstItem, indexOfLastItem);
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-    const getPaginationGroup = () => {
-        const maxButtons = 5;
-        let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-        let end = Math.min(totalPages, start + maxButtons - 1);
-        if (end - start + 1 < maxButtons) {
-            start = Math.max(1, end - maxButtons + 1);
-        }
-        const pages = [];
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        return pages;
-    };
-
-    return (
-        <main className="container">
-            <ConfirmationModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={confirmDelete}
-                title="Excluir Módulo?"
-                message={`Tem certeza que deseja excluir "${moduloToDelete?.nome}"?`}
-                confirmText="Sim, Excluir"
-                isDanger={true}
-            />
-
-            {view === 'form' && (
-                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                    <section className="card form-card">
-                        <div className="form-header">
-                            <h2 className="section-title">{editingId ? 'Editar Módulo' : 'Novo Módulo'}</h2>
-                        </div>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-grid">
-                                <div>
-                                    <label className="input-label">Sistema Pai</label>
-                                    <select
-                                        value={form.sistema_id}
-                                        onChange={e => setForm({ ...form, sistema_id: e.target.value })}
-                                        className="form-control"
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {sistemasAtivos.map(s => <option key={s.id} value={s.id}>{truncate(s.nome)}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="input-label">Nome do Módulo</label>
-                                    <input
-                                        value={form.nome}
-                                        onChange={e => setForm({ ...form, nome: e.target.value })}
-                                        placeholder="Ex: Contas a Pagar"
-                                        className="form-control"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="input-label">Descrição</label>
-                                    <input
-                                        value={form.descricao}
-                                        onChange={e => setForm({ ...form, descricao: e.target.value })}
-                                        placeholder="Descrição"
-                                        className="form-control"
-                                    />
-                                </div>
-                            </div>
-                            <div className="form-actions">
-                                <button type="submit" className="btn primary">{editingId ? 'Salvar Alterações' : 'Criar Módulo'}</button>
-                                <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
-                            </div>
-                        </form>
-                    </section>
-                </div>
-            )}
-
-            {view === 'list' && (
-                <section className="card">
-                    <div className="toolbar">
-                        <h2 className="page-title">Módulos</h2>
-                        <div className="toolbar-actions">
-                            <button onClick={handleNew} className="btn primary btn-new">Novo Módulo</button>
-                            <div className="separator"></div>
-                            <div ref={wrapperRef} className="search-wrapper">
-                                <input
-                                    type="text"
-                                    placeholder="Buscar..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    className="search-input"
-                                />
-                                <span className="search-icon">🔍</span>
-                                {showSuggestions && opcoesParaMostrar.length > 0 && (
-                                    <ul className="custom-dropdown">
-                                        {opcoesParaMostrar.map(m => (
-                                            <li key={m.id} onClick={() => { setSearchTerm(m.nome); setShowSuggestions(false); }}>
-                                                {truncate(m.nome, 30)}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="table-wrap">
-                        <div className="content-area">
-                            {modulos.length === 0 ? <p className="no-results">Nenhum módulo cadastrado.</p> : (
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ textAlign: 'left' }}>Módulo</th>
-                                            <th style={{ textAlign: 'left' }}>Sistema</th>
-                                            <th style={{ textAlign: 'center' }}>Status</th>
-                                            <th style={{ textAlign: 'right' }}>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredModulos.length === 0 ? (
-                                            <tr><td colSpan="4" className="no-results">Nenhum módulo encontrado.</td></tr>
-                                        ) : (
-                                            currentModulos.map(m => (
-                                                <tr key={m.id} onClick={() => handleSelectRow(m)} className={'selectable'} style={{ opacity: m.ativo ? 1 : 0.6 }}>
-                                                    <td className="cell-name">
-                                                        <strong title={m.nome}>{truncate(m.nome)}</strong>
-                                                        <div title={m.descricao} className="muted">{truncate(m.descricao, 40)}</div>
-                                                    </td>
-                                                    <td style={{ verticalAlign: 'middle' }}>
-                                                        <span className="badge system">{truncate(getSistemaName(m.sistema_id), 20)}</span>
-                                                    </td>
-                                                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                                                        <span onClick={(e) => { e.stopPropagation(); toggleActive(m); }} className={`badge ${m.ativo ? 'on' : 'off'}`} style={{ cursor: 'pointer' }}>
-                                                            {m.ativo ? 'Ativo' : 'Inativo'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="cell-actions">
-                                                        <button onClick={(e) => { e.stopPropagation(); requestDelete(m); }} className="btn danger small" title="Excluir">🗑️</button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-
-                        <div className="pagination-container">
-                            <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">«</button>
-                            <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">‹</button>
-
-                            {getPaginationGroup().map((item) => (
-                                <button
-                                    key={item}
-                                    onClick={() => paginate(item)}
-                                    className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                                >
-                                    {item}
-                                </button>
+               <div className="form-actions">
+                 <button type="submit" className="btn primary">Salvar</button>
+                 <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+               </div>
+            </form>
+          </section>
+        </div>
+      ) : (
+        <section className="card">
+          <div className="toolbar">
+              <h2 className="page-title">Módulos</h2>
+              <div className="toolbar-actions">
+                <button onClick={handleNew} className="btn primary btn-new">Novo Módulo</button>
+                <div className="separator"></div>
+                <div ref={globalSearchRef} className="search-wrapper">
+                    <input 
+                        type="text" 
+                        placeholder={"Buscar..."}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onFocus={() => setShowGlobalSuggestions(true)}
+                        className="search-input"
+                    />
+                    <span className="search-icon">🔍</span>
+                    {showGlobalSuggestions && (
+                        <ul className="custom-dropdown">
+                            {globalSuggestions.length === 0 ? <li style={{color:'#999'}}>Nenhum módulo encontrado.</li> : globalSuggestions.map(m => (
+                                <li key={m.id} onClick={() => { setSearchTerm(m.nome); setShowGlobalSuggestions(false); }}>
+                                    {truncate(m.nome, 20)}
+                                </li>
                             ))}
+                        </ul>
+                    )}
+                </div>
+              </div>
+          </div>
 
-                            {totalPages === 0 && <button className="pagination-btn active" disabled>1</button>}
+          <div className="table-wrap">
+              <div className="content-area">
+                  <table>
+                      <thead>
+                          <tr>
+                              {/* --- COLUNA ID --- */}
+                              <th style={{width: '60px', textAlign: 'center'}}>ID</th>
 
-                            <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">›</button>
-                            <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">»</button>
-                        </div>
-                    </div>
-                </section>
-            )}
-        </main>
-    );
+                              <th style={{textAlign: 'left'}}>Módulo</th>
+                              
+                              <th style={{width: '200px', verticalAlign: 'middle'}}>
+                                <div className="th-filter-container" ref={sistemaHeaderRef}>
+                                    {isSistemaSearchOpen || selectedSistemaId ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedSistemaId ? 'active' : ''}`}
+                                                placeholder="Filtrar sistema..."
+                                                value={selectedSistemaId && sistemaSearchText === '' ? truncate(getSistemaName(parseInt(selectedSistemaId)), 15) : sistemaSearchText}
+                                                onChange={(e) => { setSistemaSearchText(e.target.value); if(selectedSistemaId) setSelectedSistemaId(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (selectedSistemaId) { setSelectedSistemaId(''); setSistemaSearchText(''); } 
+                                                else { setIsSistemaSearchOpen(false); setSistemaSearchText(''); }
+                                            }}>✕</button>
+                                            {(!selectedSistemaId || sistemaSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
+                                                    <li onClick={() => { setSelectedSistemaId(''); setSistemaSearchText(''); setIsSistemaSearchOpen(false); }}><span style={{color: '#3b82f6', fontWeight: 'bold'}}>Todos</span></li>
+                                                    {filteredSistemasForHeader.map(s => (
+                                                        <li key={s.id} onClick={() => { setSelectedSistemaId(s.id); setSistemaSearchText(''); setIsSistemaSearchOpen(true); }}>{truncate(s.nome, 20)}</li>
+                                                    ))}
+                                                    {filteredSistemasForHeader.length === 0 && <li style={{color:'#94a3b8'}}>Sem resultados</li>}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsSistemaSearchOpen(true)} title="Filtrar Sistema">
+                                            SISTEMA <span className="filter-icon">▼</span>
+                                        </div>
+                                    )}
+                                </div>
+                              </th>
+                              
+                              <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
+                                <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
+                                    {isStatusSearchOpen || selectedStatus ? (
+                                        <div style={{position: 'relative', width: '100%'}}>
+                                            <input 
+                                                autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`}
+                                                placeholder="Status..."
+                                                value={selectedStatus && statusSearchText === '' ? (selectedStatus === 'true' ? 'Ativo' : 'Inativo') : statusSearchText}
+                                                onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <button className="btn-clear-filter" onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
+                                                else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+                                            }}>✕</button>
+                                            {(!selectedStatus || statusSearchText) && (
+                                                <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
+                                                    <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color: '#3b82f6', fontWeight: 'bold'}}>Todos</span></li>
+                                                    {filteredStatusForHeader.map(opt => (
+                                                        <li key={opt.value} onClick={() => { setSelectedStatus(opt.value); setStatusSearchText(''); setIsStatusSearchOpen(true); }}>{opt.label}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">
+                                            STATUS <span className="filter-icon">▼</span>
+                                        </div>
+                                    )}
+                                </div>
+                              </th>                             
+
+                              <th style={{textAlign: 'right'}}>Ações</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {filteredModulos.length === 0 ? (
+                              <tr><td colSpan="5" className="no-results">Nenhum módulo encontrado.</td></tr>
+                          ) : (
+                              currentModulos.map(m => (
+                                  <tr key={m.id} onClick={() => handleSelectRow(m)} className={'selectable'} style={{opacity: m.ativo ? 1 : 0.6}}>
+                                      
+                                      {/* --- CÉLULA ID --- */}
+                                      <td style={{textAlign: 'center', fontWeight: 'bold', color: '#666'}}>#{m.id}</td>
+
+                                      <td className="cell-name">
+                                          <strong>{truncate(m.nome, 20)}</strong>
+                                          <div className="muted">{truncate(m.descricao, 30)}</div>
+                                      </td>
+                                      <td><span className="badge system">{truncate(getSistemaName(m.sistema_id), 20)}</span></td>
+                                      <td style={{textAlign: 'center'}}>
+                                          <span className={`badge ${m.ativo ? 'on' : 'off'}`}>{m.ativo ? 'Ativo' : 'Inativo'}</span>                                      
+                                      </td>
+                                      <td className="cell-actions">
+                                          <button onClick={(e) => { e.stopPropagation(); requestDelete(m); }} className="btn danger small">🗑️</button>
+                                      </td>
+                                  </tr>
+                              ))
+                          )}
+                      </tbody>
+                  </table>
+              </div>
+              <div className="pagination-container">
+                    <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
+                    {Array.from({length: totalPages}, (_, i) => (
+                        <button key={i+1} onClick={() => paginate(i+1)} className={`pagination-btn ${currentPage === i+1 ? 'active' : ''}`}>{i+1}</button>
+                    )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
+                    <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
+              </div>
+          </div>
+        </section>
+      )}
+    </main>
+  );
 }

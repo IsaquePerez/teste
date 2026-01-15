@@ -14,9 +14,16 @@ class DefeitoRepository:
     # Helper pra não ficar repetindo essa query gigante de carregamento em todo lugar.
     def _get_load_options(self):
         return [
-            # Traz a árvore completa: Defeito -> Execução -> Caso -> Passos
-            selectinload(Defeito.execucao).selectinload(ExecucaoTeste.caso_teste).selectinload(CasoTeste.passos),
+            # Traz a árvore completa: Defeito -> Execução -> Caso -> [Passos, Projeto, Ciclo]
+            selectinload(Defeito.execucao).selectinload(ExecucaoTeste.caso_teste).options(
+                selectinload(CasoTeste.passos),
+                selectinload(CasoTeste.projeto), # <--- CORREÇÃO CRÍTICA AQUI
+                selectinload(CasoTeste.ciclo)    # <--- E AQUI TAMBÉM
+            ),
             
+            # Traz o ciclo da execução também, por segurança
+            selectinload(Defeito.execucao).selectinload(ExecucaoTeste.ciclo),
+
             # Traz quem executou e o cargo
             selectinload(Defeito.execucao).selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
             
@@ -58,7 +65,11 @@ class DefeitoRepository:
 
     # Lista tudo que deu errado nessa execução específica.
     async def get_by_execucao(self, execucao_id: int) -> Sequence[Defeito]:
-        query = select(Defeito).where(Defeito.execucao_teste_id == execucao_id)
+        query = (
+            select(Defeito)
+            .options(*self._get_load_options()) # Adicionado options aqui também por segurança
+            .where(Defeito.execucao_teste_id == execucao_id)
+        )
         result = await self.db.execute(query)
         return result.scalars().all()
 

@@ -71,6 +71,9 @@ class CicloTeste(Base):
     projeto = relationship("Projeto", back_populates="ciclos")
     execucoes = relationship("ExecucaoTeste", back_populates="ciclo", cascade="all, delete-orphan")
     metricas = relationship("Metrica", back_populates="ciclo")
+    
+    # --- NOVO: Relacionamento inverso para acessar os casos planejados neste ciclo ---
+    casos = relationship("CasoTeste", back_populates="ciclo")
 
     # Helpers para calcular progresso direto no objeto.
     @property
@@ -90,6 +93,11 @@ class CasoTeste(Base):
     id = Column(Integer, primary_key=True, index=True)
     projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
     responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    
+    # --- NOVO: Campo que faltava e causava o erro ---
+    ciclo_id = Column(Integer, ForeignKey("ciclos_teste.id"), nullable=True)
+    # -----------------------------------------------
+
     nome = Column(String(255), nullable=False)
     
     descricao = Column(Text)
@@ -106,6 +114,10 @@ class CasoTeste(Base):
 
     projeto = relationship("Projeto", back_populates="casos_teste")
     responsavel = relationship("Usuario")   
+    
+    # --- NOVO: Relacionamento com Ciclo ---
+    ciclo = relationship("CicloTeste", back_populates="casos")
+    # --------------------------------------
     
     passos = relationship("PassoCasoTeste", back_populates="caso_teste", cascade="all, delete-orphan", order_by="PassoCasoTeste.ordem")
     execucoes = relationship("ExecucaoTeste", back_populates="caso_teste")
@@ -144,7 +156,7 @@ class ExecucaoTeste(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-# Relacionamentos
+    # Relacionamentos
     ciclo = relationship("CicloTeste", back_populates="execucoes")
     caso_teste = relationship("CasoTeste", back_populates="execucoes")
     responsavel = relationship("Usuario", back_populates="execucoes_atribuidas")

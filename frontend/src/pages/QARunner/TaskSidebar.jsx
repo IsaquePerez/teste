@@ -4,7 +4,7 @@ export function TaskSidebar({ tasks, loading, activeExecId, onSelect }) {
   if (loading) return <div className={styles.sidebar}>Carregando...</div>;
   
   if (!tasks || tasks.length === 0) {
-    return <div className={`${styles.sidebar} muted`}></div>;
+    return <div className={`${styles.sidebar} muted`}>Nenhuma tarefa pendente.</div>;
   }
 
   const getStatusClass = (status) => {
@@ -24,9 +24,13 @@ export function TaskSidebar({ tasks, loading, activeExecId, onSelect }) {
         >
           <div className={styles.taskHeader}>
             <h4 className={styles.taskTitle}>{t.caso_teste?.nome}</h4>
-            <span className={styles.taskBadge}>{t.status_geral}</span>
+            <span className={styles.taskBadge}>{t.status_geral.replace('_', ' ')}</span>
           </div>
-          <small className={styles.taskProject}>Projeto: {t.ciclo_teste?.projeto_id || 'N/A'}</small>
+          
+          <small className={styles.taskProject}>
+             Projeto: <strong>{t.caso_teste?.projeto?.nome || 'Carregando...'}</strong>
+          </small>
+          
         </div>
       ))}
     </div>

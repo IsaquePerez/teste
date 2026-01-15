@@ -4,11 +4,23 @@ from datetime import datetime
 
 # --- AUXILIARES ---
 
-# Schema enxuto pra retornar dados de usuário dentro de outras listas (evita loop infinito e dados sensíveis).
+# 1. NOVO SCHEMA PARA O PROJETO
+class ProjetoSimple(BaseModel):
+    id: int
+    nome: str
+    model_config = ConfigDict(from_attributes=True)
+
+# Schema enxuto pra retornar dados de usuário
 class UsuarioSimple(BaseModel):
     id: int
     nome: str
     username: str
+    model_config = ConfigDict(from_attributes=True)
+
+# Schema enxuto para o Ciclo
+class CicloSimple(BaseModel):
+    id: int
+    nome: str
     model_config = ConfigDict(from_attributes=True)
 
 # --- PASSOS (STEPS) ---
@@ -21,12 +33,10 @@ class PassoCasoTesteBase(BaseModel):
 class PassoCasoTesteCreate(PassoCasoTesteBase):
     pass
 
-# Retorna o passo com IDs e datas. Importante pra edição e exibição.
 class PassoCasoTesteResponse(PassoCasoTesteBase):
     id: int
     caso_teste_id: int
     
-    # Opcional pra não quebrar se o banco retornar nulo em legados.
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -41,13 +51,13 @@ class CasoTesteBase(BaseModel):
     criterios_aceitacao: Optional[str] = None
     prioridade: str = "media"
 
-# Payload de criação: recebe o cabeçalho + a lista de passos e já permite alocar (ciclo/responsável).
+# Payload de criação
 class CasoTesteCreate(CasoTesteBase):
     responsavel_id: Optional[int] = None
     ciclo_id: Optional[int] = None
     passos: List[PassoCasoTesteCreate] = []
 
-# Payload de atualização: tudo opcional. A lista de passos aqui substitui ou atualiza a existente.
+# Payload de atualização
 class CasoTesteUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
@@ -55,18 +65,28 @@ class CasoTesteUpdate(BaseModel):
     criterios_aceitacao: Optional[str] = None
     prioridade: Optional[str] = None
     responsavel_id: Optional[int] = None
+    ciclo_id: Optional[int] = None
     passos: Optional[List[dict]] = None 
 
-# Objeto completo devolvido pra tela, com os passos aninhados e o objeto do responsável.
+# Objeto completo devolvido pra tela
 class CasoTesteResponse(CasoTesteBase):
     id: int
     projeto_id: int
     responsavel_id: Optional[int] = None
+    
+    # É importante manter o ID explícito também
+    ciclo_id: Optional[int] = None 
+
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    # Nesting dos relacionamentos
+    # --- NESTING DOS RELACIONAMENTOS ---
+    
+    projeto: Optional[ProjetoSimple] = None
+    
     responsavel: Optional[UsuarioSimple] = None
+    ciclo: Optional[CicloSimple] = None 
+
     passos: List[PassoCasoTesteResponse] = [] 
 
     model_config = ConfigDict(from_attributes=True)
