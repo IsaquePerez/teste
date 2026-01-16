@@ -12,23 +12,27 @@ class DashboardService:
     def __init__(self, db: AsyncSession):
         self.repo = DashboardRepository(db)
 
-    # Orquestra a busca de dados e formata o JSON final pros gráficos do frontend.
     async def get_dashboard_data(self) -> DashboardResponse:
-        # 1. Busca dados brutos em paralelo (muito mais rápido que sequencial).
+        # 1. Busca dados brutos
         kpis_data = await self.repo.get_kpis_gerais()
         status_exec_data = await self.repo.get_status_execucao_geral()
         severidade_data = await self.repo.get_defeitos_por_severidade()
         modulos_data = await self.repo.get_modulos_com_mais_defeitos()
 
-        # 2. Monta os Cards (KPIs) do topo.
+        # 2. Monta os 8 Cards (KPIs)
         kpis = DashboardKPI(
             total_projetos=kpis_data["total_projetos"],
             total_ciclos_ativos=kpis_data["total_ciclos_ativos"],
             total_casos_teste=kpis_data["total_casos_teste"],
-            total_defeitos_abertos=kpis_data["total_defeitos_abertos"]
+            taxa_sucesso_ciclos=kpis_data["taxa_sucesso_ciclos"],
+            
+            total_defeitos_abertos=kpis_data["total_defeitos_abertos"],
+            total_defeitos_criticos=kpis_data["total_defeitos_criticos"],
+            total_bloqueados=kpis_data["total_bloqueados"],
+            total_aguardando_reteste=kpis_data["total_aguardando_reteste"]
         )
 
-        # 3. Prepara o Gráfico de Execução (Pie Chart), mapeando cores padrão.
+        # 3. Prepara Gráfico de Execução (Pie Chart)
         chart_status = []
         color_map_status = {
             StatusExecucaoEnum.passou: "#10b981",       
@@ -45,7 +49,7 @@ class DashboardService:
                 color=color_map_status.get(status, "#64748b")
             ))
 
-        # 4. Prepara o Gráfico de Defeitos (Bar Chart) por gravidade.
+        # 4. Prepara Gráfico de Defeitos (Bar Chart)
         chart_severidade = []
         color_map_sev = {
             SeveridadeDefeitoEnum.critico: "#7f1d1d",
@@ -61,7 +65,7 @@ class DashboardService:
                 color=color_map_sev.get(sev, "#000000")
             ))
 
-        # 5. Prepara o Ranking de Módulos Problemáticos.
+        # 5. Prepara Ranking de Módulos
         chart_modulos = [
             ChartDataPoint(label=nome, value=count) 
             for nome, count in modulos_data

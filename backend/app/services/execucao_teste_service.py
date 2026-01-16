@@ -5,7 +5,7 @@ from app.repositories.execucao_teste_repository import ExecucaoTesteRepository
 from app.repositories.ciclo_teste_repository import CicloTesteRepository
 from app.repositories.caso_teste_repository import CasoTesteRepository
 from app.schemas.execucao_teste import ExecucaoTesteResponse, ExecucaoPassoResponse, ExecucaoPassoUpdate
-from app.models.testing import StatusExecucaoEnum
+from app.models.testing import StatusExecucaoEnum, StatusPassoEnum
 import json
 import shutil
 import uuid
@@ -14,12 +14,10 @@ import os
 class ExecucaoTesteService:
     def __init__(self, db: AsyncSession):
         self.repo = ExecucaoTesteRepository(db)
-        # Repositórios auxiliares para validação cruzada
         self.ciclo_repo = CicloTesteRepository(db)
         self.caso_repo = CasoTesteRepository(db)
 
     async def alocar_teste(self, ciclo_id: int, caso_id: int, responsavel_id: int):
-        # 1. Validações de existência antes de tentar criar
         ciclo = await self.ciclo_repo.get_by_id(ciclo_id)
         if not ciclo:
              raise HTTPException(status_code=404, detail="Ciclo não encontrado")
@@ -28,19 +26,10 @@ class ExecucaoTesteService:
         if not caso:
              raise HTTPException(status_code=404, detail="Caso de Teste não encontrado")
 
-        # 2. Criação do planejamento: Gera a execução e copia os passos do template.
         nova_execucao = await self.repo.criar_planejamento(ciclo_id, caso_id, responsavel_id)
-        
         return ExecucaoTesteResponse.model_validate(nova_execucao)
 
-    # Filtra as tarefas da grid "Meus Testes".
-    async def listar_tarefas_usuario(
-        self, 
-        usuario_id: int,
-        status: Optional[StatusExecucaoEnum] = None,
-        skip: int = 0,
-        limit: int = 20
-    ):
+    async def listar_tarefas_usuario(self, usuario_id: int, status: Optional[StatusExecucaoEnum] = None, skip: int = 0, limit: int = 20):
         items = await self.repo.get_minhas_execucoes(usuario_id, status, skip, limit)
         return [ExecucaoTesteResponse.model_validate(i) for i in items]
     
@@ -50,29 +39,61 @@ class ExecucaoTesteService:
             return None
         return ExecucaoTesteResponse.model_validate(execucao)
 
+    # --- LÓGICA DE ATUALIZAÇÃO AUTOMÁTICA ---
     async def registrar_resultado_passo(self, passo_id: int, dados: ExecucaoPassoUpdate):
+        # 1. Atualiza o passo
         passo = await self.repo.get_execucao_passo(passo_id)
         if not passo:
              raise HTTPException(status_code=404, detail="Passo da execução não encontrado")
         
         atualizado = await self.repo.update_passo(passo_id, dados)
+        
+        # 2. Recalcula o status do teste pai
+        await self._calcular_status_automatico(atualizado.execucao_teste_id)
+
         return ExecucaoPassoResponse.model_validate(atualizado)
     
-    async def finalizar_execucao(self, execucao_id: int, status_final: StatusExecucaoEnum):
+    async def _calcular_status_automatico(self, execucao_id: int):
+        """
+        Regra:
+        1. 1 Reprovado -> Teste FALHOU
+        2. 1 Bloqueado (e 0 reprovados) -> Teste BLOQUEADO
+        3. Todos Aprovados -> Teste PASSOU
+        4. Caso contrário -> EM PROGRESSO
+        """
         execucao = await self.repo.get_by_id(execucao_id)
-        if not execucao:
-             return None
+        if not execucao or not execucao.passos_executados:
+            return
+
+        passos = execucao.passos_executados
         
+        tem_reprovado = any(p.status == StatusPassoEnum.reprovado for p in passos)
+        tem_bloqueado = any(p.status == StatusPassoEnum.bloqueado for p in passos)
+        todos_aprovados = all(p.status == StatusPassoEnum.aprovado for p in passos)
+        tem_pendente = any(p.status == StatusPassoEnum.pendente for p in passos)
+
+        novo_status = StatusExecucaoEnum.em_progresso
+
+        if tem_reprovado:
+            novo_status = StatusExecucaoEnum.falhou
+        elif tem_bloqueado:
+            novo_status = StatusExecucaoEnum.bloqueado
+        elif todos_aprovados:
+            novo_status = StatusExecucaoEnum.passou
+        elif tem_pendente:
+            novo_status = StatusExecucaoEnum.em_progresso
+
+        if execucao.status_geral != novo_status:
+            await self.repo.update_status_geral(execucao_id, novo_status)
+
+    async def finalizar_execucao(self, execucao_id: int, status_final: StatusExecucaoEnum):
         return await self.repo.update_status_geral(execucao_id, status_final)
     
-    # Gerencia upload de prints/logs para evidência de teste.
     async def upload_evidencia(self, passo_id: int, file: UploadFile):
-        # 1. Busca o passo para checar limite de arquivos
         passo_atual = await self.repo.get_execucao_passo(passo_id)
         if not passo_atual:
              raise HTTPException(status_code=404, detail="Passo não encontrado")
 
-        # 2. Lógica para lidar com JSON legado ou nulo no banco
         evidencias_lista = []
         if passo_atual.evidencias:
             try:
@@ -82,11 +103,9 @@ class ExecucaoTesteService:
             except:
                 evidencias_lista = [passo_atual.evidencias]
 
-        # Regra de negócio: Limite de 3 imagens por passo pra não estourar o storage.
         if len(evidencias_lista) >= 3:
             raise HTTPException(status_code=400, detail="Limite de 3 evidências atingido.")
 
-        # 3. Salva Arquivo no disco local (volume docker)
         os.makedirs("evidencias", exist_ok=True) 
         extensao = file.filename.split(".")[-1]
         nome_arquivo = f"{uuid.uuid4()}.{extensao}"
@@ -95,9 +114,8 @@ class ExecucaoTesteService:
         with open(caminho_arquivo, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        url_publica = f"http://localhost:8000/{caminho_arquivo}" # Ajustar se for pra prod
+        url_publica = f"http://localhost:8000/{caminho_arquivo}"
         
-        # 4. Atualiza a lista no banco
         evidencias_lista.append(url_publica)
         
         dados_update = ExecucaoPassoUpdate(evidencias=json.dumps(evidencias_lista))

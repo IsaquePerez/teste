@@ -314,7 +314,7 @@ export function AdminModulos() {
                                                 <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
                                                     <li onClick={() => { setSelectedSistemaId(''); setSistemaSearchText(''); setIsSistemaSearchOpen(false); }}><span style={{color: '#3b82f6', fontWeight: 'bold'}}>Todos</span></li>
                                                     {filteredSistemasForHeader.map(s => (
-                                                        <li key={s.id} onClick={() => { setSelectedSistemaId(s.id); setSistemaSearchText(''); setIsSistemaSearchOpen(true); }}>{truncate(s.nome, 20)}</li>
+                                                        <li key={s.id} onClick={() => { setSelectedSistemaId(s.id); setSistemaSearchText(''); setIsSistemaSearchOpen(true); }}>{truncate(s.nome, 15)}</li>
                                                     ))}
                                                     {filteredSistemasForHeader.length === 0 && <li style={{color:'#94a3b8'}}>Sem resultados</li>}
                                                 </ul>

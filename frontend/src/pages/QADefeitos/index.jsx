@@ -246,14 +246,7 @@ export function QADefeitos() {
                                 <td className="status-cell" style={{ position: 'relative' }}> 
                                     {isAdmin ? (                                 
                                             <>
-                                                <button onClick={() => toggleMenu(d.id)} className={`status-badge status-${d.status || 'aberto'} status-dropdown-btn`}>{d.status.replace('_',' ').toUpperCase()} <span>▼</span></button>
-                                                {openMenuId === d.id && (
-                                                    <div className="dropdown-menu">
-                                                        {['aberto', 'em_teste', 'corrigido', 'fechado'].map(opt => (
-                                                            <div key={opt} onClick={() => handleUpdateStatus(d.id, opt)} className={`dropdown-item ${d.status === opt ? 'active' : ''}`}>{opt.replace('_', ' ')}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                <button onClick={() => toggleMenu(d.id)} className={`status-badge status-${d.status || 'aberto'} status-dropdown-btn`}>{d.status.replace('_',' ').toUpperCase()} </button>
                                             </>
                                     ) : <span className={`status-badge status-${d.status || 'aberto'}`}>{d.status.replace('_',' ').toUpperCase()}</span>}
                                 </td>

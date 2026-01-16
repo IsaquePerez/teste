@@ -6,8 +6,8 @@ from app.models.projeto import Projeto, StatusProjetoEnum
 from app.models.testing import (
     CicloTeste, StatusCicloEnum, 
     CasoTeste, 
-    Defeito, StatusDefeitoEnum,
-    ExecucaoTeste
+    Defeito, StatusDefeitoEnum, SeveridadeDefeitoEnum,
+    ExecucaoTeste, StatusExecucaoEnum
 )
 from app.models.modulo import Modulo
 
@@ -15,28 +15,83 @@ class DashboardRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # Roda vários counts separados pra montar os "Big Numbers" (cards) do topo da tela.
     async def get_kpis_gerais(self):
-        queries = [
-            select(func.count(Projeto.id)).where(Projeto.status == StatusProjetoEnum.ativo),
-            select(func.count(CicloTeste.id)).where(CicloTeste.status == StatusCicloEnum.em_execucao),
-            select(func.count(CasoTeste.id)),
-            select(func.count(Defeito.id)).where(Defeito.status == StatusDefeitoEnum.aberto)
-        ]
+        # Queries Originais de Contagem
+        q_projetos = select(func.count(Projeto.id)).where(Projeto.status == StatusProjetoEnum.ativo)
+        q_ciclos = select(func.count(CicloTeste.id)).where(CicloTeste.status == StatusCicloEnum.em_execucao)
+        q_casos = select(func.count(CasoTeste.id))
+        q_defeitos_abertos = select(func.count(Defeito.id)).where(Defeito.status == StatusDefeitoEnum.aberto)
         
-        results = []
-        for q in queries:
-            res = await self.db.execute(q)
-            results.append(res.scalar() or 0)
-            
-        return {
-            "total_projetos": results[0],
-            "total_ciclos_ativos": results[1],
-            "total_casos_teste": results[2],
-            "total_defeitos_abertos": results[3]
-        }
+        # --- NOVAS QUERIES (Para os 8 Cards) ---
+        
+        # 1. Total Bloqueados (Testes em ciclos ativos que estão impedidos)
+        q_bloqueados = (
+            select(func.count(ExecucaoTeste.id))
+            .join(CicloTeste)
+            .where(
+                CicloTeste.status == StatusCicloEnum.em_execucao,
+                ExecucaoTeste.status_geral == StatusExecucaoEnum.bloqueado
+            )
+        )
 
-    # Agrupa o status das execuções (passou/falhou) focando só no que tá rodando agora.
+        # 2. Defeitos Críticos (Abertos e com severidade Crítica)
+        q_criticos = select(func.count(Defeito.id)).where(
+            Defeito.status != StatusDefeitoEnum.fechado,
+            Defeito.severidade == SeveridadeDefeitoEnum.critico
+        )
+
+        # 3. Aguardando Reteste (Status 'corrigido')
+        q_reteste = select(func.count(Defeito.id)).where(
+            Defeito.status == StatusDefeitoEnum.corrigido
+        )
+
+        # 4. Cálculo de Taxa de Sucesso (Passou / Total Finalizado)
+        # Finalizado = Passou + Falhou + Bloqueado (Ignora pendente/em_progresso)
+        
+        q_passou = (
+            select(func.count(ExecucaoTeste.id))
+            .join(CicloTeste)
+            .where(
+                CicloTeste.status == StatusCicloEnum.em_execucao,
+                ExecucaoTeste.status_geral == StatusExecucaoEnum.passou
+            )
+        )
+
+        q_total_finalizados = (
+            select(func.count(ExecucaoTeste.id))
+            .join(CicloTeste)
+            .where(
+                CicloTeste.status == StatusCicloEnum.em_execucao,
+                ExecucaoTeste.status_geral.in_([
+                    StatusExecucaoEnum.passou, 
+                    StatusExecucaoEnum.falhou, 
+                    StatusExecucaoEnum.bloqueado
+                ])
+            )
+        )
+
+        # Executando queries
+        results = {}
+        results["total_projetos"] = (await self.db.execute(q_projetos)).scalar() or 0
+        results["total_ciclos_ativos"] = (await self.db.execute(q_ciclos)).scalar() or 0
+        results["total_casos_teste"] = (await self.db.execute(q_casos)).scalar() or 0
+        results["total_defeitos_abertos"] = (await self.db.execute(q_defeitos_abertos)).scalar() or 0
+        
+        results["total_bloqueados"] = (await self.db.execute(q_bloqueados)).scalar() or 0
+        results["total_defeitos_criticos"] = (await self.db.execute(q_criticos)).scalar() or 0
+        results["total_aguardando_reteste"] = (await self.db.execute(q_reteste)).scalar() or 0
+        
+        passou = (await self.db.execute(q_passou)).scalar() or 0
+        total_finalizados = (await self.db.execute(q_total_finalizados)).scalar() or 0
+
+        # Evita divisão por zero
+        if total_finalizados > 0:
+            results["taxa_sucesso_ciclos"] = round((passou / total_finalizados) * 100, 1)
+        else:
+            results["taxa_sucesso_ciclos"] = 0.0
+
+        return results
+
     async def get_status_execucao_geral(self):
         query = (
             select(ExecucaoTeste.status_geral, func.count(ExecucaoTeste.id))
@@ -47,7 +102,6 @@ class DashboardRepository:
         result = await self.db.execute(query)
         return result.all()
 
-    # Classifica os bugs pendentes por gravidade (Crítico, Alto, Médio).
     async def get_defeitos_por_severidade(self):
         query = (
             select(Defeito.severidade, func.count(Defeito.id))
@@ -57,7 +111,6 @@ class DashboardRepository:
         result = await self.db.execute(query)
         return result.all()
 
-    # Faz o caminho reverso (Defeito -> Projeto -> Módulo) pra achar os módulos mais problemáticos.
     async def get_modulos_com_mais_defeitos(self, limit: int = 5):
         query = (
             select(Modulo.nome, func.count(Defeito.id))
