@@ -10,6 +10,9 @@ export function ExecutionPlayer({ tasks, execution, onFinish, onStepAction, onUp
     return <div className={styles.emptyState}>Selecione uma tarefa para iniciar</div>;
   }
 
+  const steps = execution.passos_executados || [];
+  const isComplete = steps.length > 0 && steps.every(p => p.status === 'aprovado' || p.status === 'reprovado');
+
   const passosSorted = [...(execution.passos_executados || [])].sort((a, b) => 
     (a.passo_template?.ordem || 0) - (b.passo_template?.ordem || 0)
   );
@@ -25,7 +28,14 @@ export function ExecutionPlayer({ tasks, execution, onFinish, onStepAction, onUp
           </div>
           
           {['passou', 'falhou'].indexOf(execution.status_geral) === -1 && (
-             <button onClick={onFinish} className="btn primary">Finalizar Teste</button>
+             <button
+              onClick={onFinish}
+              className="btn primary"
+              disabled={!isComplete}
+              title={!isComplete ? "Resolva todos os passos para finalizar" : ""}
+             >
+              Finalizar Teste
+             </button>
           )}
         </div>
 

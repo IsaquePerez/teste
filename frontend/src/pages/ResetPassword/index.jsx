@@ -162,7 +162,7 @@ export function ResetPassword() {
               <button
                 type="submit"
                 className={styles.button}
-                disabled={loading || passwordsDontMatch || password.length < 6}
+                disabled={loading || passwordsDontMatch || password.length < 6 || confirmPassword.length < 1}
               >
                 {loading ? 'Redefinindo...' : 'Redefinir Senha'}
               </button>

@@ -152,6 +152,8 @@ export function AdminSistemas() {
   const currentSistemas = filteredSistemas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
+  const isFormInvalid =  !form.nome.trim() || !form.descricao.trim();
+
   return (
     <main className="container"> 
       <ConfirmationModal 
@@ -169,7 +171,7 @@ export function AdminSistemas() {
             <div className="form-grid" style={{ gridTemplateColumns: '1fr auto' }}> 
               
               <div style={{gridColumn: '1'}}>
-                  <label className="input-label">Nome</label>
+                  <label className="input-label"><b>Nome</b></label>
                   <input maxLength={50} value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Nome do sistema"/>
               </div>
 
@@ -182,14 +184,21 @@ export function AdminSistemas() {
               </div>
 
               <div style={{gridColumn: '1 / -1'}}>
-                  <label className="input-label">Descrição</label>
+                  <label className="input-label"><b>Descrição</b></label>
                   <input maxLength={100} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control" placeholder="Descrição breve"/>
               </div>
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="btn primary">{editingId ? 'Salvar' : 'Criar'}</button>
               <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={isFormInvalid} 
+                title={isFormInvalid ? "Preencha todos os campos" : ""}
+              >
+                Salvar
+              </button>
             </div>
           </form>
         </section>

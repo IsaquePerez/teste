@@ -67,6 +67,13 @@
   box-sizing: border-box;
 }
 
+.form-control::-ms-reveal,
+.form-control::-ms-clear,
+.form-control::-webkit-contacts-auto-fill-button,
+.form-control::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
 .bg-gray {
   background-color: #f9fafb;
 }
@@ -75,6 +82,26 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
+}
+
+.eyeButton {
+  position: absolute;
+  right: 12px;
+  bottom: 10px; 
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  height: 20px;
+  transition: color 0.2s;
+}
+
+.eyeButton:hover {
+  color: #333;
 }
 
 @media (min-width: 768px) {

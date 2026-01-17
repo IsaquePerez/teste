@@ -85,7 +85,7 @@ export function ForgotPassword() {
               <button 
                 type="submit" 
                 className={styles.button} 
-                disabled={loading}
+                disabled={loading || email.length < 1}
               >
                 {loading ? 'Enviando...' : 'Solicitar Redefinição'}
               </button>

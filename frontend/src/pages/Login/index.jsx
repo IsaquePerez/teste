@@ -8,7 +8,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
-  const { login, logout, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   
   const { error: snackError, success: snackSuccess, warning: snackWarning } = useSnackbar();
   
@@ -17,11 +17,16 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
+  // FIXED: Instead of logging out, redirect users who are already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      logout();
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/qa/runner', { replace: true });
+      }
     }
-  }, [isAuthenticated, logout]);
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,16 +54,17 @@ export function Login() {
       
       const data = response; 
       
+      // Fallback para roles e username caso o backend não envie
       if (!data.role) data.role = "user";
-      
       if (!data.username) data.username = username;
 
+      // Atualiza o contexto global de autenticação
       login(data);
       
       const nomeExibicao = data.nome || data.username || "Usuário";
-      
       snackSuccess(`Bem-vindo, ${nomeExibicao}!`);
       
+      // Redirecionamento baseado no perfil
       if (data.role === 'admin') {
            navigate('/admin', { replace: true });
       } else {
@@ -67,7 +73,6 @@ export function Login() {
 
     } catch (err) {
       console.error(err);
-      
       const mensagemBackend = err.response?.data?.detail || err.response?.data?.message;
       snackError(mensagemBackend || err.message || "Falha no login. Verifique as credenciais.");
     } finally {
@@ -90,6 +95,7 @@ export function Login() {
                 onChange={e => setUsername(e.target.value)}
                 placeholder="Usuário" 
                 className={styles.userinput}
+                autoComplete="username"
               />
             </div>
             <div className={styles.inputContainer}>
@@ -100,6 +106,7 @@ export function Login() {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Senha"
                 className={styles.passinput}
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -118,7 +125,11 @@ export function Login() {
             </div>
             
             <div style={{ gridColumn: '1/-1' }}>
-              <button type="submit" className={styles.button} disabled={loading}>
+              <button
+                type="submit"
+                className={styles.button}
+                disabled={loading || username.length < 1 || password.length < 1}
+              >
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
             </div>

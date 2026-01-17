@@ -22,6 +22,8 @@ export function DefectModal({ isOpen, onClose, onConfirm }) {
     onConfirm(form);
   };
 
+  const isFormInvalid = !form.titulo.trim() || !form.descricao.trim();
+
   return (
     <div style={{
       position: 'fixed',
@@ -85,7 +87,14 @@ export function DefectModal({ isOpen, onClose, onConfirm }) {
 
           <div className="actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" onClick={onClose} className="btn">Cancelar</button>
-            <button type="submit" className="btn danger">Registrar Falha</button>
+            <button
+              type="submit"
+              className="btn danger"
+              disabled={isFormInvalid} 
+              title={isFormInvalid ? "Preencha todos os campos" : ""}
+            >
+              Registrar Falha
+            </button>
           </div>
         </form>
       </div>

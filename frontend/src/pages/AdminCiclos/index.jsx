@@ -218,6 +218,8 @@ export function AdminCiclos() {
     finally { setIsDeleteModalOpen(false); setItemToDelete(null); }
   };
 
+  const isFormInvalid =  !form.nome.trim() || !form.descricao.trim() || !form.data_inicio.trim() || !form.data_fim.trim();
+
   return (
     <main className="container">
       <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir?" message={`Excluir "${itemToDelete?.nome}"?`} isDanger={true} />
@@ -229,25 +231,24 @@ export function AdminCiclos() {
               <div className="form-header"><h3 className="form-title">{editingId ? 'Editar Ciclo' : 'Novo Ciclo'}</h3></div>
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
                   <div className="form-grid">
-                      <div>
-                        <label className="input-label">Projeto Pai *</label>
-                        {/* Dropdown no Formulário */}
-                        <SearchableSelect 
-                            options={projetos.filter(p => p.status === 'ativo')}
-                            value={form.projeto_id}
-                            onChange={(val) => setForm({ ...form, projeto_id: val })}
-                            placeholder="Selecione o projeto..."
-                            disabled={!!editingId}
+                      <div style={{ flex: 1 }}>
+                        <label className="input-label"><b>Projeto</b></label>
+                        <input 
+                          type="text"
+                          className="form-control bg-gray" 
+                          style={{ cursor: 'not-allowed', color: '#666' }}
+                          value={projetos.find(p => String(p.id) === String(form.projeto_id))?.nome || 'Projeto não selecionado'}
+                          readOnly
                         />
                       </div>
-                      <div><label className="input-label">Nome *</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Ex: Sprint 24" /></div>
+                      <div><label className="input-label"><b>Nome</b></label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control"/></div>
                   </div>
                   <div><label className="input-label">Descrição</label><textarea rows={2} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control" /></div>
                   <div className="form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr'}}>
-                      <div><label className="input-label">Início *</label><input type="date" value={form.data_inicio} min={!editingId ? getTodayString() : undefined} disabled={!!editingId} onChange={e => setForm({...form, data_inicio: e.target.value})} className={`form-control ${!!editingId ? 'bg-gray' : ''}`} /></div>
-                      <div><label className="input-label">Fim *</label><input type="date" value={form.data_fim} min={getNextDayString(form.data_inicio)} disabled={!form.data_inicio} onChange={e => setForm({...form, data_fim: e.target.value})} className="form-control" /></div>
+                      <div><label className="input-label"><b>Início</b></label><input type="date" value={form.data_inicio} min={!editingId ? getTodayString() : undefined} disabled={!!editingId} onChange={e => setForm({...form, data_inicio: e.target.value})} className={`form-control ${!!editingId ? 'bg-gray' : ''}`} /></div>
+                      <div><label className="input-label"><b>Fim</b></label><input type="date" value={form.data_fim} min={getNextDayString(form.data_inicio)} disabled={!form.data_inicio} onChange={e => setForm({...form, data_fim: e.target.value})} className="form-control" /></div>
                       <div>
-                        <label className="input-label">Status</label>
+                        <label className="input-label"><b>Status</b></label>
                         <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="form-control bg-gray">
                            {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
@@ -256,7 +257,14 @@ export function AdminCiclos() {
               </div>
               <div className="form-actions">
                   <button type="button" onClick={handleReset} className="btn">Cancelar</button>
-                  <button type="submit" className="btn primary">Salvar</button>
+                  <button
+                    type="submit"
+                    className="btn primary"
+                    disabled={isFormInvalid} 
+                    title={isFormInvalid ? "Preencha todos os campos" : ""}
+                  >
+                    Salvar
+                  </button>
               </div>
             </section>
           </form>

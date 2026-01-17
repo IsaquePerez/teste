@@ -90,10 +90,12 @@
 }
 
 .section-subtitle {
-  margin-top: 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 15px;
   margin-bottom: 20px;
-  color: #334155;
-  font-size: 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .input-label {

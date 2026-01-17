@@ -270,6 +270,15 @@ body {
   color: var(--white);
 }
 
+.btn.primary:hover:not(:disabled) {
+  background-color: #3E2874;
+}
+
+.btn.primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .btn.primary:hover {
   background-color: #1E3A8A;
   transform: translateY(-1px);
@@ -278,6 +287,20 @@ body {
 .btn.danger {
   background-color: #1E3A8A;
   color: var(--white);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background-color: #3E2874;
+}
+
+.btn.danger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn.danger:hover {
+  background-color: #1E3A8A;
+  transform: translateY(-1px);
 }
 
 .btn.small {

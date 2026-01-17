@@ -205,6 +205,8 @@ export function AdminModulos() {
   const currentModulos = filteredModulos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
+  const isFormInvalid =  !String(form.sistema_id).trim() || !form.nome.trim() || !form.descricao.trim();
+
   return (
     <main className="container">
       <ConfirmationModal 
@@ -219,7 +221,7 @@ export function AdminModulos() {
             <form onSubmit={handleSubmit}>
                <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}> 
                  <div style={{gridColumn: 'span 1'}}>
-                    <label className="input-label">Sistema</label>
+                    <label className="input-label"><b>Sistema</b></label>
                     <SearchableSelect 
                         options={sistemas.filter(s => s.ativo)} 
                         value={form.sistema_id}
@@ -237,19 +239,26 @@ export function AdminModulos() {
                  </div>
 
                  <div style={{gridColumn: '1 / -1'}}>
-                    <label className="input-label">Nome</label>
+                    <label className="input-label"><b>Nome</b></label>
                     <input className="form-control" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} required />
                  </div>
                  
                  <div style={{gridColumn: '1 / -1'}}>
-                    <label className="input-label">Descrição</label>
+                    <label className="input-label"><b>Descrição</b></label>
                     <input className="form-control" value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} />
                  </div>
                </div>
 
                <div className="form-actions">
-                 <button type="submit" className="btn primary">Salvar</button>
                  <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+                 <button
+                  type="submit"
+                  className="btn primary"
+                  disabled={isFormInvalid} 
+                  title={isFormInvalid ? "Preencha todos os campos" : ""}
+                 >
+                  Salvar
+                 </button>
                </div>
             </form>
           </section>

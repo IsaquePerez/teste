@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { useSnackbar } from '../../context/SnackbarContext'; 
+import { Eye, EyeOff } from 'lucide-react';
 import './styles.css';
 
 export function AdminUsers() {
@@ -39,6 +40,9 @@ export function AdminUsers() {
   const [selectedStatus, setSelectedStatus] = useState(''); 
   const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
   const statusHeaderRef = useRef(null);
+
+  // --- BOTÃO DE MOSTRAR SENHA
+  const [showPassword, setShowPassword] = useState(false);
 
   // --- HELPERS DE TEXTO ---
   const truncate = (str, n = 25) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
@@ -150,9 +154,17 @@ export function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!form.nome.trim() || !form.email.trim()) return warning("Nome e Email são obrigatórios.");
+    
     if (!editingId && !form.senha) return warning("Senha é obrigatória para novos usuários.");
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      error("Por favor, inclua um '@' e um domínio válido no endereço de e-mail.");
+      return;
+    }
+    
     if (form.username && form.username.trim() !== '') {
         const usernameExists = users.some(u => 
             u.username?.toLowerCase() === form.username.trim().toLowerCase() && u.id !== editingId 
@@ -201,6 +213,8 @@ export function AdminUsers() {
     return pages;
   };
 
+  const isFormInvalid =  !form.nome.trim() || !form.username.trim() || !form.email.trim() || (!editingId && !form.senha);
+
   return (
     <main className="container">
       <ConfirmationModal 
@@ -214,10 +228,18 @@ export function AdminUsers() {
             <section className="card form-section">
               <div className="form-header"><h3 className="form-title">{editingId ? 'Editar Usuário' : 'Novo Usuário'}</h3></div>
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+                  
+                  <div className="form-grid">
                     <div style={{gridColumn: '1 / -1'}}>
-                        <label className="input-label">Nome Completo *</label>
+                        <label className="input-label"><b>Nome Completo</b></label>
                         <input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" />
+                    </div>
+                  </div>
+
+                  <div className="form-grid" style={{ gridTemplateColumns: '1fr auto', alignItems: 'end' }}>
+                    <div>
+                      <label className="input-label"><b>Username</b></label>
+                      <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="form-control"/>
                     </div>
                     <div className="toggle-wrapper" style={{gridColumn: '3', marginTop: '28px'}}>
                         <label className="switch">
@@ -226,22 +248,31 @@ export function AdminUsers() {
                         </label>
                         <span className="toggle-label">{form.ativo ? 'Ativo' : 'Inativo'}</span>
                     </div>
-                    <div style={{gridColumn: '1 / span 2'}}>
-                        <label className="input-label">Username</label>
-                        <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="form-control" placeholder="Ex: joao.qa" />
-                    </div>
                   </div>
-                  <div>
-                    <label className="input-label">Email *</label>
-                    <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="form-control" />
+                  
+                  <div className="form-grid">
+                    <div style={{gridColumn: '1 / -1'}}>
+                      <label className="input-label"><b>Email</b></label>
+                      <input type="text" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="form-control" />
+                    </div>
                   </div>
                   <div className="form-grid">
-                    <div>
-                        <label className="input-label">{editingId ? 'Nova Senha (opcional)' : 'Senha *'}</label>
-                        <input type="password" value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} className="form-control" />
+                    <div style={{ position: 'relative' }}>
+                        <label className="input-label"><b>{editingId ? 'Nova Senha (opcional)' : 'Senha'}</b></label>
+                        <div>
+                          <input type={showPassword ? "text" : "password"} value={form.senha} onChange={e => setForm({...form, senha: e.target.value})} className="form-control" />
+                          <button
+                            type="button"
+                            className="eyeButton"
+                            onClick={() => setShowPassword(!showPassword)}
+                            tabIndex="-1"
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
                     </div>
                     <div>
-                        <label className="input-label">Nível de Acesso</label>
+                        <label className="input-label"><b>Nível de Acesso</b></label>
                         <select value={form.nivel_acesso_id} onChange={e => setForm({...form, nivel_acesso_id: parseInt(e.target.value)})} className="form-control bg-gray">
                         <option value={1}>Admin</option>
                         <option value={2}>User / QA</option>
@@ -251,7 +282,14 @@ export function AdminUsers() {
               </div>
               <div className="form-actions">
                   <button type="button" onClick={handleReset} className="btn">Cancelar</button>
-                  <button type="submit" className="btn primary">Salvar</button>
+                  <button 
+                      type="submit" 
+                      className="btn primary" 
+                      disabled={isFormInvalid} 
+                      title={isFormInvalid ? "Preencha todos os campos" : ""}
+                  >
+                      Salvar
+                  </button>
               </div>
             </section>
           </form>

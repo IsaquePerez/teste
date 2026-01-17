@@ -244,6 +244,8 @@ export function AdminProjetos() {
   const modulosFiltrados = form.sistema_id ? modulos.filter(m => m.sistema_id == form.sistema_id) : modulos;
   const admins = usersFormatted.filter(u => u.nivel_acesso_id === 1 && u.ativo);
 
+  const isFormInvalid =  !String(form.sistema_id).trim() || !String(form.modulo_id).trim() || !String(form.responsavel_id).trim() || !form.nome.trim() || !form.descricao.trim();
+
   return (
     <main className="container">
       <ConfirmationModal 
@@ -257,16 +259,16 @@ export function AdminProjetos() {
             <section className="card form-section">
               <div className="form-header"><h3 className="form-title">{editingId ? 'Editar Projeto' : 'Novo Projeto'}</h3></div>
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                  <div><label className="input-label">Nome do Projeto *</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Ex: E-commerce 2.0" /></div>
+                  <div><label className="input-label">Nome do Projeto</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control"/></div>
                   <div><label className="input-label">Descrição</label><textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control" rows="3" /></div>
                   <div className="form-grid">
-                      <div><label className="input-label">Sistema *</label><SearchableSelect options={sistemas} value={form.sistema_id} onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })} placeholder="Busque o sistema..." labelKey="nome" /></div>
-                      <div><label className="input-label">Módulo *</label><SearchableSelect options={modulosFiltrados} value={form.modulo_id} onChange={(val) => setForm({ ...form, modulo_id: val })} placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"} disabled={!form.sistema_id} labelKey="nome" /></div>
+                      <div><label className="input-label"><b>Sistema</b></label><SearchableSelect options={sistemas} value={form.sistema_id} onChange={(val) => setForm({ ...form, sistema_id: val, modulo_id: '' })} placeholder="Busque o sistema..." labelKey="nome" /></div>
+                      <div><label className="input-label"><b>Módulo</b></label><SearchableSelect options={modulosFiltrados} value={form.modulo_id} onChange={(val) => setForm({ ...form, modulo_id: val })} placeholder={form.sistema_id ? "Busque o módulo..." : "Selecione um sistema antes"} disabled={!form.sistema_id} labelKey="nome" /></div>
                   </div>
                   <div className="form-grid">
-                      <div><label className="input-label">Responsável (Admin) *</label><SearchableSelect options={admins} value={form.responsavel_id} onChange={(val) => setForm({ ...form, responsavel_id: val })} placeholder="Busque o responsável..." labelKey="labelCompleto" /></div>
+                      <div><label className="input-label"><b>Responsável</b></label><SearchableSelect options={admins} value={form.responsavel_id} onChange={(val) => setForm({ ...form, responsavel_id: val })} placeholder="Busque o responsável..." labelKey="labelCompleto" /></div>
                       <div>
-                        <label className="input-label">Status</label>
+                        <label className="input-label"><b>Status</b></label>
                         <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="form-control bg-gray">
                             <option value="ativo">Ativo</option><option value="pausado">Pausado</option><option value="finalizado">Finalizado</option>
                         </select>
@@ -275,7 +277,14 @@ export function AdminProjetos() {
               </div>
               <div className="form-actions">
                   <button type="button" onClick={handleReset} className="btn">Cancelar</button>
-                  <button type="submit" className="btn primary">Salvar</button>
+                  <button
+                    type="submit"
+                    className="btn primary"
+                    disabled={isFormInvalid} 
+                    title={isFormInvalid ? "Preencha todos os campos" : ""}
+                  >
+                    Salvar
+                  </button>
               </div>
             </section>
           </form>
