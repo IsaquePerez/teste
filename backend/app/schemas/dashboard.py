@@ -1,18 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+from datetime import datetime
+
 
 class DashboardKPI(BaseModel):
-    # KPIs Originais
+    
     total_projetos: int
     total_ciclos_ativos: int
     total_casos_teste: int
     total_defeitos_abertos: int
     
-    # Novos KPIs (Focados em Qualidade e Urgência)
-    taxa_sucesso_ciclos: float      # % de testes que passaram nos ciclos ativos
-    total_bloqueados: int           # Testes que não podem ser executados
-    total_defeitos_criticos: int    # Bugs de severidade Crítica
-    total_aguardando_reteste: int   # Bugs corrigidos esperando validação do QA
+    
+    taxa_sucesso_ciclos: float      
+    total_bloqueados: int           
+    total_defeitos_criticos: int    
+    total_aguardando_reteste: int   
 
 class ChartDataPoint(BaseModel):
     label: str
@@ -28,22 +30,38 @@ class DashboardResponse(BaseModel):
     kpis: DashboardKPI
     charts: DashboardCharts
 
-# Novos Schemas para o Dashboard de Performance dos Testadores 
 
 class RunnerKPI(BaseModel):
     total_execucoes_concluidas: int
     total_defeitos_reportados: int
     tempo_medio_execucao_minutos: float
     testes_em_fila: int
+    ultima_atividade: Optional[datetime] = None 
 
 class RunnerRankingData(BaseModel):
-    label: str  # Nome do Testador
-    value: int  # Quantidade de testes concluídos
+    
+    label: str  
+    value: int  
     color: Optional[str] = None
 
+class StatusDistributionData(BaseModel):
+    name: str   
+    value: int  
+    color: Optional[str] = None
+
+class TimelineItem(BaseModel):
+    id: int
+    case_name: str
+    status: str
+    assignee: str
+    updated_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
 class RunnerDashboardCharts(BaseModel):
-    ranking_produtividade: List[RunnerRankingData]
-    defeitos_por_runner: List[RunnerRankingData]
+    ranking_produtividade: List[RunnerRankingData] = []
+    status_distribuicao: List[StatusDistributionData] = []
+    timeline: List[TimelineItem] = []
 
 class RunnerDashboardResponse(BaseModel):
     kpis: RunnerKPI
