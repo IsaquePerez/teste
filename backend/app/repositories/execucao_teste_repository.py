@@ -4,9 +4,10 @@ from sqlalchemy import update
 from sqlalchemy.orm import selectinload
 from typing import Sequence, Optional
 
+# CORREÇÃO: Adicionado StatusPassoEnum na importação
 from app.models.testing import (
     ExecucaoTeste, ExecucaoPasso, PassoCasoTeste, 
-    CasoTeste, StatusExecucaoEnum
+    CasoTeste, StatusExecucaoEnum, StatusPassoEnum
 )
 from app.models.usuario import Usuario
 from app.schemas.execucao_teste import ExecucaoPassoUpdate
@@ -15,7 +16,6 @@ class ExecucaoTesteRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # ... (métodos verificar_pendencias_ciclo e criar_planejamento mantidos) ...
     async def verificar_pendencias_ciclo(self, ciclo_id: int) -> bool:
         query = select(ExecucaoTeste).where(
             ExecucaoTeste.ciclo_teste_id == ciclo_id,
@@ -70,16 +70,34 @@ class ExecucaoTesteRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # ... (métodos get_minhas_execucoes, get_execucao_passo, update_passo mantidos) ...
-    async def get_minhas_execucoes(self, usuario_id: int, status: Optional[StatusExecucaoEnum] = None, skip: int = 0, limit: int = 20) -> Sequence[ExecucaoTeste]:
-        query = select(ExecucaoTeste).options(
-            selectinload(ExecucaoTeste.ciclo),
-            selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
-            selectinload(ExecucaoTeste.caso_teste).options(selectinload(CasoTeste.passos), selectinload(CasoTeste.ciclo), selectinload(CasoTeste.projeto)),
-            selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template)
-        ).where(ExecucaoTeste.responsavel_id == usuario_id)
-        if status: query = query.where(ExecucaoTeste.status_geral == status)
+    async def get_minhas_execucoes(
+        self, 
+        usuario_id: int, 
+        status: Optional[StatusExecucaoEnum] = None,
+        skip: int = 0,
+        limit: int = 20
+    ) -> Sequence[ExecucaoTeste]:
+        
+        query = (
+            select(ExecucaoTeste)
+            .options(
+                selectinload(ExecucaoTeste.ciclo),
+                selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
+                selectinload(ExecucaoTeste.caso_teste).options(
+                    selectinload(CasoTeste.passos), 
+                    selectinload(CasoTeste.ciclo), 
+                    selectinload(CasoTeste.projeto)
+                ),
+                selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template)
+            )
+            .where(ExecucaoTeste.responsavel_id == usuario_id)
+        )
+
+        if status:
+            query = query.where(ExecucaoTeste.status_geral == status)
+
         query = query.order_by(ExecucaoTeste.updated_at.desc()).offset(skip).limit(limit)
+            
         result = await self.db.execute(query)
         return result.scalars().all()
 
@@ -88,33 +106,39 @@ class ExecucaoTesteRepository:
 
     async def update_passo(self, passo_id: int, data: ExecucaoPassoUpdate) -> Optional[ExecucaoPasso]:
         passo = await self.db.get(ExecucaoPasso, passo_id)
+        
         if passo:
             update_data = data.model_dump(exclude_unset=True)
-            for k, v in update_data.items(): setattr(passo, k, v)
+            for k, v in update_data.items():
+                setattr(passo, k, v)
+            
             await self.db.commit()
-            query = select(ExecucaoPasso).options(selectinload(ExecucaoPasso.passo_template)).where(ExecucaoPasso.id == passo_id)
+            
+            query = (
+                select(ExecucaoPasso)
+                .options(selectinload(ExecucaoPasso.passo_template))
+                .where(ExecucaoPasso.id == passo_id)
+            )
             result = await self.db.execute(query)
             return result.scalars().first()
+            
         return None
 
-    # Método ORIGINAL para update de status (mantido)
+    # Método original para update de status (mantido para compatibilidade interna)
     async def update_status_geral(self, exec_id: int, status: StatusExecucaoEnum) -> Optional[ExecucaoTeste]:
-        execucao = await self.db.get(ExecucaoTeste, exec_id)
-        if execucao:
-            execucao.status_geral = status
-            await self.db.commit()
-            return await self.get_by_id(exec_id) 
-        return execucao
+        return await self.update_status(exec_id, status)
 
     async def listar_passos(self, execucao_id: int):
         query = select(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id == execucao_id)
         result = await self.db.execute(query)
         return result.scalars().all()
-
-    # --- MÉTODOS CORRIGIDOS PARA EVITAR ERROS DE ATRIBUTO ---
     
-    # 1. Método usado pelo DefeitoService
+    # --- MÉTODOS DE SINCRONIZAÇÃO DE STATUS ---
+    
+    # 1. Método principal usado pelo DefeitoService
+    # --- MÉTODO CORRIGIDO (COM RETORNO) ---
     async def update_status(self, id: int, status: StatusExecucaoEnum):
+        # 1. Atualiza o status geral da execução
         stmt = (
             update(ExecucaoTeste)
             .where(ExecucaoTeste.id == id)
@@ -122,8 +146,28 @@ class ExecucaoTesteRepository:
             .execution_options(synchronize_session="fetch")
         )
         await self.db.execute(stmt)
-        await self.db.commit()
 
-    # 2. Método usado pelo ExecucaoTesteService (ALIAS para resolver o erro)
+        # 2. SE FOR RETESTE: Reseta APENAS os passos reprovados
+        if status == StatusExecucaoEnum.reteste:
+            stmt_passos = (
+                update(ExecucaoPasso)
+                .where(
+                    ExecucaoPasso.execucao_teste_id == id,
+                    # IMPORTANTE: Só reseta o que falhou. O que passou continua verde.
+                    ExecucaoPasso.status == StatusPassoEnum.reprovado 
+                )
+                .values(
+                    status=StatusPassoEnum.pendente,   # Volta para cinza (a testar)
+                    resultado_obtido="",               # Limpa o texto do erro antigo
+                    evidencias="[]"                    # Limpa as fotos antigas
+                )
+            )
+            await self.db.execute(stmt_passos)
+
+        await self.db.commit()
+        
+        return await self.get_by_id(id)
+
+    # 2. Alias para compatibilidade com o ExecucaoTesteService
     async def atualizar_status_geral(self, execucao_id: int, novo_status: StatusExecucaoEnum):
         return await self.update_status(execucao_id, novo_status)

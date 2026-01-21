@@ -204,7 +204,7 @@
 .cell-id { color: #64748b; }
 .cell-name { font-weight: 600; color: #334155; }
 .cell-priority { text-align: center; }
-.priority-badge { background-color: #f1f5f9; color: #475569; }
+.priority-badge { background-color: #001C42; color: #475569; }
 .cell-resp { color: #475569; font-size: 0.85rem; }
 .cell-steps { text-align: center; color: #64748b; }
 .cell-actions { text-align: right; }
@@ -314,20 +314,20 @@
 }
 
 .status-ativo {
-    background-color: #d1fae5;
+    background-color: #065f46;
     color: #065f46;
     border: 1px solid #a7f3d0;
 }
 
 .status-rascunho {
-    background-color: #f3f4f6;
+    background-color: #4b5563;
     color: #4b5563;
     border: 1px solid #e5e7eb;
     border-style: dashed;
 }
 
 .status-obsoleto {
-    background-color: #fee2e2;
+    background-color: #991b1b;
     color: #991b1b;
     text-decoration: line-through;
 }
@@ -336,3 +336,4 @@
     background-color: #ffedd5;
     color: #9a3412;
 }
+

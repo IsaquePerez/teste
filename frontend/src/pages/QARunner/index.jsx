@@ -30,7 +30,6 @@ export function QARunner() {
   });
 
   // --- LÓGICA DE BLOQUEIO (READ-ONLY) ---
-  // Agora verifica se o status é 'fechado' para bloquear edições
   const isReadOnly = activeExecucao && activeExecucao.status_geral === 'fechado';
 
   useEffect(() => { loadMinhasTarefas(); }, []);
@@ -66,7 +65,19 @@ export function QARunner() {
       if (activeExecucao?.id === t.id) return;
       try {
           const data = await api.get(`/testes/execucoes/${t.id}`);
+          
+          // --- CORREÇÃO: Limpeza automática para Reteste ---
+          // Se a tarefa voltou como 'reteste', limpamos o lixo do localStorage da execução anterior (fechada)
+          // Isso garante que os passos não apareçam marcados incorretamente e a fila de defeitos esteja limpa.
+          if (data.status_geral === 'reteste') {
+              localStorage.removeItem(`queue_${t.id}`);
+              localStorage.removeItem(`statuses_${t.id}`);
+          }
+          // ------------------------------------------------
+
           setActiveExecucao(data);
+          
+          // Reinicia estados locais (o useEffect de recuperação não achará nada no localStorage se foi limpo acima)
           setDefectsQueue([]);
           setStepStatuses({});
           setDefectToEdit(null);
@@ -155,8 +166,13 @@ export function QARunner() {
           )
       }));
 
+      const passoAtual = activeExecucao.passos_executados.find(p => p.id === currentStepId);
+      const nomeAcaoPasso = passoAtual?.passo_caso_teste?.acao || "Passo desconhecido";
+      
+      const tituloCompleto = `${defectInfo.titulo} (Passo: ${nomeAcaoPasso})`;
+
       const newDefect = { 
-          titulo: defectInfo.titulo,
+          titulo: tituloCompleto,
           descricao: defectInfo.descricao,
           severidade: defectInfo.severidade,
           status: 'aberto', 
@@ -174,7 +190,7 @@ export function QARunner() {
       setStepStatuses(prev => ({ ...prev, [currentStepId]: 'reprovado' }));
       setIsDefectModalOpen(false);
       setDefectToEdit(null);
-      success("Falha salva no rascunho.");
+      success("Falha registrada com o passo identificado.");
   };
 
   const requestFinishExecution = () => {

@@ -7,49 +7,99 @@ import './styles.css';
 
 export function QADefeitos() {
   const { user } = useAuth();
+  const { error } = useSnackbar();
 
   // --- TRAVA DE SEGURANÇA VISUAL ---
-  // Aguarda o AuthContext carregar o usuário antes de renderizar
   if (!user) {
       return <div className="loading-text" style={{marginTop: '50px'}}>Carregando sessão...</div>;
   }
 
-  // --- LÓGICA DE PERMISSÃO CORRIGIDA (Baseada no seu JSON) ---
-  // O backend retorna user.role = "admin" ou "user"
   const isAdmin = user.role === 'admin';
-  
-  // Se não for admin, assumimos que é runner (modo leitura)
   const isRunner = !isAdmin;
 
   // --- ESTADOS ---
-  const [defeitos, setDefeitos] = useState([]);
+  // Agora 'execucoes' armazena os grupos, não defeitos isolados
+  const [execucoes, setExecucoes] = useState([]); 
   const [usuarios, setUsuarios] = useState([]); 
   const [loading, setLoading] = useState(false);
-  const [selectedDefect, setSelectedDefect] = useState(null);
+  const [selectedExecution, setSelectedExecution] = useState(null);
   
-  const { error } = useSnackbar();
-
   // --- FILTROS ---
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
+  
   const [statusSearchText, setStatusSearchText] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const statusHeaderRef = useRef(null);
+  
   const [sevSearchText, setSevSearchText] = useState('');
   const [selectedSev, setSelectedSev] = useState('');
   const [isSevOpen, setIsSevOpen] = useState(false);
   const sevHeaderRef = useRef(null);
+  
   const [respSearchText, setRespSearchText] = useState('');
   const [selectedResp, setSelectedResp] = useState('');
   const [isRespOpen, setIsRespOpen] = useState(false);
   const respHeaderRef = useRef(null);
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
   const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
-  // --- EFEITOS ---
+  // --- HELPER DE AGRUPAMENTO ---
+  const groupDefects = (defects) => {
+    const groups = defects.reduce((acc, defect) => {
+        const execId = defect.execucao_teste_id;
+        if (!acc[execId]) {
+            acc[execId] = {
+                id: execId, // ID da Execução
+                projeto_nome: defect.projeto_nome,
+                caso_teste_nome: defect.caso_teste_nome,
+                responsavel_teste_nome: defect.responsavel_teste_nome,
+                responsavel_id: defect.responsavel_id,
+                created_at: defect.created_at,
+                // Array contendo todos os bugs desta execução
+                defeitos: [] 
+            };
+        }
+        acc[execId].defeitos.push(defect);
+        return acc;
+    }, {});
+    
+    // Converte objeto para array e ordena por data
+    return Object.values(groups).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  };
+
+  // --- CARREGAMENTO DE DADOS ---
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [defResponse, userResponse] = await Promise.all([
+          api.get('/defeitos/'), // Note a barra no final por precaução
+          api.get('/usuarios/')
+      ]);
+      
+      const rawDefects = Array.isArray(defResponse) ? defResponse : [];
+      const grouped = groupDefects(rawDefects);
+      
+      setExecucoes(grouped);
+      setUsuarios(Array.isArray(userResponse) ? userResponse : []);
+    } catch (err) {
+      error("Erro ao carregar dados.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // --- EVENT LISTENERS PARA FECHAR DROPDOWNS ---
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowSuggestions(false);
@@ -67,104 +117,104 @@ export function QADefeitos() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [selectedStatus, selectedSev, selectedResp]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [defResponse, userResponse] = await Promise.all([
-            api.get('/defeitos'),
-            api.get('/usuarios/')
-        ]);
-        setDefeitos(Array.isArray(defResponse) ? defResponse : []);
-        setUsuarios(Array.isArray(userResponse) ? userResponse : []);
-      } catch (err) {
-        error("Erro ao carregar dados.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedStatus, selectedSev, selectedResp]);
 
-  const filteredDefeitos = defeitos.filter(d => {
-    // FILTRO DE SEGURANÇA DO RUNNER
-    // Se quiser que o Runner veja APENAS o que ele criou ou é responsável, descomente abaixo.
-    // Nota: precisa garantir que 'd.responsavel_id' corresponda ao ID do usuário no JSON.
-    /*
-    if (isRunner) {
-        // Exemplo: se o usuário só pode ver tickets onde ele é o responsável
-        // if (String(d.responsavel_id) !== String(user.id)) return false;
+  // --- LÓGICA DE FILTRAGEM (Adaptada para Grupos) ---
+  const filteredExecucoes = execucoes.filter(group => {
+    // Filtro de Status: Verifica se ALGUM defeito do grupo tem o status selecionado
+    if (selectedStatus) {
+        const hasStatus = group.defeitos.some(d => d.status === selectedStatus);
+        if (!hasStatus) return false;
     }
-    */
 
-    if (selectedStatus && d.status !== selectedStatus) return false;
-    if (selectedSev && d.severidade !== selectedSev) return false;
-    if (selectedResp && String(d.responsavel_id) !== String(selectedResp)) return false;
+    // Filtro de Severidade: Verifica se ALGUM defeito do grupo tem a severidade selecionada
+    if (selectedSev) {
+        const hasSev = group.defeitos.some(d => d.severidade === selectedSev);
+        if (!hasSev) return false;
+    }
 
+    // Filtro de Responsável
+    if (selectedResp) {
+        // Verifica pelo ID do responsável salvo no grupo ou no primeiro defeito
+        const respId = group.responsavel_id || group.defeitos[0]?.responsavel_id;
+        if (String(respId) !== String(selectedResp)) return false;
+    }
+
+    // Filtro de Texto (Busca Geral)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const titulo = d.titulo || d.nome || '';
-      const desc = d.descricao || '';
-      const idStr = String(d.id);
-      if (!titulo.toLowerCase().includes(term) && !desc.toLowerCase().includes(term) && !idStr.includes(term)) {
+      const proj = group.projeto_nome || '';
+      const caso = group.caso_teste_nome || '';
+      const resp = group.responsavel_teste_nome || '';
+      const idStr = String(group.id);
+      
+      // Procura também nos títulos dos defeitos internos
+      const hasDefectMatch = group.defeitos.some(d => d.titulo.toLowerCase().includes(term));
+
+      if (
+          !proj.toLowerCase().includes(term) && 
+          !caso.toLowerCase().includes(term) && 
+          !resp.toLowerCase().includes(term) && 
+          !idStr.includes(term) &&
+          !hasDefectMatch
+      ) {
             return false;
       }
     }
     return true;
   });
 
-  const globalSuggestions = searchTerm === '' ? filteredDefeitos.slice(0, 5) : filteredDefeitos.slice(0, 5);
-  const totalPages = Math.ceil(filteredDefeitos.length / itemsPerPage);
-  const currentDefeitos = filteredDefeitos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredExecucoes.length / itemsPerPage);
+  const currentItems = filteredExecucoes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
-  const statusOptions = [{label: 'Aberto', value: 'aberto'}, {label: 'Corrigido', value: 'corrigido'}, {label: 'Fechado', value: 'fechado'}, {label: 'Rejeitado', value: 'rejeitado'}];
+  // Opções para os Dropdowns
+  const statusOptions = [{label: 'Aberto', value: 'aberto'}, {label: 'Corrigido', value: 'corrigido'}, {label: 'Fechado', value: 'fechado'}];
   const filteredStatusHeader = statusOptions.filter(o => o.label.toLowerCase().includes(statusSearchText.toLowerCase()));
+  
   const sevOptions = [{label: 'Crítico', value: 'critico'}, {label: 'Alto', value: 'alto'}, {label: 'Médio', value: 'medio'}, {label: 'Baixo', value: 'baixo'}];
   const filteredSevHeader = sevOptions.filter(o => o.label.toLowerCase().includes(sevSearchText.toLowerCase()));
+  
   const filteredRespHeader = usuarios.filter(u => u.nome.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
 
-  const getRespName = (defeito) => {
-    if (defeito.responsavel_teste_nome) return defeito.responsavel_teste_nome;
-    if (defeito.responsavel?.nome) return defeito.responsavel.nome;
-    const idParaBuscar = defeito.responsavel_id;
-    if (!idParaBuscar) return '-';
-    
-    const u = usuarios.find(user => String(user.id) === String(idParaBuscar));
-    return u ? u.nome : '-';
+  // --- HELPERS DE RENDERIZAÇÃO ---
+  // Define a severidade mais alta do grupo para exibir o badge
+  const getGroupSeverity = (defects) => {
+      if (defects.some(d => d.severidade === 'critico')) return 'critico';
+      if (defects.some(d => d.severidade === 'alto')) return 'alto';
+      if (defects.some(d => d.severidade === 'medio')) return 'medio';
+      return 'baixo';
   };
-  const getStatusBadge = (s) => `badge-status-${s}`;
+
   const getSeveridadeBadge = (s) => `badge-sev-${s}`;
 
-  const handleRowClick = (defeito) => setSelectedDefect(defeito);
-  const handleCloseModal = () => setSelectedDefect(null);
-  const handleDefectUpdated = async () => {
-      const response = await api.get('/defeitos');
-      setDefeitos(Array.isArray(response) ? response : []);
+  const handleRowClick = (group) => setSelectedExecution(group);
+  
+  const handleCloseModal = (refreshNeeded) => {
+      setSelectedExecution(null);
+      if (refreshNeeded === true) {
+          loadData();
+      }
   };
 
   return (
     <main className="container">
       
-      <DefectModal 
-        isOpen={!!selectedDefect}
-        onClose={handleCloseModal}
-        defect={selectedDefect}
-        onUpdate={handleDefectUpdated}
-        readOnly={isRunner} 
-      />
+      {/* Modal agora recebe o GRUPO inteiro */}
+      {selectedExecution && (
+        <DefectModal 
+          executionGroup={selectedExecution} // <--- MUDANÇA IMPORTANTE: Passamos o grupo
+          onClose={handleCloseModal}
+        />
+      )}
 
       <section className="card" style={{ marginTop: 0 }}>
         <div className="toolbar">
-          <h3 className="page-title">{isRunner ? "Meus Defeitos" : "Gestão de Defeitos"}</h3>
+          <h3 className="page-title">{isRunner ? "Meus Reportes" : "Gestão de Falhas"}</h3>
           <div className="toolbar-actions">
             <div ref={wrapperRef} className="search-wrapper" style={{width: '300px'}}>
-                <input type="text" placeholder="Buscar..." className="search-input" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} />
+                <input type="text" placeholder="Buscar projeto, caso ou runner..." className="search-input" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} />
                 <span className="search-icon">🔍</span>
-                {showSuggestions && (<ul className="custom-dropdown">{globalSuggestions.length === 0 ? (<li style={{color:'#999'}}>Sem resultados.</li>) : (globalSuggestions.map(d => (<li key={d.id} onClick={() => { setSearchTerm(d.titulo || d.nome); setShowSuggestions(false); }}><div style={{display:'flex',justifyContent:'space-between'}}><span>{truncate(d.titulo || d.nome, 25)}</span><span style={{fontSize:'0.75rem',color:'#9ca3af'}}>#{d.id}</span></div></li>)))}</ul>)}
             </div>
           </div>
         </div>
@@ -175,42 +225,24 @@ export function QADefeitos() {
                     <table>
                         <thead>
                             <tr>
-                                <th style={{width: '50px'}}>ID</th>
-                                <th style={{width: '35%'}}>Título / Descrição</th>
+                                <th style={{width: '60px'}}>ID Exec</th>
+                                <th style={{width: '30%'}}>Projeto / Caso de Teste</th>
+                                <th style={{width: '20%'}}>Runner</th>
                                 
+                                {/* COLUNA DE RESUMO DE DEFEITOS */}
+                                <th style={{width: '20%', textAlign: 'center'}}>
+                                    Falhas Reportadas
+                                </th>
+
                                 <th style={{width: '15%', textAlign: 'center', verticalAlign: 'middle'}}>
                                     <div className="th-filter-container" ref={sevHeaderRef} style={{justifyContent: 'center'}}>
                                         {isSevOpen || selectedSev ? (
                                             <div style={{position: 'relative', width: '100%'}}>
                                                 <input autoFocus type="text" className={`th-search-input ${selectedSev ? 'active' : ''}`} placeholder="Sev..." value={selectedSev && sevSearchText === '' ? selectedSev : sevSearchText} onChange={(e) => { setSevSearchText(e.target.value); if(selectedSev) setSelectedSev(''); }} onClick={(e) => e.stopPropagation()} />
                                                 <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedSev){setSelectedSev('');setSevSearchText('')}else{setIsSevOpen(false);setSevSearchText('')} }}>✕</button>
-                                                {(!selectedSev || sevSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedSev(''); setSevSearchText(''); setIsSevOpen(false); }}><span style={{color:'#3b82f6'}}>Todos</span></li>{filteredSevHeader.map(o=><li key={o.value} onClick={()=>{setSelectedSev(o.value);setSevSearchText('');setIsSevOpen(true)}}>{o.label}</li>)}</ul>}
+                                                {(!selectedSev || sevSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedSev(''); setSevSearchText(''); setIsSevOpen(false); }}><span style={{color:'#3b82f6'}}>Todas</span></li>{filteredSevHeader.map(o=><li key={o.value} onClick={()=>{setSelectedSev(o.value);setSevSearchText('');setIsSevOpen(true)}}>{o.label}</li>)}</ul>}
                                             </div>
-                                        ) : <div className="th-label" onClick={() => setIsSevOpen(true)} title="Filtrar">SEVERIDADE <span className="filter-icon">▼</span></div>}
-                                    </div>
-                                </th>
-
-                                <th style={{width: '15%', textAlign: 'center', verticalAlign: 'middle'}}>
-                                    <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
-                                        {isStatusOpen || selectedStatus ? (
-                                            <div style={{position: 'relative', width: '100%'}}>
-                                                <input autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`} placeholder="Status..." value={selectedStatus && statusSearchText === '' ? selectedStatus : statusSearchText} onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }} onClick={(e) => e.stopPropagation()} />
-                                                <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedStatus){setSelectedStatus('');setStatusSearchText('')}else{setIsStatusOpen(false);setStatusSearchText('')} }}>✕</button>
-                                                {(!selectedStatus || statusSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusOpen(false); }}><span style={{color:'#3b82f6'}}>Todos</span></li>{filteredStatusHeader.map(o=><li key={o.value} onClick={()=>{setSelectedStatus(o.value);setStatusSearchText('');setIsStatusOpen(true)}}>{o.label}</li>)}</ul>}
-                                            </div>
-                                        ) : <div className="th-label" onClick={() => setIsStatusOpen(true)} title="Filtrar">STATUS <span className="filter-icon">▼</span></div>}
-                                    </div>
-                                </th>
-
-                                <th style={{width: '15%', verticalAlign: 'middle'}}>
-                                    <div className="th-filter-container" ref={respHeaderRef}>
-                                        {isRespOpen || selectedResp ? (
-                                            <div style={{position: 'relative', width: '100%'}}>
-                                                <input autoFocus type="text" className={`th-search-input ${selectedResp ? 'active' : ''}`} placeholder="Resp..." value={selectedResp && respSearchText === '' ? truncate(getRespName(selectedResp), 10) : respSearchText} onChange={(e) => { setRespSearchText(e.target.value); if(selectedResp) setSelectedResp(''); }} onClick={(e) => e.stopPropagation()} />
-                                                <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedResp){setSelectedResp('');setRespSearchText('')}else{setIsRespOpen(false);setRespSearchText('')} }}>✕</button>
-                                                {(!selectedResp || respSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedResp(''); setRespSearchText(''); setIsRespOpen(false); }}><span style={{color:'#3b82f6'}}>Todos</span></li>{filteredRespHeader.map(u=><li key={u.id} onClick={()=>{setSelectedResp(String(u.id));setRespSearchText('');setIsRespOpen(true)}}>{truncate(u.nome,15)}</li>)}</ul>}
-                                            </div>
-                                        ) : <div className="th-label" onClick={() => setIsRespOpen(true)} title="Filtrar">RESPONSÁVEL <span className="filter-icon">▼</span></div>}
+                                        ) : <div className="th-label" onClick={() => setIsSevOpen(true)} title="Filtrar">SEVERIDADE MÁX. <span className="filter-icon">▼</span></div>}
                                     </div>
                                 </th>
 
@@ -218,31 +250,51 @@ export function QADefeitos() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredDefeitos.length === 0 ? (
+                            {filteredExecucoes.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
-                                        Nenhum defeito encontrado.
+                                        Nenhuma falha encontrada.
                                     </td>
                                 </tr>
                             ) : (
-                                currentDefeitos.map(d => (
-                                    <tr key={d.id} onClick={() => handleRowClick(d)} className="selectable-row" title="Clique para ver detalhes">
-                                        <td className="cell-id">#{d.id}</td>
+                                currentItems.map(group => (
+                                    <tr key={group.id} onClick={() => handleRowClick(group)} className="selectable-row" title="Clique para gerenciar falhas">
+                                        <td className="cell-id">#{group.id}</td>
                                         <td>
-                                            <div className="cell-name">{truncate(d.titulo || d.nome, 40)}</div>
-                                            <div style={{fontSize: '0.75rem', color: '#64748b'}}>{truncate(d.descricao, 50)}</div>
+                                            <div className="cell-name">{truncate(group.projeto_nome, 25)}</div>
+                                            <div style={{fontSize: '0.8rem', color: '#64748b'}}>{truncate(group.caso_teste_nome, 40)}</div>
                                         </td>
-                                        <td style={{textAlign: 'center'}}><span className={`badge ${getSeveridadeBadge(d.severidade)}`}>{d.severidade ? d.severidade.toUpperCase() : '-'}</span></td>
-                                        <td style={{textAlign: 'center'}}><span className={`badge ${getStatusBadge(d.status)}`}>{d.status ? d.status.toUpperCase() : '-'}</span></td>
-                                        <td><span className="cell-resp">{truncate(getRespName(d), 15)}</span></td>
-                                        <td style={{textAlign: 'right', fontSize: '0.85rem'}}>{new Date(d.created_at).toLocaleDateString()}</td>
+                                        <td><span className="cell-resp">{truncate(group.responsavel_teste_nome, 20)}</span></td>
+                                        
+                                        {/* Badge de Contagem */}
+                                        <td style={{textAlign: 'center'}}>
+                                            <span style={{
+                                                backgroundColor: '#fee2e2', 
+                                                color: '#991b1b', 
+                                                padding: '4px 12px', 
+                                                borderRadius: '20px', 
+                                                fontSize: '0.8rem', 
+                                                fontWeight: '700'
+                                            }}>
+                                                {group.defeitos.length} Defeito(s)
+                                            </span>
+                                        </td>
+
+                                        {/* Badge da Pior Severidade */}
+                                        <td style={{textAlign: 'center'}}>
+                                            <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
+                                                {getGroupSeverity(group.defeitos).toUpperCase()}
+                                            </span>
+                                        </td>
+
+                                        <td style={{textAlign: 'right', fontSize: '0.85rem'}}>{new Date(group.created_at).toLocaleString('pt-BR')}</td>
                                     </tr>
                                 ))
                             )}
                         </tbody>
                     </table>
                 </div>
-                {filteredDefeitos.length > 0 && (
+                {filteredExecucoes.length > 0 && (
                     <div className="pagination-container">
                         <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
                         {Array.from({length: totalPages}, (_, i) => (

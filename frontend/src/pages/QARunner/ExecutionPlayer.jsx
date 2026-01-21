@@ -45,6 +45,8 @@ export function ExecutionPlayer({
           const evidencias = passo.evidencias || []; 
           const hasEvidences = Array.isArray(evidencias) && evidencias.length > 0;
 
+          const isStepLocked = readOnly || status === 'aprovado';
+
           return (
             <div key={passo.id} className={`${styles.stepCard} ${styles[status]}`}>
               <div className={styles.stepHeader}>
@@ -75,20 +77,26 @@ export function ExecutionPlayer({
                 </div>
               )}
 
-              {!readOnly && (
+              {!isStepLocked && (
                   <div className={styles.stepActions}>
                     <button 
-                      className={`${styles.btnAction} ${styles.btnApprove} ${status === 'aprovado' ? styles.selected : ''}`}
+                      className={`${styles.btnAction} ${styles.btnApprove}`}
                       onClick={() => onStepAction(passo.id, 'aprovado')}
                     >
-                      Aprovado
+                      Aprovar
                     </button>
                     <button 
                       className={`${styles.btnAction} ${styles.btnFail} ${status === 'reprovado' ? styles.selected : ''}`}
                       onClick={() => onStepAction(passo.id, 'reprovado')}
                     >
-                      {status === 'reprovado' ? 'Editar Falha' : 'Falhou'}
+                      {status === 'reprovado' ? 'Editar Falha' : 'Reprovar'}
                     </button>
+                  </div>
+              )}
+              
+              {status === 'aprovado' && !readOnly && (
+                  <div style={{marginTop: '10px', fontSize: '0.8rem', color: '#166534', fontWeight: 'bold'}}>
+                      ✓ Passo já validado
                   </div>
               )}
             </div>
