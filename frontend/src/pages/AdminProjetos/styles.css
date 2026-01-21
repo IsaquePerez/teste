@@ -202,3 +202,20 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+
+
+body.dark .page-title,
+body.dark .form-title,
+body.dark .input-label,
+body.dark .cell-name,
+body.dark .cell-id,
+body.dark .loading-text,
+body.dark .empty-container {
+  color: #ffffff;
+}
+
+
+body.dark .cell-name div {
+  color: #e5e7eb;
+}

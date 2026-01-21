@@ -197,3 +197,63 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+
+
+body.dark .page-title,
+body.dark .form-title,
+body.dark .input-label,
+body.dark .cell-id,
+body.dark .cell-name,
+body.dark .cell-status,
+body.dark .cell-actions,
+body.dark .loading-text,
+body.dark .empty-container,
+body.dark .pagination-container,
+body.dark .pagination-btn,
+body.dark .search-input,
+body.dark .search-icon {
+  color: #ffffff;
+}
+
+body.dark .search-input,
+body.dark .form-control {
+  background-color: #111827;
+  border-color: #1f2937;
+}
+
+body.dark .form-header,
+body.dark .form-actions,
+body.dark .pagination-container {
+  border-color: #1f2937;
+}
+
+body.dark .empty-container {
+  background-color: #0f172a;
+  border-color: #1f2937;
+}
+
+body.dark .status-badge.ativo {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+body.dark .status-badge.inativo {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+:root {
+  --text-primary: #1f2937;
+  --text-secondary: #475569;
+  --bg-card: #ffffff;
+  --bg-table: #ffffff;
+}
+
+body.dark {
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --bg-card: #0f172a;
+  --bg-table: #020617;
+}
+

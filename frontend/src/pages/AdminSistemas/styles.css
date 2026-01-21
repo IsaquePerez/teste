@@ -144,3 +144,32 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+
+
+body.dark .cell-name strong {
+  color: #ffffff;
+}
+
+
+body.dark .cell-name div,
+body.dark .no-results {
+  color: #d1d5db;
+}
+
+
+
+body.dark .pagination-btn {
+  background-color: #111827;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+body.dark .pagination-btn:hover:not(:disabled) {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+body.dark .pagination-btn.nav-btn {
+  background-color: #020617;
+}

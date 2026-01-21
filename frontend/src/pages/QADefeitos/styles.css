@@ -95,3 +95,17 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+body.dark .toolbar .btn {
+  background-color: #0A2A66;  
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body.dark .toolbar .btn:hover {
+  background-color: #0D3B8C;
+}
+
+body.dark .toolbar .btn:active {
+  background-color: #081F4D;
+}

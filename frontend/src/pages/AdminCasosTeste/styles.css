@@ -320,3 +320,52 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
+
+body.dark {
+  --card-bg: #1e1e1e;
+  --card-border: #303030;
+  --input-bg: #121212;
+  --input-border: #2a2a2a;
+  --text-color: #e5e7eb;
+  --muted-text: #9ca3af;
+}
+
+
+
+body.dark .steps-container {
+  background: transparent;
+}
+
+
+body.dark .step-row {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+
+body.dark .step-index {
+  background: #2a2a2a;
+  color: var(--text-color);
+}
+
+
+body.dark .form-control.small-text {
+  background: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--input-border);
+}
+
+
+body.dark .form-control.small-text::placeholder {
+  color: var(--muted-text);
+}
+
+
+body.dark .btn-remove-step {
+  background: transparent;
+  color: #f87171;
+}
+
+body.dark .btn-remove-step:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
