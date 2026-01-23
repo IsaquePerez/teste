@@ -245,8 +245,6 @@ export function QADefeitos() {
                                         ) : <div className="th-label" onClick={() => setIsSevOpen(true)} title="Filtrar">SEVERIDADE MÁX. <span className="filter-icon">▼</span></div>}
                                     </div>
                                 </th>
-
-                                <th style={{width: '10%', textAlign: 'right'}}>Data</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -285,10 +283,6 @@ export function QADefeitos() {
                                             <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
                                                 {getGroupSeverity(group.defeitos).toUpperCase()}
                                             </span>
-                                        </td>
-
-                                        <td style={{textAlign: 'right', fontSize: '0.85rem'}}>
-                                            {new Date(group.created_at).toLocaleDateString()}
                                         </td>
                                     </tr>
                                 ))
