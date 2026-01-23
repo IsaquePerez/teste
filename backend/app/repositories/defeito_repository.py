@@ -26,6 +26,8 @@ class DefeitoRepository:
             selectinload(Defeito.execucao).selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template)
         ]
 
+    # --- MÉTODOS DE ESCRITA (HEAD - Com suporte a JSON) ---
+
     async def create(self, dados: DefeitoCreate) -> Defeito:
         # Prepara dados e converte lista de evidências para string JSON
         dados_dict = dados.model_dump()
@@ -65,6 +67,53 @@ class DefeitoRepository:
         result = await self.db.execute(query_novo)
         return result.scalars().first()
 
+    async def update(self, id: int, dados: DefeitoUpdate) -> Optional[Defeito]:
+        defeito = await self.get_by_id(id)
+        if not defeito:
+            return None
+            
+        update_data = dados.model_dump(exclude_unset=True)
+        
+        # Converte lista para JSON String se houver evidências na atualização
+        if 'evidencias' in update_data and isinstance(update_data['evidencias'], list):
+             update_data['evidencias'] = json.dumps(update_data['evidencias'])
+
+        for key, value in update_data.items():
+            setattr(defeito, key, value)
+            
+        await self.db.commit()
+        return await self.get_by_id(id)
+
+    async def delete(self, id: int) -> bool:
+        defeito = await self.db.get(Defeito, id)
+        if defeito:
+            await self.db.delete(defeito)
+            await self.db.commit()
+            return True
+        return False
+
+    # --- MÉTODOS DE LEITURA ---
+
+    async def get_by_id(self, id: int) -> Optional[Defeito]:
+        query = (
+            select(Defeito)
+            .options(*self._get_load_options())
+            .where(Defeito.id == id)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().first()
+
+    # Trazido da MAIN (Necessário para o Service)
+    async def get_by_execucao(self, execucao_id: int) -> Sequence[Defeito]:
+        query = (
+            select(Defeito)
+            .options(*self._get_load_options())
+            .where(Defeito.execucao_teste_id == execucao_id)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    # Mantido do HEAD (Essencial para a Tabela do Dashboard)
     async def get_all_with_details(self, responsavel_id: Optional[int] = None):
         Runner = aliased(Usuario)  
         Manager = aliased(Usuario) 
@@ -98,37 +147,3 @@ class DefeitoRepository:
 
         result = await self.db.execute(query)
         return result.mappings().all()
-
-    async def get_by_id(self, id: int) -> Optional[Defeito]:
-        query = (
-            select(Defeito)
-            .options(*self._get_load_options())
-            .where(Defeito.id == id)
-        )
-        result = await self.db.execute(query)
-        return result.scalars().first()
-
-    async def update(self, id: int, dados: DefeitoUpdate) -> Optional[Defeito]:
-        defeito = await self.get_by_id(id)
-        if not defeito:
-            return None
-            
-        update_data = dados.model_dump(exclude_unset=True)
-        
-        # Converte lista para JSON String se houver evidências na atualização
-        if 'evidencias' in update_data and isinstance(update_data['evidencias'], list):
-             update_data['evidencias'] = json.dumps(update_data['evidencias'])
-
-        for key, value in update_data.items():
-            setattr(defeito, key, value)
-            
-        await self.db.commit()
-        return await self.get_by_id(id)
-
-    async def delete(self, id: int) -> bool:
-        defeito = await self.db.get(Defeito, id)
-        if defeito:
-            await self.db.delete(defeito)
-            await self.db.commit()
-            return True
-        return False

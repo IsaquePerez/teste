@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional
 from enum import Enum
 
-# Enum simples pra controlar o ciclo de vida do projeto.
 class StatusProjeto(str, Enum):
     ativo = "ativo"
     pausado = "pausado"
@@ -20,7 +19,6 @@ class ProjetoBase(BaseModel):
 class ProjetoCreate(ProjetoBase):
     pass
 
-# Payload de edição. Atenção ao trocar sistema_id/modulo_id pra não deixar órfão.
 class ProjetoUpdate(BaseModel):
     nome: str
     descricao: Optional[str] = None

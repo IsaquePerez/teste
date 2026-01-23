@@ -12,13 +12,11 @@ class CicloTesteRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # Validação pra não criar dois ciclos com o mesmo nome no projeto.
     async def get_by_nome_projeto(self, nome: str, projeto_id: int) -> Optional[CicloTeste]:
         query = select(CicloTeste).where(CicloTeste.nome == nome, CicloTeste.projeto_id == projeto_id)
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # Lista os ciclos do projeto carregando o status das execuções pra mostrar o progresso na tela.
     async def list_by_projeto(self, projeto_id: int) -> Sequence[CicloTeste]:
         query = (
             select(CicloTeste)
@@ -31,7 +29,6 @@ class CicloTesteRepository:
         result = await self.db.execute(query)
         return result.unique().scalars().all()
 
-    # Criação padrão de ciclo.
     async def create(self, projeto_id: int, ciclo_data: CicloTesteCreate) -> CicloTeste:
         dados_ciclo = ciclo_data.model_dump(exclude={'projeto_id'})        
         db_ciclo = CicloTeste(projeto_id=projeto_id, **dados_ciclo)        
@@ -39,7 +36,6 @@ class CicloTesteRepository:
         await self.db.commit()
         return await self.get_by_id(db_ciclo.id)
 
-    # Busca detalhes de um ciclo específico.
     async def get_by_id(self, ciclo_id: int) -> Optional[CicloTeste]:
         query = (
             select(CicloTeste)
@@ -49,7 +45,6 @@ class CicloTesteRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # Atualiza dados do ciclo (ex: mudar status pra "concluído").
     async def update(self, ciclo_id: int, dados: dict) -> Optional[CicloTeste]:
         if not dados:
              return await self.get_by_id(ciclo_id)
@@ -60,7 +55,6 @@ class CicloTesteRepository:
         await self.db.commit()
         return await self.get_by_id(ciclo_id)
 
-    # Remove o ciclo (o banco cuida dos filhos via Cascade ou o service trata antes).
     async def delete(self, ciclo_id: int) -> bool:
         result = await self.db.execute(delete(CicloTeste).where(CicloTeste.id == ciclo_id))
         await self.db.commit()

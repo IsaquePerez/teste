@@ -4,22 +4,28 @@ import { useAuth } from '../../context/AuthContext';
 import { useSnackbar } from '../../context/SnackbarContext'; 
 import { api } from '../../services/api';
 import styles from './styles.module.css';
+import { Eye, EyeOff } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
-  const { login, logout, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   
   const { error: snackError, success: snackSuccess, warning: snackWarning } = useSnackbar();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   useEffect(() => {
-    if (isAuthenticated) {
-      logout();
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/qa/runner', { replace: true });
+      }
     }
-  }, [isAuthenticated, logout]);
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,13 +54,11 @@ export function Login() {
       const data = response; 
       
       if (!data.role) data.role = "user";
-      
       if (!data.username) data.username = username;
 
       login(data);
       
       const nomeExibicao = data.nome || data.username || "Usuário";
-      
       snackSuccess(`Bem-vindo, ${nomeExibicao}!`);
       
       if (data.role === 'admin') {
@@ -65,7 +69,6 @@ export function Login() {
 
     } catch (err) {
       console.error(err);
-      
       const mensagemBackend = err.response?.data?.detail || err.response?.data?.message;
       snackError(mensagemBackend || err.message || "Falha no login. Verifique as credenciais.");
     } finally {
@@ -80,7 +83,7 @@ export function Login() {
           <h1 className={styles.title}>Login</h1>
 
           <form onSubmit={handleSubmit} className={styles.form}>
-            <div>
+            <div className={styles.inputContainer}>
               <input 
                 type="text" 
                 id="username"
@@ -88,17 +91,27 @@ export function Login() {
                 onChange={e => setUsername(e.target.value)}
                 placeholder="Usuário" 
                 className={styles.userinput}
+                autoComplete="username"
               />
             </div>
-            <div>
-              <input 
-                type="password" 
+            <div className={styles.inputContainer}>
+              <input
+                type={showPassword ? "text" : "password"}
                 id="password"
-                value={password} 
+                value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Senha" 
+                placeholder="Senha"
                 className={styles.passinput}
+                autoComplete="current-password"
               />
+              <button
+                type="button"
+                className={styles.eyeButton}
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             <div className={styles.utilityLinks}>
@@ -108,7 +121,11 @@ export function Login() {
             </div>
             
             <div style={{ gridColumn: '1/-1' }}>
-              <button type="submit" className={styles.button} disabled={loading}>
+              <button
+                type="submit"
+                className={styles.button}
+                disabled={loading || username.length < 1 || password.length < 1}
+              >
                 {loading ? 'Entrando...' : 'Entrar'}
               </button>
             </div>

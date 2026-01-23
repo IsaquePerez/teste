@@ -18,7 +18,6 @@
   margin-bottom: 20px;
 }
 
-/* Estrutura do Fantasminha */
 .fantasma {
   width: 80px;
   height: 100px;
@@ -59,7 +58,6 @@
   margin-top: 8px;
 }
 
-/* Animação */
 @keyframes flutuar {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-20px); }
@@ -78,7 +76,6 @@
   line-height: 1.5;
 }
 
-/* Botões */
 .acoes {
   display: flex;
   gap: 15px;

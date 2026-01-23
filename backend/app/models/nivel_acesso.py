@@ -9,7 +9,6 @@ class NivelAcessoEnum(str, enum.Enum):
     admin = "admin"
     user = "user"
     permissoes={}
-# Tabela que gerencia os perfis de acesso e as permissões detalhadas de cada um.
 class NivelAcesso(Base):
     __tablename__ = "niveis_acesso"
 
@@ -21,5 +20,4 @@ class NivelAcesso(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    #lista todos os usuários que possuem este perfil.
     usuarios = relationship("Usuario", back_populates="nivel_acesso")

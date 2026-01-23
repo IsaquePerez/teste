@@ -57,8 +57,8 @@ export function Dashboard() {
 
   useEffect(() => {
     api.get('/sistemas/')
-       .then(resp => setSistemas(Array.isArray(resp) ? resp : []))
-       .catch(() => error("Erro ao carregar sistemas."));
+        .then(resp => setSistemas(Array.isArray(resp) ? resp : []))
+        .catch(() => error("Erro ao carregar sistemas."));
   }, [error]);
 
   useEffect(() => {
@@ -135,6 +135,8 @@ export function Dashboard() {
   ];
 
   if (loading && !data) return <div className="loading-container">Carregando indicadores...</div>;
+  
+  // Garante estrutura segura caso a API falhe parcialmente
   const safeData = data || { kpis: {}, charts: {} };
 
   return (
@@ -194,6 +196,7 @@ export function Dashboard() {
         <KpiCard value={safeData.kpis.total_ciclos_ativos || 0} label="CICLOS RODANDO" color="#10b981" gradient="linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" />
         <KpiCard value={safeData.kpis.total_casos_teste || 0} label="TOTAL DE CASOS" color="#8b5cf6" gradient="linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)" />
         <KpiCard value={`${safeData.kpis.taxa_sucesso_ciclos || 0}%`} label="TAXA DE SUCESSO" color="#059669" gradient="linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" />
+        
         <KpiCard value={safeData.kpis.total_defeitos_abertos || 0} label="BUGS ABERTOS" color="#ef4444" gradient="linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)" />
         <KpiCard value={safeData.kpis.total_defeitos_criticos || 0} label="BUGS CRÍTICOS" color="#991b1b" gradient="linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)" />
         <KpiCard value={safeData.kpis.total_pendentes || 0} label="TESTES PENDENTES" color="#282768" gradient="linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)" />
@@ -205,7 +208,13 @@ export function Dashboard() {
           <h3 className="chart-title">Status de Execução</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={safeData.charts?.status_execucao || []} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" nameKey="label">
+              <Pie 
+                data={safeData.charts?.status_execucao || []} 
+                cx="50%" cy="50%" 
+                innerRadius={60} outerRadius={100} 
+                paddingAngle={5} 
+                dataKey="value" nameKey="label"
+              >
                 {(safeData.charts?.status_execucao || []).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color || getStatusColor(entry.label)} stroke="none"/>
                 ))}
@@ -220,7 +229,13 @@ export function Dashboard() {
           <h3 className="chart-title">Defeitos por Severidade</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={safeData.charts?.defeitos_por_severidade || []} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2}>
+              <Pie 
+                data={safeData.charts?.defeitos_por_severidade || []} 
+                dataKey="value" nameKey="label" 
+                cx="50%" cy="50%" 
+                innerRadius={60} outerRadius={100} 
+                paddingAngle={2}
+              >
                 {(safeData.charts?.defeitos_por_severidade || []).map((entry, index) => (
                   <Cell key={`cell-sev-${index}`} fill={getSeverityColor(entry.label)} stroke="none" />
                 ))}
@@ -252,14 +267,29 @@ export function Dashboard() {
 function KpiCard({ value, label, color, gradient }) {
   const fakeData = Array.from({length: 8}, () => ({ val: 30 + Math.random() * 50 }));
   return (
-    <div className="kpi-card" style={{ borderLeft: `5px solid ${color}`, background: gradient || '#ffffff' }}>
+    <div 
+      className="kpi-card" 
+      style={{ 
+        borderLeft: `5px solid ${color}`,
+        background: gradient || '#ffffff'
+      }}
+    >
       <div className="kpi-content">
         <h3 className="kpi-value">{value}</h3>
         <span className="kpi-label">{label}</span>
       </div>
       <div className="kpi-chart-mini">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={fakeData}><Line type="monotone" dataKey="val" stroke={color} strokeWidth={2} dot={false} /></LineChart>
+          <LineChart data={fakeData}>
+            <Line 
+              type="monotone" 
+              dataKey="val" 
+              stroke={color} 
+              strokeWidth={3} 
+              dot={false} 
+              isAnimationActive={true}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

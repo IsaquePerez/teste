@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal'; 
+import { Trash } from '../../components/icons/Trash';
+import { Search } from '../../components/icons/Search';
 import './styles.css';
 
 export function AdminSistemas() {
@@ -23,7 +25,7 @@ export function AdminSistemas() {
 
   // --- FILTRO HEADER: STATUS ---
   const [statusSearchText, setStatusSearchText] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState(''); // 'true' | 'false'
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
   const statusHeaderRef = useRef(null);
 
@@ -33,11 +35,8 @@ export function AdminSistemas() {
   const truncate = (str, n = 40) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str;
 
   useEffect(() => { loadSistemas(); }, []);
-
-  // Reseta página ao filtrar
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedStatus]);
 
-  // Click Outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -65,12 +64,10 @@ export function AdminSistemas() {
 
   // --- LÓGICA DE FILTRAGEM ---
   const filteredSistemas = sistemas.filter(s => {
-      // 1. Filtro Status
       if (selectedStatus !== '') {
           const statusBool = selectedStatus === 'true';
           if (s.ativo !== statusBool) return false;
       }
-      // 2. Filtro Busca Global
       if (searchTerm && !s.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
   });
@@ -152,25 +149,25 @@ export function AdminSistemas() {
   const currentSistemas = filteredSistemas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
+  const isFormInvalid =  !form.nome.trim() || !form.descricao.trim();
+
   return (
     <main className="container"> 
       <ConfirmationModal 
         isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete}
-        title="Excluir Sistema?" message={`Tem certeza que deseja excluir "${sistemaToDelete?.nome}"?`} confirmText="Sim, Excluir" isDanger={true}
+        title="Excluir Sistema?" message={`Tem certeza que deseja excluir "${sistemaToDelete?.nome}"?`} isDanger={true}
       />
 
       {view === 'form' && (
         <section className="card form-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div className="form-header">
-            <h2 className="section-title">{editingId ? 'Editar Sistema' : 'Novo Sistema'}</h2>
-          </div>
+          <h2 className="section-title">{editingId ? 'Editar Sistema' : 'Novo Sistema'}</h2>
           <form onSubmit={handleSubmit}>
             
             <div className="form-grid" style={{ gridTemplateColumns: '1fr auto' }}> 
               
               <div style={{gridColumn: '1'}}>
-                  <label className="input-label">Nome</label>
-                  <input maxLength={50} value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" placeholder="Nome do sistema"/>
+                  <label className="input-label"><b>Nome</b></label>
+                  <input maxLength={50} value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control"/>
               </div>
 
               <div className="toggle-wrapper" style={{marginTop: '28px'}}>
@@ -182,14 +179,21 @@ export function AdminSistemas() {
               </div>
 
               <div style={{gridColumn: '1 / -1'}}>
-                  <label className="input-label">Descrição</label>
-                  <input maxLength={100} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control" placeholder="Descrição breve"/>
+                  <label className="input-label"><b>Descrição</b></label>
+                  <input maxLength={100} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} className="form-control"/>
               </div>
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="btn primary">{editingId ? 'Salvar' : 'Criar'}</button>
               <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={isFormInvalid} 
+                title={isFormInvalid ? "Preencha todos os campos" : ""}
+              >
+                Salvar
+              </button>
             </div>
           </form>
         </section>
@@ -204,7 +208,7 @@ export function AdminSistemas() {
                 <div className="separator"></div>
                 <div ref={wrapperRef} className="search-wrapper">
                     <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
-                    <span className="search-icon">🔍</span>
+                    <span className="search-icon"><Search /></span>
                     {showSuggestions && (
                         <ul className="custom-dropdown">
                             {opcoesParaMostrar.length === 0 ? <li style={{color:'#999'}}>Nenhum sistema encontrado.</li> : opcoesParaMostrar.map(s => (
@@ -222,12 +226,10 @@ export function AdminSistemas() {
                       <table>
                           <thead>
                               <tr>
-                                  {/* --- NOVO HEADER ID --- */}
                                   <th style={{width: '60px', textAlign: 'center'}}>ID</th>
                                   
                                   <th style={{textAlign: 'left'}}>Nome</th>
                                   
-                                  {/* --- HEADER STATUS --- */}
                                   <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
                                     <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
                                             {isStatusSearchOpen || selectedStatus ? (
@@ -261,13 +263,11 @@ export function AdminSistemas() {
                           </thead>
                           <tbody>
                               {filteredSistemas.length === 0 ? (
-                                  /* Atualizado colSpan de 3 para 4 */
                                   <tr><td colSpan="4" className="no-results">Nenhum sistema encontrado.</td></tr>
                               ) : (
                                   currentSistemas.map(s => (
                                       <tr key={s.id} onClick={() => handleSelectRow(s)} className="selectable" style={{opacity: s.ativo ? 1 : 0.6}}>
                                           
-                                          {/* --- NOVA CÉLULA ID --- */}
                                           <td style={{textAlign: 'center', fontWeight: 'bold', color: '#666'}}>#{s.id}</td>
 
                                           <td className="cell-name">
@@ -275,10 +275,10 @@ export function AdminSistemas() {
                                               <div title={s.descricao}>{truncate(s.descricao, 40)}</div>
                                           </td>
                                           <td style={{textAlign: 'center', whiteSpace: 'nowrap'}}>
-                                              <span className={`badge ${s.ativo ? 'on' : 'off'}`}>{s.ativo ? 'Ativo' : 'Inativo'}</span>
+                                              <span className={`badge ${s.ativo ? 'on' : 'off'}`}>{s.ativo ? 'ATIVO' : 'INATIVO'}</span>
                                           </td>
                                           <td className="cell-actions">
-                                              <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} className="btn danger small">🗑️</button>
+                                              <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} className="btn danger small"><Trash /></button>
                                           </td>
                                       </tr>
                                   ))

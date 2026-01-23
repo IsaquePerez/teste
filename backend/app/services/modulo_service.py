@@ -16,7 +16,6 @@ class ModuloService:
             return ModuloResponse.model_validate(novo_modulo)
         except IntegrityError as e:
             await self.repo.db.rollback()
-            # Garante mensagem clara se tentar vincular a um sistema inexistente.
             tratar_erro_integridade(e, {
                 "sistema_id": "O sistema informado não existe."
             })
@@ -46,7 +45,6 @@ class ModuloService:
             return await self.repo.delete(id)
         except IntegrityError as e:
             await self.repo.db.rollback()
-            # Bloqueia exclusão se tiver projetos dependentes.
             tratar_erro_integridade(e, {
                 "foreign key": "Não é possível excluir este módulo pois ele possui Projetos vinculados."
             })

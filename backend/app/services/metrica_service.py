@@ -12,7 +12,6 @@ class MetricaService:
         """
         Calcula snapshot de qualidade do ciclo atual e salva histórico.
         """
-        # Busca os dados agregados direto do banco (SQL performático)
         stats = await self.repo.calcular_totais_por_ciclo(ciclo_id)
         
         total = stats.total or 0
@@ -20,10 +19,8 @@ class MetricaService:
         reprovados = stats.reprovados or 0
         executados = stats.executados or 0
 
-        # Tratamento de divisão por zero pra não quebrar a API em ciclos vazios.
         taxa_sucesso = (aprovados / executados * 100) if executados > 0 else 0.0
 
-        # Cria o registro histórico
         nova_metrica = Metrica(
             projeto_id=projeto_id,
             ciclo_teste_id=ciclo_id,

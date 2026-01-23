@@ -4,7 +4,6 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
-# Configura o algoritmo bcrypt para realizar o hashing seguro das senhas.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -21,9 +20,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # Atualiza o dicionário com a data de expiração
     to_encode.update({"exp": expire})
     
-    # Gera o token JWT com todos os dados (sub, role, email, etc)
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt

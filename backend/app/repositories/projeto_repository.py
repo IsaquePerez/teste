@@ -47,10 +47,8 @@ class ProjetoRepository:
         await self.db.commit()
         return result.scalars().first()
 
-    # Cascade Delete Manual: Apaga tudo que é filho do projeto pra não dar erro de Foreign Key.
     async def delete(self, id: int) -> bool:
         
-        # 1. Mapeia tudo que tá pendurado no projeto (Casos e Ciclos).
         query_casos = select(CasoTeste.id).where(CasoTeste.projeto_id == id)
         result_casos = await self.db.execute(query_casos)
         casos_ids = result_casos.scalars().all()
@@ -59,7 +57,6 @@ class ProjetoRepository:
         result_ciclos = await self.db.execute(query_ciclos)
         ciclos_ids = result_ciclos.scalars().all()
 
-        # 2. Acha as Execuções ligadas a esses casos ou ciclos.
         query_execs = select(ExecucaoTeste.id).where(
             or_(
                 ExecucaoTeste.caso_teste_id.in_(casos_ids) if casos_ids else False,
@@ -69,13 +66,11 @@ class ProjetoRepository:
         result_execs = await self.db.execute(query_execs)
         execs_ids = result_execs.scalars().all()
         
-        # 3. Limpeza de baixo pra cima (Netos: Passos Executados e Defeitos).
         if execs_ids:
             await self.db.execute(delete(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id.in_(execs_ids)))
             await self.db.execute(delete(Defeito).where(Defeito.execucao_teste_id.in_(execs_ids)))
             await self.db.execute(delete(ExecucaoTeste).where(ExecucaoTeste.id.in_(execs_ids)))
 
-        # 4. Limpeza dos intermediários (Filhos: Casos e Ciclos).
         if casos_ids:
             await self.db.execute(delete(PassoCasoTeste).where(PassoCasoTeste.caso_teste_id.in_(casos_ids)))
             await self.db.execute(delete(CasoTeste).where(CasoTeste.id.in_(casos_ids)))
@@ -83,7 +78,6 @@ class ProjetoRepository:
         if ciclos_ids:
             await self.db.execute(delete(CicloTeste).where(CicloTeste.id.in_(ciclos_ids)))
             
-        # 5. Finalmente apaga o Projeto.
         query = delete(Projeto).where(Projeto.id == id)
         result = await self.db.execute(query)
         await self.db.commit()

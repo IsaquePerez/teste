@@ -10,7 +10,6 @@ class ModuloRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # Criação padrão.
     async def create(self, modulo_data: ModuloCreate) -> Modulo:
         db_modulo = Modulo(**modulo_data.model_dump())
         self.db.add(db_modulo)
@@ -26,7 +25,6 @@ class ModuloRepository:
         result = await self.db.execute(select(Modulo).where(Modulo.id == modulo_id))
         return result.scalars().first()
     
-    # Validação pra não deixar criar módulos com nome repetido no mesmo sistema.
     async def get_by_nome_e_sistema(self, nome: str, sistema_id: int) -> Optional[Modulo]:
         query = select(Modulo).where(
             Modulo.nome == nome, 
@@ -35,7 +33,6 @@ class ModuloRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # Update atômico retornando o objeto atualizado.
     async def update(self, modulo_id: int, dados: dict) -> Optional[Modulo]:
         if not dados:
             return await self.get_by_id(modulo_id)

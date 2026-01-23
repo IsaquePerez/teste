@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { api } from '../services/api'; 
-import { X, CheckCircle, ExternalLink, AlertTriangle, Calendar } from 'lucide-react'; // Adicionei ícone Calendar
+import { X, CheckCircle, ExternalLink, AlertTriangle, Calendar, XCircle, RotateCcw } from 'lucide-react';
 import { useSnackbar } from '../context/SnackbarContext';
 import './DefectModal.css';
 
 export function DefectModal({ executionGroup, onClose }) {
   if (!executionGroup) return null;
 
-  const [processing, setProcessing] = useState(false);
+  // Inicializa estado local com os defeitos recebidos para permitir atualização visual imediata
+  const [localDefects, setLocalDefects] = useState(executionGroup.defeitos);
+  const [processing, setProcessing] = useState(null); // ID do defeito sendo processado
   const { success, error } = useSnackbar();
 
   // Formata data e hora
@@ -19,36 +21,37 @@ export function DefectModal({ executionGroup, onClose }) {
     });
   };
 
-  const handleFixAll = async () => {
-    if (!window.confirm("Isso marcará todos os defeitos como 'Corrigido' e enviará a execução para 'Reteste'. Confirmar?")) return;
-    
-    setProcessing(true);
+  // Ação Individual por Defeito (Substitui o "Fix All")
+  const handleUpdateDefect = async (defect, newStatus) => {
+    setProcessing(defect.id);
     try {
-      const promises = executionGroup.defeitos.map(def => 
-        api.put(`/defeitos/${def.id}`, { 
-          status: 'corrigido',
-          titulo: def.titulo,
-          descricao: def.descricao,
-          severidade: def.severidade
-        })
-      );
+      // 1. Atualiza o Defeito na API
+      await api.put(`/defeitos/${defect.id}`, { 
+        status: newStatus,
+        titulo: defect.titulo,
+        descricao: defect.descricao,
+        severidade: defect.severidade
+      });
 
-      await Promise.all(promises);
-      success("Todos os defeitos corrigidos! Tarefa enviada para Reteste.");
-      onClose(true); 
+      // 2. Atualiza estado local para refletir mudança instantaneamente (UX melhor)
+      setLocalDefects(prev => prev.map(d => d.id === defect.id ? { ...d, status: newStatus } : d));
+
+      const actionText = newStatus === 'corrigido' ? 'enviado para Reteste' : 'Rejeitado';
+      success(`Defeito ${actionText} com sucesso.`);
+
     } catch (err) {
       console.error(err);
-      error("Erro ao atualizar defeitos.");
+      error("Erro ao atualizar defeito.");
     } finally {
-      setProcessing(false);
+      setProcessing(null);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={() => onClose(false)}>
+    <div className="modal-overlay" onClick={() => onClose(true)}>
       <div className="modal-content defect-group-modal" onClick={e => e.stopPropagation()}>
         
-        {/* HEADER DO MODAL (Contexto da Execução) */}
+        {/* HEADER DO MODAL */}
         <div className="modal-header">
           <div>
             <h3>Gestão de Falhas - Execução #{executionGroup.id}</h3>
@@ -56,35 +59,36 @@ export function DefectModal({ executionGroup, onClose }) {
               {executionGroup.projeto_nome} &gt; {executionGroup.caso_teste_nome}
             </span>
           </div>
-          <button className="close-btn" onClick={() => onClose(false)}>
+          <button className="close-btn" onClick={() => onClose(true)}>
             <X size={24} />
           </button>
         </div>
 
-        {/* BODY - LISTA DE DEFEITOS INDIVIDUAIS */}
+        {/* BODY - LISTA DE DEFEITOS */}
         <div className="modal-body scrollable">
-          <div className="alert-info">           
+          <div className="alert-info">          
+            <AlertTriangle size={18} />
             <p>
               O Runner <strong>{executionGroup.responsavel_teste_nome}</strong> reportou 
-              <strong> {executionGroup.defeitos.length} problema(s)</strong> neste teste.
+              <strong> {executionGroup.defeitos.length} problema(s)</strong>.
+              Gerencie cada item individualmente abaixo.
             </p>
           </div>
 
           <div className="defects-list">
-            {executionGroup.defeitos.map((defect, index) => (
-              <div key={defect.id} className="defect-card">
+            {localDefects.map((defect, index) => (
+              <div key={defect.id} className={`defect-card ${defect.status}`}>
                 
-                {/* CABEÇALHO DO DEFEITO ESPECÍFICO */}
+                {/* CABEÇALHO DO DEFEITO */}
                 <div className="defect-card-header">
                   <div className="header-left-group">
                     <span className={`badge severity-${defect.severidade}`}>
                         {defect.severidade?.toUpperCase() || "MÉDIO"}
                     </span>
-                    <h4>#{index + 1} - {defect.titulo}</h4>
+                    <h4>#{defect.id} - {defect.titulo}</h4>
                   </div>
                   
                   <div className="header-right-group">
-                    {/* AQUI ESTÁ A DATA ESPECÍFICA DO PASSO/DEFEITO */}
                     <span className="defect-timestamp" title="Data do reporte">
                         <Calendar size={12} style={{marginRight: '4px'}} />
                         {formatDateTime(defect.created_at)}
@@ -105,6 +109,7 @@ export function DefectModal({ executionGroup, onClose }) {
                         </div>
                     )}
 
+                    {/* EVIDÊNCIAS (Galeria) */}
                     {defect.evidencias && Array.isArray(defect.evidencias) && defect.evidencias.length > 0 && (
                     <div className="evidence-links">
                         <strong>Evidências Anexadas:</strong>
@@ -117,6 +122,37 @@ export function DefectModal({ executionGroup, onClose }) {
                         </div>
                     </div>
                     )}
+
+                    {/* BARRA DE AÇÕES INDIVIDUAIS */}
+                    <div className="defect-actions-bar">
+                        {defect.status === 'aberto' && (
+                            <>
+                                <button 
+                                    className="btn-action-small reject"
+                                    onClick={() => handleUpdateDefect(defect, 'rejeitado')}
+                                    disabled={processing === defect.id}
+                                >
+                                    <XCircle size={16} /> Rejeitar
+                                </button>
+                                <button 
+                                    className="btn-action-small fix"
+                                    onClick={() => handleUpdateDefect(defect, 'corrigido')}
+                                    disabled={processing === defect.id}
+                                >
+                                    {processing === defect.id ? 'Processando...' : <><RotateCcw size={16} /> Enviar p/ Reteste</>}
+                                </button>
+                            </>
+                        )}
+                        {defect.status === 'corrigido' && (
+                             <div className="success-msg"><CheckCircle size={16}/> Aguardando validação do Runner</div>
+                        )}
+                         {defect.status === 'fechado' && (
+                             <div className="success-msg" style={{color: '#64748b'}}>Defeito encerrado.</div>
+                        )}
+                         {defect.status === 'rejeitado' && (
+                             <div className="success-msg" style={{color: '#ef4444'}}>Defeito rejeitado.</div>
+                        )}
+                    </div>
                 </div>
               </div>
             ))}
@@ -124,20 +160,8 @@ export function DefectModal({ executionGroup, onClose }) {
         </div>
 
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={() => onClose(false)} disabled={processing}>
-            Analisar Depois
-          </button>
-          
-          <button 
-            className="btn-success" 
-            onClick={handleFixAll} 
-            disabled={processing}
-          >
-            {processing ? 'Processando...' : (
-              <>
-                Corrigir Tudo e Retestar
-              </>
-            )}
+          <button className="btn-cancel" onClick={() => onClose(true)}>
+            Fechar Janela
           </button>
         </div>
 

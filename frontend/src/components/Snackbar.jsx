@@ -1,4 +1,3 @@
-import React from 'react';
 import { useSnackbar } from '../context/SnackbarContext';
 
 export function Snackbar() {

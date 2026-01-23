@@ -11,7 +11,6 @@
   font-weight: 700;
 }
 
-/* --- Grid de KPIs (4 por linha) --- */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr); 
@@ -22,7 +21,6 @@
 .kpi-card {
   padding: 0px 24px;
   border-radius: 12px;
-  /* Sombra mais suave compatível com fundo claro */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 
               0 2px 4px -1px rgba(0, 0, 0, 0.03);
   display: flex;
@@ -32,7 +30,7 @@
   min-height: 120px; 
   overflow: hidden;
   position: relative;
-  background: white; /* Fallback */
+  background: white;
 }
 
 .kpi-card:hover {
@@ -52,12 +50,12 @@
   font-weight: 800;
   margin: 0;
   line-height: 1.1;
-  color: #1e293b; /* Texto Escuro */
+  color: #1e293b;
 }
 
 .kpi-label {
   font-size: 0.75rem;
-  color: #475569; /* Cinza Escuro */
+  color: #475569;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -68,10 +66,9 @@
 .kpi-chart-mini {
   width: 90px;
   height: 50px;
-  opacity: 0.8; /* Leve transparência para integrar com o fundo */
+  opacity: 0.8;
 }
 
-/* --- Grid de Gráficos Principais --- */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -99,8 +96,6 @@
   grid-column: 1 / -1; 
 }
 
-/* --- Responsividade --- */
-
 @media (max-width: 1200px) {
   .kpi-value {
     font-size: 2rem;
@@ -108,14 +103,12 @@
 }
 
 @media (max-width: 1024px) {
-  /* Tablet: 2 colunas */
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  /* Mobile: 1 coluna */
   .kpi-grid {
     grid-template-columns: 1fr;
   }

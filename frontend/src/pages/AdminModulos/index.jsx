@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { Trash } from '../../components/icons/Trash';
+import { Search } from '../../components/icons/Search';
 import './styles.css';
 
 // --- COMPONENTE REUTILIZÁVEL ---
@@ -93,18 +95,15 @@ export function AdminModulos() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [moduloToDelete, setModuloToDelete] = useState(null);
     
-  // Filtros Globais
   const [searchTerm, setSearchTerm] = useState('');
   const [showGlobalSuggestions, setShowGlobalSuggestions] = useState(false);
   const globalSearchRef = useRef(null); 
 
-  // Filtros Header (Sistema)
   const [sistemaSearchText, setSistemaSearchText] = useState(''); 
   const [selectedSistemaId, setSelectedSistemaId] = useState(''); 
   const [isSistemaSearchOpen, setIsSistemaSearchOpen] = useState(false);
   const sistemaHeaderRef = useRef(null);
 
-  // Filtros Header (Status)
   const [statusSearchText, setStatusSearchText] = useState(''); 
   const [selectedStatus, setSelectedStatus] = useState(''); 
   const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
@@ -205,11 +204,13 @@ export function AdminModulos() {
   const currentModulos = filteredModulos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
+  const isFormInvalid =  !String(form.sistema_id).trim() || !form.nome.trim() || !form.descricao.trim();
+
   return (
     <main className="container">
       <ConfirmationModal 
         isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete}
-        title="Excluir?" message={`Excluir "${moduloToDelete?.nome}"?`} confirmText="Sim" isDanger={true}
+        title="Excluir Módulo?" message={`Tem certeza que deseja excluir "${moduloToDelete?.nome}"?`} isDanger={true}
       />
 
       {view === 'form' ? (
@@ -219,7 +220,7 @@ export function AdminModulos() {
             <form onSubmit={handleSubmit}>
                <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}> 
                  <div style={{gridColumn: 'span 1'}}>
-                    <label className="input-label">Sistema</label>
+                    <label className="input-label"><b>Sistema</b></label>
                     <SearchableSelect 
                         options={sistemas.filter(s => s.ativo)} 
                         value={form.sistema_id}
@@ -237,19 +238,26 @@ export function AdminModulos() {
                  </div>
 
                  <div style={{gridColumn: '1 / -1'}}>
-                    <label className="input-label">Nome</label>
+                    <label className="input-label"><b>Nome</b></label>
                     <input className="form-control" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} required />
                  </div>
                  
                  <div style={{gridColumn: '1 / -1'}}>
-                    <label className="input-label">Descrição</label>
+                    <label className="input-label"><b>Descrição</b></label>
                     <input className="form-control" value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} />
                  </div>
                </div>
 
                <div className="form-actions">
-                 <button type="submit" className="btn primary">Salvar</button>
                  <button type="button" onClick={handleCancel} className="btn">Cancelar</button>
+                 <button
+                  type="submit"
+                  className="btn primary"
+                  disabled={isFormInvalid} 
+                  title={isFormInvalid ? "Preencha todos os campos" : ""}
+                 >
+                  Salvar
+                 </button>
                </div>
             </form>
           </section>
@@ -270,7 +278,7 @@ export function AdminModulos() {
                         onFocus={() => setShowGlobalSuggestions(true)}
                         className="search-input"
                     />
-                    <span className="search-icon">🔍</span>
+                    <span className="search-icon"><Search /></span>
                     {showGlobalSuggestions && (
                         <ul className="custom-dropdown">
                             {globalSuggestions.length === 0 ? <li style={{color:'#999'}}>Nenhum módulo encontrado.</li> : globalSuggestions.map(m => (
@@ -289,7 +297,6 @@ export function AdminModulos() {
                   <table>
                       <thead>
                           <tr>
-                              {/* --- COLUNA ID --- */}
                               <th style={{width: '60px', textAlign: 'center'}}>ID</th>
 
                               <th style={{textAlign: 'left'}}>Módulo</th>
@@ -300,7 +307,7 @@ export function AdminModulos() {
                                         <div style={{position: 'relative', width: '100%'}}>
                                             <input 
                                                 autoFocus type="text" className={`th-search-input ${selectedSistemaId ? 'active' : ''}`}
-                                                placeholder="Filtrar sistema..."
+                                                placeholder="Sistema..."
                                                 value={selectedSistemaId && sistemaSearchText === '' ? truncate(getSistemaName(parseInt(selectedSistemaId)), 15) : sistemaSearchText}
                                                 onChange={(e) => { setSistemaSearchText(e.target.value); if(selectedSistemaId) setSelectedSistemaId(''); }}
                                                 onClick={(e) => e.stopPropagation()}
@@ -371,7 +378,6 @@ export function AdminModulos() {
                               currentModulos.map(m => (
                                   <tr key={m.id} onClick={() => handleSelectRow(m)} className={'selectable'} style={{opacity: m.ativo ? 1 : 0.6}}>
                                       
-                                      {/* --- CÉLULA ID --- */}
                                       <td style={{textAlign: 'center', fontWeight: 'bold', color: '#666'}}>#{m.id}</td>
 
                                       <td className="cell-name">
@@ -380,10 +386,10 @@ export function AdminModulos() {
                                       </td>
                                       <td><span className="badge system">{truncate(getSistemaName(m.sistema_id), 20)}</span></td>
                                       <td style={{textAlign: 'center'}}>
-                                          <span className={`badge ${m.ativo ? 'on' : 'off'}`}>{m.ativo ? 'Ativo' : 'Inativo'}</span>                                      
+                                          <span className={`badge ${m.ativo ? 'on' : 'off'}`}>{m.ativo ? 'ATIVO' : 'INATIVO'}</span>                                      
                                       </td>
                                       <td className="cell-actions">
-                                          <button onClick={(e) => { e.stopPropagation(); requestDelete(m); }} className="btn danger small">🗑️</button>
+                                          <button onClick={(e) => { e.stopPropagation(); requestDelete(m); }} className="btn danger small"><Trash /></button>
                                       </td>
                                   </tr>
                               ))

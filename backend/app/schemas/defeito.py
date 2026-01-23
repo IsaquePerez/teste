@@ -8,13 +8,13 @@ from .execucao_teste import ExecucaoTesteResponse
 class DefeitoBase(BaseModel):
     titulo: str
     descricao: str
-    # Aceita Lista, mas o validador abaixo corrige se vier String
+    # MANTIDO HEAD: Suporte a múltiplas evidências e validação JSON
     evidencias: Optional[Union[List[str], str]] = [] 
     severidade: SeveridadeDefeitoEnum = SeveridadeDefeitoEnum.medio
     status: StatusDefeitoEnum = StatusDefeitoEnum.aberto
     execucao_teste_id: int 
 
-    # --- VALIDADOR BLINDADO (Funciona para Input e Output) ---
+    # --- VALIDADOR BLINDADO (Essencial para a galeria de imagens) ---
     @field_validator('evidencias', mode='before')
     @classmethod
     def parse_evidencias_flex(cls, v: Any) -> List[str]:
@@ -37,7 +37,7 @@ class DefeitoBase(BaseModel):
                 return [v]
         return []
 
-    # --- CORREÇÃO DE SEVERIDADE (Opcional, evita erro de Case/Acento) ---
+    # --- CORREÇÃO DE SEVERIDADE ---
     @field_validator('severidade', mode='before')
     @classmethod
     def normalize_severidade(cls, v: Any):

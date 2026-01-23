@@ -1,71 +1,138 @@
+from typing import Optional, List, Dict, Any
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.dashboard_repository import DashboardRepository
-from app.models.testing import StatusExecucaoEnum
+from app.models.testing import StatusExecucaoEnum, SeveridadeDefeitoEnum
+from app.schemas.dashboard import (
+    DashboardResponse, DashboardKPI, DashboardCharts, ChartDataPoint,
+    RunnerDashboardResponse, RunnerKPI, RunnerRankingData, StatusDistributionData, TimelineItem, RunnerDashboardCharts
+)
 
 class DashboardService:
-    def __init__(self, repo: DashboardRepository):
-        self.repo = repo
+    # --- CONSTANTES VISUAIS ---
+    # Normalizamos as chaves para string (lowercase) para facilitar a busca
+    STATUS_COLORS = {
+        "pendente": "#94a3b8",      # Cinza
+        "em_progresso": "#3b82f6",  # Azul
+        "reteste": "#f59e0b",       # Laranja
+        "fechado": "#10b981",       # Verde
+        "bloqueado": "#ef4444",     # Vermelho
+        "passou": "#10b981",        # Verde (Compatibilidade)
+        "falhou": "#ef4444"         # Vermelho (Compatibilidade)
+    }
 
-    # 1. RECEBE O SISTEMA_ID AQUI (Padrão None para quando não tiver filtro)
-    async def get_dashboard_data(self, sistema_id: int = None):
-        
-        # 2. REPASSA PARA O REPOSITÓRIO
-        kpis = await self.repo.get_kpis_gerais(sistema_id)
+    SEVERITY_COLORS = {
+        "critico": "#991b1b",
+        "alto": "#ef4444",
+        "medio": "#f59e0b",
+        "baixo": "#3b82f6",
+        "low": "#3b82f6" # Compatibilidade
+    }
 
-        # 3. REPASSA PARA OS GRÁFICOS TAMBÉM
-        raw_status = await self.repo.get_status_execucao_geral(sistema_id)
-        raw_severidade = await self.repo.get_defeitos_por_severidade(sistema_id)
-        
-        # O gráfico de módulos não alteramos no repo anterior, então mantém sem filtro por enquanto
-        # Se quiser filtrar módulos também, precisa atualizar o método no repository primeiro.
-        raw_modulos = await self.repo.get_modulos_com_mais_defeitos()
+    def __init__(self, db: AsyncSession):
+        self.repo = DashboardRepository(db)
 
-        # 4. Formatar Status Execução
-        status_colors = {
-            StatusExecucaoEnum.pendente: "#94a3b8",      # Cinza
-            StatusExecucaoEnum.em_progresso: "#3b82f6",  # Azul
-            StatusExecucaoEnum.reteste: "#f59e0b",       # Laranja/Amarelo
-            StatusExecucaoEnum.fechado: "#10b981",       # Verde
-        }
+    # --- DASHBOARD GERENCIAL (ADMIN) ---
+    async def get_dashboard_data(self, sistema_id: int = None) -> DashboardResponse:
+        kpis_data = await self.repo.get_kpis_gerais(sistema_id)
+        exec_status_data = await self.repo.get_status_execucao_geral(sistema_id)
+        severity_data = await self.repo.get_defeitos_por_severidade(sistema_id)
+        modules_data = await self.repo.get_modulos_com_mais_defeitos(limit=5, sistema_id=sistema_id)
 
-        chart_status = [
-            {
-                "name": s.value, 
-                "label": s.value.replace("_", " ").title(),
-                "value": count,
-                "color": status_colors.get(s, "#cbd5e1")
-            }
-            for s, count in raw_status
+        # Uso de .get() para evitar erro se o banco retornar dicionário vazio
+        kpis = DashboardKPI(
+            total_projetos=kpis_data.get("total_projetos", 0),
+            total_ciclos_ativos=kpis_data.get("total_ciclos_ativos", 0),
+            total_casos_teste=kpis_data.get("total_casos_teste", 0),
+            taxa_sucesso_ciclos=kpis_data.get("taxa_sucesso_ciclos", 0.0),
+            total_defeitos_abertos=kpis_data.get("total_defeitos_abertos", 0),
+            total_defeitos_criticos=kpis_data.get("total_defeitos_criticos", 0),
+            total_pendentes=kpis_data.get("total_pendentes", 0),
+            total_bloqueados=kpis_data.get("total_bloqueados", 0),
+            total_aguardando_reteste=kpis_data.get("total_aguardando_reteste", 0)
+        )
+
+        charts = DashboardCharts(
+            status_execucao=self._format_chart_data(exec_status_data, self.STATUS_COLORS),
+            defeitos_por_severidade=self._format_chart_data(severity_data, self.SEVERITY_COLORS),
+            top_modulos_defeitos=[
+                ChartDataPoint(label=nome, name=nome, value=count) 
+                for nome, count in modules_data
+            ]
+        )
+
+        return DashboardResponse(kpis=kpis, charts=charts)
+
+    # --- DASHBOARD OPERACIONAL (RUNNER) ---
+    async def get_runner_dashboard_data(self, runner_id: Optional[int] = None) -> RunnerDashboardResponse:
+        raw_kpis = await self.repo.get_runner_kpis(runner_id)
+        status_dist = await self.repo.get_status_distribution(runner_id)
+        raw_timeline = await self.repo.get_runner_timeline(runner_id)
+
+        kpis = RunnerKPI(
+            total_execucoes_concluidas=raw_kpis.get("total_concluidos", 0),
+            total_defeitos_reportados=raw_kpis.get("total_defeitos", 0),
+            tempo_medio_execucao_minutos=raw_kpis.get("tempo_medio_minutos", 0.0),
+            testes_em_fila=raw_kpis.get("total_fila", 0),
+            ultima_atividade=raw_kpis.get("ultima_atividade", None)
+        )
+
+        # Ranking (Apenas se não filtrar por runner específico, ex: visão de líder)
+        ranking_data = []
+        if not runner_id:
+            ranking_raw = await self.repo.get_ranking_runners()
+            ranking_data = [
+                RunnerRankingData(label=name, value=total, color="#3b82f6") 
+                for name, total in ranking_raw
+            ]
+
+        # Distribuição de Status (reutiliza helper de cores)
+        dist_data = [
+            StatusDistributionData(
+                name=self._normalize_key(status).upper(),
+                value=count,
+                color=self.STATUS_COLORS.get(self._normalize_key(status), "#94a3b8")
+            )
+            for status, count in status_dist
         ]
 
-        # 5. Formatar Defeitos por Severidade
-        severidade_colors = {
-            "critico": "#991b1b",
-            "alto": "#ef4444",
-            "medio": "#f59e0b",
-            "baixo": "#3b82f6"
-        }
-        
-        chart_severidade = [
-            {
-                "name": sev.value,
-                "label": sev.value.title(),
-                "value": count,
-                "color": severidade_colors.get(sev.value, "#8884d8")
-            }
-            for sev, count in raw_severidade
+        timeline_data = [
+            TimelineItem(
+                id=execution.id,
+                case_name=execution.caso_teste.nome if execution.caso_teste else "Caso Removido",
+                status=self._normalize_key(execution.status_geral),
+                assignee=execution.responsavel.nome if execution.responsavel else "Não atribuído",
+                updated_at=execution.updated_at
+            )
+            for execution in raw_timeline
         ]
 
-        # 6. Formatar Top Módulos
-        chart_modulos = [
-            {"name": nome, "value": count}
-            for nome, count in raw_modulos
-        ]
+        charts = RunnerDashboardCharts(
+            ranking_produtividade=ranking_data,
+            status_distribuicao=dist_data,
+            timeline=timeline_data
+        )
 
-        return {
-            "kpis": kpis,
-            "charts": {
-                "status_execucao": chart_status,
-                "defeitos_por_severidade": chart_severidade,
-                "top_modulos_defeitos": chart_modulos
-            }
-        }
+        return RunnerDashboardResponse(kpis=kpis, charts=charts)
+
+    # --- HELPERS PRIVADOS ---
+
+    def _normalize_key(self, item: Any) -> str:
+        """Converte Enum ou String para string minúscula normalizada."""
+        if hasattr(item, 'value'):
+            return str(item.value).lower()
+        return str(item).lower()
+
+    def _format_chart_data(self, data: List[tuple], color_map: Dict) -> List[ChartDataPoint]:
+        """Gera lista de pontos para gráficos (Pizza/Barra) com cores."""
+        chart_list = []
+        for item, count in data:
+            key_normalized = self._normalize_key(item)
+            label = key_normalized.replace("_", " ").title()
+            
+            chart_list.append(ChartDataPoint(
+                label=label,
+                name=key_normalized,
+                value=count,
+                color=color_map.get(key_normalized, "#cbd5e1") # Cor padrão se não achar
+            ))
+        return chart_list

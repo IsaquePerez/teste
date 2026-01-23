@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './styles.module.css';
+import { CheckCircle, XCircle, Ban } from 'lucide-react'; // Ícones para os botões
 
 export function ExecutionPlayer({ 
   tasks, execution, onFinish, onStepAction, onViewGallery, readOnly 
@@ -41,11 +42,13 @@ export function ExecutionPlayer({
 
       <div className={styles.stepsContainer}>
         {passosOrdenados.map((passo, index) => {
-          const status = passo.status || 'pendente';
+          // Normaliza status para lowercase para bater com CSS
+          const status = (passo.status || 'pendente').toLowerCase();
           const evidencias = passo.evidencias || []; 
           const hasEvidences = Array.isArray(evidencias) && evidencias.length > 0;
 
-          const isStepLocked = readOnly || status === 'aprovado';
+          // Bloqueio visual: Se já está aprovado, não mostra botões (foco no reteste)
+          const isStepLocked = readOnly || status === 'passou'; // Ajustado para novo enum 'passou'
 
           return (
             <div key={passo.id} className={`${styles.stepCard} ${styles[status]}`}>
@@ -79,24 +82,38 @@ export function ExecutionPlayer({
 
               {!isStepLocked && (
                   <div className={styles.stepActions}>
+                    {/* BOTÃO PASSOU */}
                     <button 
-                      className={`${styles.btnAction} ${styles.btnApprove}`}
-                      onClick={() => onStepAction(passo.id, 'aprovado')}
+                      className={`${styles.btnAction} ${styles.btnPass}`}
+                      onClick={() => onStepAction(passo.id, 'passou')}
+                      title="Marcar como Passou"
                     >
-                      Aprovar
+                      <CheckCircle size={18} /> Passou
                     </button>
+
+                    {/* BOTÃO FALHOU */}
                     <button 
-                      className={`${styles.btnAction} ${styles.btnFail} ${status === 'reprovado' ? styles.selected : ''}`}
-                      onClick={() => onStepAction(passo.id, 'reprovado')}
+                      className={`${styles.btnAction} ${styles.btnFail} ${status === 'falhou' ? styles.selected : ''}`}
+                      onClick={() => onStepAction(passo.id, 'falhou')}
+                      title="Reportar Bug"
                     >
-                      {status === 'reprovado' ? 'Editar Falha' : 'Reprovar'}
+                      <XCircle size={18} /> {status === 'falhou' ? 'Ver Bug' : 'Falhou'}
+                    </button>
+
+                    {/* BOTÃO BLOQUEADO */}
+                    <button 
+                      className={`${styles.btnAction} ${styles.btnBlock} ${status === 'bloqueado' ? styles.selected : ''}`}
+                      onClick={() => onStepAction(passo.id, 'bloqueado')}
+                      title="Bloqueado"
+                    >
+                      <Ban size={18} />
                     </button>
                   </div>
               )}
               
-              {status === 'aprovado' && !readOnly && (
-                  <div style={{marginTop: '10px', fontSize: '0.8rem', color: '#166534', fontWeight: 'bold'}}>
-                      ✓ Passo já validado
+              {status === 'passou' && !readOnly && (
+                  <div style={{marginTop: '10px', fontSize: '0.8rem', color: '#166534', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px'}}>
+                      <CheckCircle size={14} /> Passo validado com sucesso
                   </div>
               )}
             </div>

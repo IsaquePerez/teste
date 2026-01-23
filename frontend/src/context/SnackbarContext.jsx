@@ -37,7 +37,6 @@ export function SnackbarProvider({ children }) {
   );
 }
 
-// Hook personalizado para usar o snackbar em qualquer componente
 export const useSnackbar = () => {
   const context = useContext(SnackbarContext);
   if (!context) {

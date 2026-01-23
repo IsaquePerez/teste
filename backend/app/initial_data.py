@@ -40,7 +40,6 @@ async def seed_db():
             await session.commit()
             await session.refresh(niv_user)
         
-        # Usuario Admin
         result_u_admin = await session.execute(select(Usuario).where(Usuario.email == 'admin@example.com'))
         user_admin = result_u_admin.scalars().first()
         
@@ -55,7 +54,6 @@ async def seed_db():
             )
             session.add(user_admin)
 
-        # Usuario tester
         result_u_igor = await session.execute(select(Usuario).where(Usuario.email == 'igor@example.com'))
         user_igor = result_u_igor.scalars().first()
         

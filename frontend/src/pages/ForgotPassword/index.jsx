@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext'; 
@@ -16,6 +16,12 @@ export function ForgotPassword() {
 
     if (!email.trim()) {
       snackError("Por favor, informe o e-mail cadastrado.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      snackError("Por favor, inclua um '@' e um domínio válido no endereço de e-mail.");
       return;
     }
 
@@ -66,13 +72,12 @@ export function ForgotPassword() {
           <form onSubmit={handleSubmit} className={styles.form}>
             <div>
               <input 
-                type="email" 
+                type="text" 
                 id="email"
                 value={email} 
                 onChange={e => setEmail(e.target.value)}
                 placeholder="E-mail" 
                 className={styles.input}
-                required
               />
             </div>
             
@@ -80,7 +85,7 @@ export function ForgotPassword() {
               <button 
                 type="submit" 
                 className={styles.button} 
-                disabled={loading}
+                disabled={loading || email.length < 1}
               >
                 {loading ? 'Enviando...' : 'Solicitar Redefinição'}
               </button>
@@ -100,4 +105,4 @@ export function ForgotPassword() {
       </div>
     </div>
   );
-}   
+}

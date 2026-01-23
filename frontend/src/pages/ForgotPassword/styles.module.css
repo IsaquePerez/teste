@@ -92,11 +92,6 @@
   margin-right: auto;
 }
 
-.input::placeholder {
-  color: #0D1A23;
-  opacity: 1;
-}
-
 .button {
   display: block;
   width: 70%;

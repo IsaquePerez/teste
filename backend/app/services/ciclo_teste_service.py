@@ -12,12 +12,10 @@ class CicloTesteService:
         self.repo = CicloTesteRepository(db)
 
     async def criar_ciclo(self, projeto_id: int, dados: CicloTesteCreate):
-        # 1. Evita duplicidade de nome dentro do projeto.
         existente = await self.repo.get_by_nome_projeto(dados.nome, projeto_id)
         if existente:
              raise HTTPException(status_code=400, detail="Já existe um Ciclo com este nome neste projeto.")
         
-        # 2. Regra de Negócio: Não faz sentido planejar um sprint pro passado.
         if dados.data_inicio:
             hoje = datetime.now().date()
             
@@ -55,7 +53,6 @@ class CicloTesteService:
             return await self.repo.delete(ciclo_id)
         except IntegrityError as e:
             await self.repo.db.rollback()
-            # Bloqueia a exclusão se já tiver gente trabalhando nesse ciclo (execuções vinculadas).
             tratar_erro_integridade(e, {
                 "foreign key": "Não é possível excluir este Ciclo pois ele possui execuções vinculadas."
             })

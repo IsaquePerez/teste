@@ -46,7 +46,7 @@ class ExecucaoTesteService:
         
         atualizado = await self.repo.update_passo(passo_id, dados)
         
-        # Recalcula o status geral com a NOVA regra (sem bloqueio automático)
+        # Recalcula o status geral com a regra atualizada
         await self._calcular_status_automatico(atualizado.execucao_teste_id)
 
         return ExecucaoPassoResponse.model_validate(atualizado)
@@ -59,22 +59,20 @@ class ExecucaoTesteService:
         if total == 0:
             return
 
-        aprovados = sum(1 for p in passos if p.status == StatusPassoEnum.aprovado)
-        reprovados = sum(1 for p in passos if p.status == StatusPassoEnum.reprovado)
+        # Ajustado para novos enums (passou/falhou) se necessário, 
+        # mas mantendo compatibilidade com 'aprovado/reprovado' caso o banco ainda use.
+        # Idealmente, deve-se usar StatusPassoEnum.passou e StatusPassoEnum.falhou
+        aprovados = sum(1 for p in passos if p.status in [StatusPassoEnum.aprovado, 'passou'])
+        reprovados = sum(1 for p in passos if p.status in [StatusPassoEnum.reprovado, 'falhou'])
         bloqueados = sum(1 for p in passos if p.status == StatusPassoEnum.bloqueado)
         pendentes = sum(1 for p in passos if p.status == StatusPassoEnum.pendente)
 
         novo_status = StatusExecucaoEnum.em_progresso
 
-        # Lógica Nova:
-        # Se tudo estiver aprovado -> Fechado
-        # Se tiver algum reprovado -> Reteste (ou Fechado, depende da sua regra)
-        # Se tiver pendente -> Em Progresso
-        
         if pendentes == 0:
             # Todos os passos foram executados
             if reprovados > 0 or bloqueados > 0:
-                # Se houve falha, o status geral vai para Reteste (ou Fechado, conforme sua preferência)
+                # Se houve falha, o status geral vai para Reteste 
                 novo_status = StatusExecucaoEnum.reteste 
             else:
                 # Se todos foram aprovados

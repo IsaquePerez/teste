@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+from datetime import datetime
 
 class DashboardKPI(BaseModel):
     total_projetos: int
@@ -8,10 +9,10 @@ class DashboardKPI(BaseModel):
     taxa_sucesso_ciclos: float    
     total_defeitos_abertos: int
     total_defeitos_criticos: int    
-    total_pendentes: int          
-    # ---------------------
-    
-    total_aguardando_reteste: int
+    # Unindo campos de ambas as branches
+    total_pendentes: int           # Do HEAD (Isaque)
+    total_bloqueados: int          # Do Main
+    total_aguardando_reteste: int  # Do Main
 
 class ChartDataPoint(BaseModel):
     label: str
@@ -26,3 +27,40 @@ class DashboardCharts(BaseModel):
 class DashboardResponse(BaseModel):
     kpis: DashboardKPI
     charts: DashboardCharts
+
+# --- Schemas do Dashboard do Runner (Vindo da Main) ---
+
+class RunnerKPI(BaseModel):
+    total_execucoes_concluidas: int
+    total_defeitos_reportados: int
+    tempo_medio_execucao_minutos: float
+    testes_em_fila: int
+    ultima_atividade: Optional[datetime] = None 
+
+class RunnerRankingData(BaseModel):
+    label: str  
+    value: int  
+    color: Optional[str] = None
+
+class StatusDistributionData(BaseModel):
+    name: str   
+    value: int   
+    color: Optional[str] = None
+
+class TimelineItem(BaseModel):
+    id: int
+    case_name: str
+    status: str
+    assignee: str
+    updated_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class RunnerDashboardCharts(BaseModel):
+    ranking_produtividade: List[RunnerRankingData] = []
+    status_distribuicao: List[StatusDistributionData] = []
+    timeline: List[TimelineItem] = []
+
+class RunnerDashboardResponse(BaseModel):
+    kpis: RunnerKPI
+    charts: RunnerDashboardCharts

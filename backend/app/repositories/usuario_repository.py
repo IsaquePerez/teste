@@ -9,14 +9,12 @@ class UsuarioRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # Criação padrão, retornando o objeto recarregado.
     async def create_usuario(self, usuario: Usuario) -> Usuario:
         self.db.add(usuario)
         await self.db.commit()
         await self.db.refresh(usuario)
         return await self.get_usuario_by_id(usuario.id)
 
-    # Lista usuários trazendo o Nível de Acesso junto pra evitar N+1 queries na listagem.
     async def get_all_usuarios(self, ativo: Optional[bool] = None) -> Sequence[Usuario]:
         query = select(Usuario).options(selectinload(Usuario.nivel_acesso))
         if ativo is not None:
@@ -29,7 +27,6 @@ class UsuarioRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
     
-    # Buscas auxiliares essenciais pro Login e verificação de duplicidade.
     async def get_usuario_by_email(self, email: str) -> Optional[Usuario]:
          query = select(Usuario).options(selectinload(Usuario.nivel_acesso)).where(Usuario.email == email)
          result = await self.db.execute(query)
@@ -40,7 +37,6 @@ class UsuarioRepository:
          result = await self.db.execute(query)
          return result.scalars().first()
 
-    # Atualiza e já devolve o objeto atualizado pra interface.
     async def update_usuario(self, usuario_id: int, update_data: dict) -> Optional[Usuario]:
         query = (
             sqlalchemy_update(Usuario)
@@ -56,7 +52,6 @@ class UsuarioRepository:
              return await self.get_usuario_by_id(updated_id)
         return None
 
-    # Exclusão física do usuário.
     async def delete_usuario(self, usuario_id: int) -> bool:
         query = sqlalchemy_delete(Usuario).where(Usuario.id == usuario_id)
         result = await self.db.execute(query)

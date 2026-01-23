@@ -1,5 +1,3 @@
-
-
 .page-title {
   margin: 0;
   font-size: 1.25rem;
@@ -122,11 +120,16 @@
 }
 
 .status-badge.ativo {
-  background-color: #dcfce7;
-  color: #166534;
+  background-color: #001C42 !important;
+  color: #ffffff !important;
 }
 
-.status-badge.inativo {
+.status-badge.pausado {
+  background-color: #506ba4 !important;
+  color: #ffffff !important;
+}
+
+.status-badge.finalizado{
   background-color: #f1f5f9;
   color: #475569;
 }

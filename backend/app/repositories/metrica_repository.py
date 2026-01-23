@@ -15,7 +15,6 @@ class MetricaRepository:
         await self.db.refresh(metrica)
         return metrica
 
-    # Pega o histórico recente de métricas pra gerar gráficos de evolução.
     async def get_metricas_by_projeto(self, projeto_id: int, limit: int = 10):
         query = (
             select(Metrica)
@@ -26,21 +25,17 @@ class MetricaRepository:
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    # Agregação pesada feita no banco (muito mais rápido que puxar tudo e contar no Python).
     async def calcular_totais_por_ciclo(self, ciclo_id: int):
         query = select(
             func.count(ExecucaoTeste.id).label("total"),
-            # Truque de SQL: Soma 1 se a condição bater, senão 0.
             func.sum(case((ExecucaoTeste.status_geral == StatusExecucaoEnum.passou, 1), else_=0)).label("aprovados"),
             func.sum(case((ExecucaoTeste.status_geral == StatusExecucaoEnum.falhou, 1), else_=0)).label("reprovados"),
             func.sum(case((ExecucaoTeste.status_geral != StatusExecucaoEnum.pendente, 1), else_=0)).label("executados")
         ).where(ExecucaoTeste.ciclo_teste_id == ciclo_id)
 
         result = await self.db.execute(query)
-        # Retorna a linha pronta com os totais.
         return result.one()
 
-    # Evita gerar métrica duplicada no mesmo dia/ciclo pra não sujar o gráfico.
     async def verificar_metrica_existente(self, ciclo_id: int, tipo: TipoMetricaEnum) -> bool:
         query = select(Metrica.id).where(
             and_(

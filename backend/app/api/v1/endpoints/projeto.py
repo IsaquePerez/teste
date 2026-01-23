@@ -5,14 +5,11 @@ from app.core.database import get_db
 from app.services.projeto_service import ProjetoService
 from app.schemas.projeto import ProjetoCreate, ProjetoResponse, ProjetoUpdate
 
-# Inicializa o roteador para os endpoints de gerenciamento de projetos.
 router = APIRouter()
 
-# Função auxiliar que injeta o serviço de projetos pronto para uso com a sessão do banco.
 def get_service(db: AsyncSession = Depends(get_db)) -> ProjetoService:
     return ProjetoService(db)
 
-# Cria um novo projeto no sistema e retorna os dados cadastrados.
 @router.post("/", response_model=ProjetoResponse, status_code=status.HTTP_201_CREATED)
 async def create_projeto(
     projeto_in: ProjetoCreate,
@@ -20,15 +17,12 @@ async def create_projeto(
 ):
     return await service.create_projeto(projeto_in)
 
-# Retorna a lista completa de projetos cadastrados no banco de dados.
 @router.get("/", response_model=List[ProjetoResponse])
 async def get_projetos(
     service: ProjetoService = Depends(get_service)
 ):
-    # CORREÇÃO AQUI: get_all -> get_all_projetos
     return await service.get_all_projetos()
 
-# Busca os detalhes de um projeto específico pelo ID, retornando erro se não existir.
 @router.get("/{projeto_id}", response_model=ProjetoResponse)
 async def get_projeto(
     projeto_id: int,
@@ -39,7 +33,6 @@ async def get_projeto(
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return projeto
 
-# Atualiza as informações de um projeto existente, validando se ele foi encontrado.
 @router.put("/{projeto_id}", response_model=ProjetoResponse)
 async def update_projeto(
     projeto_id: int,
@@ -51,7 +44,6 @@ async def update_projeto(
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return projeto
 
-# Remove permanentemente um projeto do sistema pelo seu identificador.
 @router.delete("/{projeto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_projeto(
     projeto_id: int,

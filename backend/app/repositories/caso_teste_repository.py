@@ -24,7 +24,7 @@ class CasoTesteRepository:
                 selectinload(CasoTeste.passos),
                 selectinload(CasoTeste.responsavel).selectinload(Usuario.nivel_acesso),
                 selectinload(CasoTeste.ciclo),
-                selectinload(CasoTeste.projeto)  # Importante para evitar erro MissingGreenlet
+                selectinload(CasoTeste.projeto)
             )
             .where(CasoTeste.projeto_id == projeto_id)
             .order_by(CasoTeste.id.desc())
@@ -33,7 +33,6 @@ class CasoTesteRepository:
         return result.scalars().all()
 
     async def create(self, projeto_id: int, caso_data: CasoTesteCreate) -> CasoTeste:
-        # 1. Cria Caso
         db_caso = CasoTeste(
             projeto_id=projeto_id,
             **caso_data.model_dump(exclude={'passos'}) 
@@ -41,7 +40,6 @@ class CasoTesteRepository:
         self.db.add(db_caso)
         await self.db.flush() 
 
-        # 2. Cria Passos
         passos_objs = []
         if caso_data.passos:
             passos_objs = [
@@ -51,7 +49,6 @@ class CasoTesteRepository:
             self.db.add_all(passos_objs)
             await self.db.flush()
         
-        # 3. Auto-Alocação (Cria execução nova apenas aqui no CREATE)
         if caso_data.ciclo_id and caso_data.responsavel_id:
             nova_execucao = ExecucaoTeste(
                 ciclo_teste_id=caso_data.ciclo_id,
@@ -84,60 +81,46 @@ class CasoTesteRepository:
                 selectinload(CasoTeste.passos),
                 selectinload(CasoTeste.responsavel).selectinload(Usuario.nivel_acesso),
                 selectinload(CasoTeste.ciclo),
-                selectinload(CasoTeste.projeto) # Importante para evitar erro MissingGreenlet
+                selectinload(CasoTeste.projeto)
             )
             .where(CasoTeste.id == caso_id)
         )
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # --- ATUALIZAÇÃO INTELIGENTE COM PROTEÇÃO DE INTEGRIDADE ---
     async def update(self, caso_id: int, dados: dict) -> Optional[CasoTeste]:
         passos_data = dados.pop('passos', None)
 
-        # 1. Update do Header (Nome, Prio, Ciclo, Responsável)
         if dados:
             await self.db.execute(
                 sqlalchemy_update(CasoTeste).where(CasoTeste.id == caso_id).values(**dados)
             )
 
-        # 2. Update dos Passos (Template)
-        current_passos_ids = [] # Para rastrear quais passos ficaram ativos no final
+        current_passos_ids = []
         
         if passos_data is not None:
-            # IDs que vieram do frontend (manter/atualizar)
             incoming_ids = [p['id'] for p in passos_data if 'id' in p and p['id']]
             
-            # --- LÓGICA DE DELEÇÃO SEGURA ---
-            # Busca todos os IDs que existem hoje no banco para este caso
             query_atuais = select(PassoCasoTeste.id).where(PassoCasoTeste.caso_teste_id == caso_id)
             ids_no_banco = (await self.db.execute(query_atuais)).scalars().all()
             
-            # Identifica quais passos não vieram no payload (candidatos a deletar)
             ids_para_deletar = [id_ for id_ in ids_no_banco if id_ not in incoming_ids]
 
             if ids_para_deletar:
-                # Verifica quais desses estão em uso na tabela de execuções
                 query_em_uso = select(ExecucaoPasso.passo_caso_teste_id).where(
                     ExecucaoPasso.passo_caso_teste_id.in_(ids_para_deletar)
                 )
                 ids_em_uso = (await self.db.execute(query_em_uso)).scalars().all()
                 
-                # Filtra apenas os que NÃO estão em uso para deletar de verdade
                 ids_seguros_para_delete = [id_ for id_ in ids_para_deletar if id_ not in ids_em_uso]
                 
                 if ids_seguros_para_delete:
                     await self.db.execute(
                         delete(PassoCasoTeste).where(PassoCasoTeste.id.in_(ids_seguros_para_delete))
                     )
-                # OBS: Os IDs que estão em uso (ids_em_uso) NÃO são deletados. 
-                # Eles ficam "órfãos" no banco para manter histórico, mas não aparecem mais no frontend 
-                # porque o frontend só exibe o que recebe na lista 'passos_data'.
 
-            # --- ATUALIZAÇÃO E INSERÇÃO ---
             for passo in passos_data:
                 if 'id' in passo and passo['id']:
-                    # Atualiza existente
                     await self.db.execute(
                         sqlalchemy_update(PassoCasoTeste)
                         .where(PassoCasoTeste.id == passo['id'])
@@ -145,7 +128,6 @@ class CasoTesteRepository:
                     )
                     current_passos_ids.append(passo['id'])
                 else:
-                    # Cria novo passo
                     novo_passo = PassoCasoTeste(
                         caso_teste_id=caso_id,
                         acao=passo['acao'],
@@ -153,11 +135,9 @@ class CasoTesteRepository:
                         ordem=passo['ordem']
                     )
                     self.db.add(novo_passo)
-                    await self.db.flush() # Flush para pegar o ID gerado
+                    await self.db.flush()
                     current_passos_ids.append(novo_passo.id)
 
-        # 3. SINCRONIZAÇÃO COM A EXECUÇÃO PENDENTE
-        # Verifica se existe uma execução PENDENTE para este caso
         query_exec = select(ExecucaoTeste).where(
             ExecucaoTeste.caso_teste_id == caso_id,
             ExecucaoTeste.status_geral == StatusExecucaoEnum.pendente
@@ -166,7 +146,6 @@ class CasoTesteRepository:
         execucao_ativa = exec_result.scalars().first()
 
         if execucao_ativa:
-            # A. Atualiza Header da Execução
             has_changes = False
             if 'responsavel_id' in dados and execucao_ativa.responsavel_id != dados['responsavel_id']:
                 execucao_ativa.responsavel_id = dados['responsavel_id']
@@ -180,16 +159,13 @@ class CasoTesteRepository:
             if has_changes:
                 self.db.add(execucao_ativa)
 
-            # B. Sincroniza os Passos da Execução
             if passos_data is not None:
-                # Remove passos da execução que não existem mais na lista atual do caso (current_passos_ids)
                 await self.db.execute(
                     delete(ExecucaoPasso)
                     .where(ExecucaoPasso.execucao_teste_id == execucao_ativa.id)
                     .where(ExecucaoPasso.passo_caso_teste_id.notin_(current_passos_ids))
                 )
 
-                # Adiciona novos passos na execução
                 subquery_existentes = select(ExecucaoPasso.passo_caso_teste_id).where(ExecucaoPasso.execucao_teste_id == execucao_ativa.id)
                 
                 query_passos_faltantes = select(PassoCasoTeste).where(
@@ -216,7 +192,6 @@ class CasoTesteRepository:
         execs_ids = execs.scalars().all()
 
         if execs_ids:
-            # Limpeza em cascata manual
             await self.db.execute(delete(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id.in_(execs_ids)))
             await self.db.execute(delete(Defeito).where(Defeito.execucao_teste_id.in_(execs_ids)))
             await self.db.execute(delete(ExecucaoTeste).where(ExecucaoTeste.id.in_(execs_ids)))

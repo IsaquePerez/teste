@@ -4,7 +4,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import selectinload
 from typing import Sequence, Optional
 
-# CORREÇÃO: Adicionado StatusPassoEnum na importação
+# CORREÇÃO: Adicionado StatusPassoEnum na importação (MANTIDO DO HEAD)
 from app.models.testing import (
     ExecucaoTeste, ExecucaoPasso, PassoCasoTeste, 
     CasoTeste, StatusExecucaoEnum, StatusPassoEnum
@@ -52,7 +52,9 @@ class ExecucaoTesteRepository:
         await self.db.commit()
         return await self.get_by_id(nova_exec.id)
 
-    async def get_by_id(self, id: int):
+    # RESOLUÇÃO: Mantida a estrutura de query do HEAD (que funciona com o front)
+    # mas adicionada a tipagem da MAIN -> Optional[ExecucaoTeste]
+    async def get_by_id(self, id: int) -> Optional[ExecucaoTeste]:
         query = (
             select(ExecucaoTeste)
             .options(
@@ -70,6 +72,7 @@ class ExecucaoTesteRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
+    # RESOLUÇÃO: Mantida a lógica do HEAD, adicionada tipagem da MAIN
     async def get_minhas_execucoes(
         self, 
         usuario_id: int, 
@@ -136,7 +139,7 @@ class ExecucaoTesteRepository:
     # --- MÉTODOS DE SINCRONIZAÇÃO DE STATUS ---
     
     # 1. Método principal usado pelo DefeitoService
-    # --- MÉTODO CORRIGIDO (COM RETORNO) ---
+    # --- MÉTODO CORRIGIDO (COM RETORNO E SMART RETEST) ---
     async def update_status(self, id: int, status: StatusExecucaoEnum):
         # 1. Atualiza o status geral da execução
         stmt = (
@@ -154,12 +157,12 @@ class ExecucaoTesteRepository:
                 .where(
                     ExecucaoPasso.execucao_teste_id == id,
                     # IMPORTANTE: Só reseta o que falhou. O que passou continua verde.
-                    ExecucaoPasso.status == StatusPassoEnum.reprovado 
+                    ExecucaoPasso.status == StatusPassoEnum.reprovado
                 )
                 .values(
-                    status=StatusPassoEnum.pendente,   # Volta para cinza (a testar)
-                    resultado_obtido="",               # Limpa o texto do erro antigo
-                    evidencias="[]"                    # Limpa as fotos antigas
+                    status=StatusPassoEnum.pendente,
+                    resultado_obtido="",
+                    evidencias="[]"
                 )
             )
             await self.db.execute(stmt_passos)

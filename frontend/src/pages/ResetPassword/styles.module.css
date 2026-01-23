@@ -1,0 +1,238 @@
+.wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: linear-gradient(to right, #0e529b, #071019);
+  min-height: 100vh;
+  position: relative;
+  font-family: 'Inter', sans-serif;
+}
+
+.resetPasswordContainer {
+  justify-self: center; 
+  align-self: center;
+  box-sizing: border-box; 
+  left: initial;
+  transform: initial;
+  width: 90%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  grid-column: 1/2;
+  padding: 30px;
+}
+
+.imageHalf {
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  grid-column: 2/3;
+}
+
+.rightHalfImage {
+  max-width: 100%;
+  height: auto;
+  animation: imagePop 10s infinite ease-in-out;
+}
+
+@keyframes imagePop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.card {
+  background: linear-gradient(45deg, #0D1A23, #08203A);
+  padding: 20px;
+  margin-top: 50px;
+  margin-left: 50px;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 1);
+  height: 300px;
+  width: 500px;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #A8DADC;
+  text-align: center;
+}
+
+.subtitle {
+    color: #ffffff;
+    text-align: center;
+    padding: 0 20px;
+    margin-bottom: 25px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.inputContainer {
+  position: relative;
+  width: 70%;
+  margin: 0 auto 15px auto;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  padding-right: 40px;
+  border: 1px solid #0F2B4B;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: #DDDDDD;
+  color: #0D1A23;
+}
+
+.inputError {
+  border: 2px solid #ff4d4d !important;
+  outline: none;
+  background-color: #fff0f0;
+}
+
+.input::-ms-reveal,
+.input::-ms-clear,
+.input::-webkit-contacts-auto-fill-button,
+.input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
+.eyeButton {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.eyeButton:hover {
+  color: #333;
+}
+
+.errorMessage {
+  color: #ff4d4d;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: -20px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  width: 70%;
+  display: block;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.button {
+  display: block;
+  width: 70%;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.5s;
+  font-size: .9rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: -5px;
+  background-color: #1E4497;
+  color: #FFFFFF;
+}
+
+.button:hover:not(:disabled) {
+  background-color: #3E2874;
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.snackbar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  max-width: 90%;
+  padding: 14px 20px;
+  border-radius: 8px;
+  border-left: 6px solid;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+  z-index: 9999;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  animation: slideUpFade 0.4s ease-out;
+  background-color: #ff8e8e;
+  color: #ff0000;
+  border-left-color: #ff2121;
+}
+
+.utilityLinks {
+  text-align: left;
+  margin-top: -10px;
+  margin-bottom: 2px;
+}
+
+.forgotPasswordLink {
+  color: var(--primary-color, #007bff);
+  text-decoration: none;
+  font-size: 0.8em;
+  transition: color 0.2s ease-in-out;
+  margin-top: -20px;
+  margin-left: 75px;
+}
+
+.forgotPasswordLink:hover {
+  color: var(--primary-hover-color, #0056b3);
+  text-decoration: underline;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+
+@media (max-width: 1024px) {
+  .wrapper { grid-template-columns: 1fr; }
+  .loginContainer { position: static; width: 100%; grid-column: 1 / -1; top: auto; transform: none; }
+  .imageHalf { display: none; }
+  .card { width: 90%; max-width: 450px; margin: 40px auto; }
+}
+
+@media (max-width: 768px) {
+  .wrapper { min-height: 100dvh; padding: 20px; }
+  .loginContainer { padding: 10px; }
+  .card { width: 100%; height: auto; padding: 20px; margin: 20px auto; }
+  .passinput, .userinput, .button { width: 70%; }
+  .title { font-size: 1.2rem; margin-bottom: 30px; }
+}
+
+@media (max-width: 480px) {
+  .card { width: 70%; margin-left: 5%; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+}

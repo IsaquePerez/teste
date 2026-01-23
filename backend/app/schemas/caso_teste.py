@@ -11,7 +11,6 @@ class StatusCasoTesteEnum(str, Enum):
     revisao = "revisao"
 
 # --- AUXILIARES ---
-
 class ProjetoSimple(BaseModel):
     id: int
     nome: str
@@ -27,8 +26,6 @@ class CicloSimple(BaseModel):
     id: int
     nome: str
     model_config = ConfigDict(from_attributes=True)
-
-# --- PASSOS (STEPS) ---
 
 class PassoCasoTesteBase(BaseModel):
     ordem: int
@@ -47,8 +44,6 @@ class PassoCasoTesteResponse(PassoCasoTesteBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-# --- CASO DE TESTE (HEADER) ---
-
 class CasoTesteBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
@@ -58,13 +53,11 @@ class CasoTesteBase(BaseModel):
     # ADICIONADO AQUI PARA LEITURA/CRIAÇÃO PADRÃO
     status: Optional[StatusCasoTesteEnum] = StatusCasoTesteEnum.rascunho 
 
-# Payload de criação
 class CasoTesteCreate(CasoTesteBase):
     responsavel_id: Optional[int] = None
     ciclo_id: Optional[int] = None
     passos: List[PassoCasoTesteCreate] = []
 
-# Payload de atualização
 class CasoTesteUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
@@ -79,7 +72,6 @@ class CasoTesteUpdate(BaseModel):
     ciclo_id: Optional[int] = None
     passos: Optional[List[dict]] = None 
 
-# Objeto completo devolvido pra tela
 class CasoTesteResponse(CasoTesteBase):
     id: int
     projeto_id: int

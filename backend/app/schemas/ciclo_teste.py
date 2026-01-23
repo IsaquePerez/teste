@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional
 from app.models.testing import StatusCicloEnum
 
-# Base compartilhada. Define o range de datas do sprint de testes.
 class CicloTesteBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
@@ -15,7 +14,6 @@ class CicloTesteBase(BaseModel):
 class CicloTesteCreate(CicloTesteBase):
     pass
 
-# Atualização parcial.
 class CicloTesteUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
@@ -23,7 +21,6 @@ class CicloTesteUpdate(BaseModel):
     data_inicio: Optional[datetime] = None
     data_fim: Optional[datetime] = None
 
-# Resposta pra grid de ciclos. Inclui contadores calculados pra barra de progresso.
 class CicloTesteResponse(CicloTesteBase):
     id: int
     created_at: datetime

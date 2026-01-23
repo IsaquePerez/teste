@@ -15,7 +15,6 @@ class CasoTesteService:
         self.repo = CasoTesteRepository(db)
         self.user_repo = UsuarioRepository(db)
 
-    # Helper interno pra garantir que não estamos atribuindo tarefa pra ex-funcionário.
     async def _validar_usuario_ativo(self, usuario_id: int):
         if not usuario_id: return
         user = await self.user_repo.get_usuario_by_id(usuario_id)
@@ -23,17 +22,14 @@ class CasoTesteService:
             raise HTTPException(status_code=400, detail="O utilizador selecionado está INATIVO.")
 
     async def criar_caso_teste(self, projeto_id: int, dados: CasoTesteCreate):
-        # 1. Regra de Negócio: Não permite nomes duplicados no mesmo projeto.
         existente = await self.repo.get_by_nome_projeto(dados.nome, projeto_id)
         if existente:
              raise HTTPException(status_code=400, detail="Já existe um Caso de Teste com este nome neste projeto.")
 
-        # 2. Validação de Integridade: O responsável existe e está ativo?
         if dados.responsavel_id:
             await self._validar_usuario_ativo(dados.responsavel_id)
 
         try:
-            # 3. Persistência com Rollback de segurança caso algo dê errado no meio do caminho.
             novo_caso = await self.repo.create(projeto_id, dados)
             return novo_caso
         except IntegrityError as e:
@@ -47,7 +43,6 @@ class CasoTesteService:
     async def atualizar_caso(self, caso_id: int, dados: CasoTesteUpdate):
         update_data = dados.model_dump(exclude_unset=True)
         
-        # Se trocou o responsável, valida o novo.
         if 'responsavel_id' in update_data and update_data['responsavel_id']:
              await self._validar_usuario_ativo(update_data['responsavel_id'])
         
@@ -57,7 +52,6 @@ class CasoTesteService:
             await self.repo.db.rollback()
             tratar_erro_integridade(e)
     
-    # Busca simples, mas já converte pro Schema de resposta pra limpar dados internos.
     async def listar_por_projeto(self, projeto_id: int):
         items = await self.repo.get_by_projeto(projeto_id)
         return [CasoTesteResponse.model_validate(i) for i in items]
@@ -67,7 +61,6 @@ class CasoTesteService:
             return await self.repo.delete(caso_id)
         except IntegrityError as e:
             await self.repo.db.rollback()
-            # Traduz o erro feio do banco pra uma mensagem amigável pro usuário.
             tratar_erro_integridade(e, {
                 "foreign key": "Não é possível excluir este Caso pois ele possui execuções vinculadas."
             })

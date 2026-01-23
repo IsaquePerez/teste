@@ -67,8 +67,6 @@ export function QARunner() {
           const data = await api.get(`/testes/execucoes/${t.id}`);
           
           // --- CORREÇÃO: Limpeza automática para Reteste ---
-          // Se a tarefa voltou como 'reteste', limpamos o lixo do localStorage da execução anterior (fechada)
-          // Isso garante que os passos não apareçam marcados incorretamente e a fila de defeitos esteja limpa.
           if (data.status_geral === 'reteste') {
               localStorage.removeItem(`queue_${t.id}`);
               localStorage.removeItem(`statuses_${t.id}`);
@@ -77,7 +75,7 @@ export function QARunner() {
 
           setActiveExecucao(data);
           
-          // Reinicia estados locais (o useEffect de recuperação não achará nada no localStorage se foi limpo acima)
+          // Reinicia estados locais
           setDefectsQueue([]);
           setStepStatuses({});
           setDefectToEdit(null);
@@ -108,9 +106,9 @@ export function QARunner() {
   };
 
   const processStepAction = async (passoId, acao) => {
-      if (acao === 'aprovado') {
+      if (acao === 'passou') { // ATUALIZADO PARA NOVO ENUM
           setDefectsQueue(prev => prev.filter(d => d._passo_id_local !== passoId));
-          setStepStatuses(prev => ({ ...prev, [passoId]: 'aprovado' }));
+          setStepStatuses(prev => ({ ...prev, [passoId]: 'passou' })); // ATUALIZADO
 
           // Atualização Visual (Limpa imagens se houver)
           setActiveExecucao(prev => ({
@@ -166,9 +164,9 @@ export function QARunner() {
           )
       }));
 
+      // Lógica de nome do passo no título
       const passoAtual = activeExecucao.passos_executados.find(p => p.id === currentStepId);
       const nomeAcaoPasso = passoAtual?.passo_caso_teste?.acao || "Passo desconhecido";
-      
       const tituloCompleto = `${defectInfo.titulo} (Passo: ${nomeAcaoPasso})`;
 
       const newDefect = { 
@@ -187,16 +185,17 @@ export function QARunner() {
           return [...filtered, newDefect];
       });
 
-      setStepStatuses(prev => ({ ...prev, [currentStepId]: 'reprovado' }));
+      setStepStatuses(prev => ({ ...prev, [currentStepId]: 'falhou' })); // ATUALIZADO
       setIsDefectModalOpen(false);
       setDefectToEdit(null);
-      success("Falha registrada com o passo identificado.");
+      success("Falha salva no rascunho.");
   };
 
   const requestFinishExecution = () => {
     if (isReadOnly) return;
 
     const passos = activeExecucao?.passos_executados || [];
+    // Ajuste para novo Enum: 'passou', 'falhou', 'bloqueado' são válidos. 'pendente' não.
     const missing = passos.filter(p => !stepStatuses[p.id] && (!p.status || p.status === 'pendente'));
 
     if (missing.length > 0) {
@@ -204,7 +203,7 @@ export function QARunner() {
         return;
     }
 
-    const allPassed = Object.values(stepStatuses).every(s => s === 'aprovado');
+    const allPassed = Object.values(stepStatuses).every(s => s === 'passou');
     const resultadoTexto = allPassed ? 'Aprovado' : 'Com Falhas';
 
     setConfirmModal({
@@ -212,7 +211,6 @@ export function QARunner() {
         title: "Finalizar Tarefa?",
         message: `Resultado: ${resultadoTexto}. A tarefa será marcada como "FECHADO" e não poderá mais ser editada. Confirmar?`,
         isDanger: !allPassed,
-        // Envia 'fechado' fixo, independente do resultado (conforme solicitado)
         onConfirm: () => finishExecutionConfirm('fechado') 
     });
   };

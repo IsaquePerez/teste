@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { Trash } from '../../components/icons/Trash';
+import { Search } from '../../components/icons/Search';
 import './styles.css';
 
 // --- COMPONENTE REUTILIZÁVEL: SEARCHABLE SELECT ---
@@ -16,8 +18,9 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
     if (!Array.isArray(options)) return;
 
     if (value === null || value === undefined || value === '') {
-      setSearchTerm('');
-      return;
+      if (!(value === '' && searchTerm !== '')) {
+        setSearchTerm('');
+      }
     }
 
     const selectedOption = options.find(opt => String(opt.id) === String(value));
@@ -27,7 +30,7 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
         setSearchTerm(selectedOption[labelKey]);
       }
     }
-  }, [value, options, labelKey, isOpen, searchTerm]); 
+  }, [value, options, labelKey]); 
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -142,7 +145,6 @@ export function AdminCasosTeste() {
 
   const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
-  // Click Outside Geral
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowSuggestions(false);
@@ -389,9 +391,15 @@ export function AdminCasosTeste() {
   const currentCasos = filteredCasos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
+
+  const usersFormatted = usuarios.map(u => ({ ...u, labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}` }));
+  const testers = usersFormatted.filter(u => u.nivel_acesso_id === 2 && u.ativo);
+
+  const isFormInvalid =  !String(form.ciclo_id).trim() || !String(form.responsavel_id).trim() || !form.nome.trim() || !form.pre_condicoes.trim() || !form.criterios_aceitacao.trim() || !form.prioridade.trim();
+
   return (
     <main className="container">
-      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir?" message={`Excluir "${casoToDelete?.nome}"?`} isDanger={true} />
+      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Caso de Teste?" message={`Tem certeza que deseja excluir "${casoToDelete?.nome}"?`} isDanger={true} />
 
       {view === 'form' && (
         <div style={{maxWidth: '100%', margin: '0 auto'}}>
@@ -402,7 +410,7 @@ export function AdminCasosTeste() {
                 {!editingId && (
                     <div ref={wrapperRef} className="search-wrapper" style={{ marginLeft: 'auto', width: '300px' }}>
                         <input type="text" placeholder="Buscar modelo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
-                        <span className="search-icon">🔍</span>
+                        <span className="search-icon"><Search /></span>
                         {showSuggestions && <ul className="custom-dropdown">{globalSuggestions.length === 0 ? <li style={{color:'#999'}}>Sem resultados.</li> : globalSuggestions.map(c => (<li key={c.id} onClick={() => { handleImportarModelo(c.id); setShowSuggestions(false); }}><div style={{fontWeight:600}}>{truncate(c.nome, 20)}</div></li>))}</ul>}
                     </div>
                 )}
@@ -411,18 +419,16 @@ export function AdminCasosTeste() {
                   <div className="form-grid">
                       <div>
                         <label className="input-label">Projeto *</label>
-                        {/* USO DA NOVA FUNÇÃO DE MUDANÇA DE PROJETO
-                            Isso garante que ao trocar o projeto, os ciclos sejam atualizados 
-                        */}
+                        {/* USO DA NOVA FUNÇÃO DE MUDANÇA DE PROJETO */}
                         <SearchableSelect 
                             options={projetos.filter(p => p.status === 'ativo')} 
                             value={form.projeto_id} 
                             onChange={handleFormProjectChange} 
                             placeholder="Selecione..." 
-                            disabled={!!editingId} // Bloqueia edição de projeto na edição de caso (opcional, mas comum para integridade)
+                            disabled={!!editingId} // Bloqueia edição de projeto na edição de caso
                         />
                       </div>
-                      <div><label className="input-label">Título *</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Validar login" className="form-control" /></div>
+                      <div><label className="input-label"><b>Título</b></label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" /></div>
                   </div>
                   
                   <div className="form-grid">
@@ -463,7 +469,7 @@ export function AdminCasosTeste() {
               <h3 className="section-subtitle">Alocação</h3>
               <div className="form-grid">
                   <div>
-                      <label>Ciclo</label>
+                      <label><b>Ciclo</b></label>
                       <SearchableSelect 
                           options={ciclos} 
                           value={form.ciclo_id} 
@@ -472,12 +478,13 @@ export function AdminCasosTeste() {
                       />
                   </div>
                   <div>
-                      <label>Responsável</label>
+                      <label><b>Responsável</b></label>
                       <SearchableSelect 
-                          options={usuarios.filter(u => u.ativo)} 
+                          options={testers} 
                           value={form.responsavel_id} 
                           onChange={(val) => setForm({ ...form, responsavel_id: val })} 
-                          placeholder="Buscar responsável..." 
+                          placeholder="Selecione o responsável..."
+                          labelKey="labelCompleto"
                       />
                   </div>
               </div>
@@ -489,7 +496,17 @@ export function AdminCasosTeste() {
                    <div key={idx} className="step-row"><div className="step-index">{idx + 1}</div><input placeholder="Ação" value={passo.acao} onChange={e => updateStep(idx, 'acao', e.target.value)} className="form-control small-text" /><input placeholder="Resultado Esperado" value={passo.resultado_esperado} onChange={e => updateStep(idx, 'resultado_esperado', e.target.value)} className="form-control small-text" /><button type="button" onClick={() => removeStep(idx)} className="btn danger small btn-remove-step">✕</button></div>
                  ))}
                </div>
-               <div className="form-actions"><button type="button" onClick={handleReset} className="btn">Cancelar</button><button type="submit" className="btn primary">Salvar</button></div>
+               <div className="form-actions">
+                <button type="button" onClick={handleReset} className="btn">Cancelar</button>
+                <button
+                  type="submit"
+                  className="btn primary"
+                  disabled={isFormInvalid} 
+                  title={isFormInvalid ? "Preencha todos os campos" : ""}
+                >
+                  Salvar
+                </button>
+               </div>
             </section>
           </form>
         </div>
@@ -516,7 +533,7 @@ export function AdminCasosTeste() {
                    <div className="separator"></div>
                    <div ref={wrapperRef} className="search-wrapper">
                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
-                       <span className="search-icon">🔍</span>
+                       <span className="search-icon"><Search /></span>
                        {showSuggestions && <ul className="custom-dropdown">{globalSuggestions.length===0 ? <li style={{color:'#999'}}>Sem resultados.</li> : globalSuggestions.map(c => (<li key={c.id} onClick={() => { setSearchTerm(c.nome); setShowSuggestions(false); }}><div style={{display:'flex',justifyContent:'space-between'}}><span>{truncate(c.nome, 20)}</span><span style={{fontSize:'0.75rem',color:'#9ca3af',fontStyle:'italic'}}></span></div></li>))}</ul>}
                    </div>
                </div>
@@ -573,11 +590,11 @@ export function AdminCasosTeste() {
                        </thead>
                        <tbody> 
                          {filteredCasos.length === 0 ? (
-                            <tr>
-                                <td colSpan="8" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
-                                    {!selectedProjeto ? <span>Selecione um projeto para visualizar os casos de teste.</span> : <span>Nenhum caso encontrado neste projeto.</span>}
-                                </td>
-                            </tr>
+                           <tr>
+                               <td colSpan="8" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
+                                   {!selectedProjeto ? <span>Selecione um projeto para visualizar os casos de teste.</span> : <span>Nenhum caso encontrado neste projeto.</span>}
+                               </td>
+                           </tr>
                          ) : (
                            currentCasos.map(c => (
                             <tr key={c.id} className="selectable" onClick={() => handleEdit(c)}>
@@ -588,11 +605,11 @@ export function AdminCasosTeste() {
                                         {c.status ? c.status.toUpperCase() : 'RASCUNHO'}
                                     </span>
                                 </td>
-                                <td className="cell-priority" style={{textAlign: 'center'}}><span className="badge priority-badge">{c.prioridade}</span></td>
+                                <td className="cell-priority" style={{textAlign: 'center'}}><span className={`badge priority-badge ${c.prioridade}`}>{c.prioridade?.toUpperCase()}</span></td>
                                 <td style={{color: '#64748b'}}>{truncate(getCicloName(c), 20)}</td>
                                 <td><span className="cell-resp">{c.responsavel_id ? truncate(getRespName(c.responsavel_id), 20) : '-'}</span></td>
                                 <td className="cell-steps" style={{textAlign: 'center'}}>{c.passos?.length || 0}</td>
-                                <td className="cell-actions"><button onClick={(e) => { e.stopPropagation(); setCasoToDelete(c); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon">🗑️</button></td>
+                                <td className="cell-actions"><button onClick={(e) => { e.stopPropagation(); setCasoToDelete(c); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon"><Trash /></button></td>
                             </tr>
                            ))
                          )}
