@@ -6,7 +6,9 @@ export function TopHeader({ toggleSidebar }) {
 
   const [isHovered, setIsHovered] = useState(false);
 
-  const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  const nomeCompleto = user?.nome || 'Usuário';
+  const primeiroNome = nomeCompleto.trim().split(" ")[0];
+
   return (
     <header className="top-header">
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -33,10 +35,23 @@ export function TopHeader({ toggleSidebar }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div className="header-user-badge">
-              <span className="header-user-name">{truncate(user?.nome, 15) || 'Usuário'}</span>
+              <span 
+                className="header-user-name"
+                title={nomeCompleto} 
+                style={{
+                  display: 'inline-block',
+                  maxWidth: '100px',   
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  verticalAlign: 'middle'
+                }}
+              >
+                {primeiroNome}
+              </span>
           </div>
           <button onClick={logout} className="btn danger header-logout-btn">
-             Sair
+              Sair
           </button>
       </div>
     </header>

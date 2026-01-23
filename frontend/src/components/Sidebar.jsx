@@ -2,20 +2,32 @@ import { Link, useLocation } from 'react-router-dom';
 
 export function Sidebar({ role, isOpen, closeSidebar }) {
   const location = useLocation();
+  
+  // Verifica se a rota atual corresponde ao link para marcar como ativo
   const isActive = (path) => location.pathname === path ? 'active' : '';
-  const handleNavClick = () => { if (window.innerWidth < 768) closeSidebar(); };
+  
+  // Fecha a sidebar automaticamente ao clicar em um link (se estiver em mobile)
+  const handleNavClick = () => { 
+    if (window.innerWidth < 768) {
+      closeSidebar(); 
+    }
+  };
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         {/* Organização da logo vinda da Main (muda conforme o cargo) */}
         {role === 'admin' && (
           <Link to="/admin" onClick={handleNavClick}>
-            <div className="brand-wrap"><img src="/logoge.svg" alt="GE" className="brand-logo-ge" /></div>
+            <div className="brand-wrap">
+              <img src="/logoge.svg" alt="GE" className="brand-logo-ge" />
+            </div>
           </Link>
         )}
         {role === 'user' && (
           <Link to="/qa/runner" onClick={handleNavClick}>
-            <div className="brand-wrap"><img src="/logoge.svg" alt="GE" className="brand-logo-ge" /></div>
+            <div className="brand-wrap">
+              <img src="/logoge.svg" alt="GE" className="brand-logo-ge" />
+            </div>
           </Link>
         )}
 
