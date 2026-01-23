@@ -1,0 +1,220 @@
+/* Fundo Escuro (Overlay) */
+.register-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(15, 23, 42, 0.75); /* Azul escuro semi-transparente */
+  backdrop-filter: blur(3px);
+  z-index: 2000; /* Acima de tudo */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* A Caixa Branca do Modal */
+.register-box {
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Cabeçalho */
+.register-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
+
+.register-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b; /* Texto Escuro */
+  margin: 0;
+}
+
+.register-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+}
+.register-close:hover { color: #ef4444; }
+
+/* Corpo do Formulário */
+.register-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: #fcfcfc;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569; /* Cinza médio legível */
+}
+
+.form-input, .form-select, .form-textarea {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #334155;
+  outline: none;
+  background: white;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Rodapé com Botões */
+.register-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: white;
+}
+
+.btn-cancel {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-cancel:hover { background: #f1f5f9; color: #334155; }
+
+.btn-confirm {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #ef4444; /* Vermelho para erro/falha */
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+.btn-confirm:hover { background: #dc2626; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.register-box {
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh; /* Limita a altura total à tela */
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column; /* Organiza Header, Body, Footer em coluna */
+  overflow: hidden; /* Esconde o que vazar da borda arredondada */
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-textarea {
+  height: 120px; /* Altura fixa */
+  resize: none; /* IMPEDE O USUÁRIO DE AUMENTAR/DIMINUIR */
+  line-height: 1.5;
+}
+
+/* Estilo para o Input de Arquivo */
+.file-input-wrapper {
+  border: 2px dashed #cbd5e1;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+.file-input-wrapper:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+.file-input-text {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* ... (mantenha todo o CSS anterior) ... */
+
+/* Lista de Arquivos Selecionados */
+.selected-files-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.file-item-badge {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.file-name-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px; /* Limita largura do nome */
+}
+
+.btn-remove-file {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.btn-remove-file:hover {
+  color: #b91c1c;
+}
+
+/* Ajuste no wrapper do input */
+.file-input-wrapper {
+  padding: 15px; /* Um pouco menor para economizar espaço */
+}

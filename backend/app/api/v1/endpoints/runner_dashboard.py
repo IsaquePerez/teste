@@ -2,16 +2,19 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.dashboard_service import DashboardService
+from app.models.usuario import Usuario
+from app.api.deps import get_current_active_user
 from app.schemas.dashboard import RunnerDashboardResponse
-from app.api.deps import get_current_user
 
 router = APIRouter()
 
 @router.get("/", response_model=RunnerDashboardResponse)
 async def get_runner_dashboard(
-    db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    # Instancia o serviço e busca os dados de performance
+    # --- CORREÇÃO AQUI ---
+    # Passamos o 'db' direto. Se passar 'repo', quebra.
     service = DashboardService(db)
-    return await service.get_runner_dashboard_data()
+    
+    return await service.get_runner_dashboard_data(runner_id=current_user.id)

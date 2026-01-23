@@ -1,11 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import update
 from sqlalchemy.orm import selectinload
 from typing import Sequence, Optional
+import json # <--- Importar json
 
 from app.models.testing import (
     ExecucaoTeste, ExecucaoPasso, PassoCasoTeste, 
-    CasoTeste, StatusExecucaoEnum
+    CasoTeste, StatusExecucaoEnum, StatusPassoEnum
 )
 from app.models.usuario import Usuario
 from app.schemas.execucao_teste import ExecucaoPassoUpdate
@@ -50,22 +52,20 @@ class ExecucaoTesteRepository:
         await self.db.commit()
         return await self.get_by_id(nova_exec.id)
 
-    async def get_by_id(self, exec_id: int) -> Optional[ExecucaoTeste]:
+    async def get_by_id(self, id: int) -> Optional[ExecucaoTeste]:
         query = (
             select(ExecucaoTeste)
             .options(
-                selectinload(ExecucaoTeste.ciclo),
-                selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
-                
                 selectinload(ExecucaoTeste.caso_teste).options(
                     selectinload(CasoTeste.passos),
-                    selectinload(CasoTeste.ciclo),
-                    selectinload(CasoTeste.projeto)
+                    selectinload(CasoTeste.projeto),
+                    selectinload(CasoTeste.ciclo)
                 ),
-
-                selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template) 
+                selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template),
+                selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
+                selectinload(ExecucaoTeste.ciclo)
             )
-            .where(ExecucaoTeste.id == exec_id)
+            .where(ExecucaoTeste.id == id)
         )
         result = await self.db.execute(query)
         return result.scalars().first()
@@ -82,39 +82,12 @@ class ExecucaoTesteRepository:
             select(ExecucaoTeste)
             .options(
                 selectinload(ExecucaoTeste.ciclo),
-                
-                selectinload(ExecucaoTeste.caso_teste).options(
-                    selectinload(CasoTeste.passos),
-                    selectinload(CasoTeste.ciclo),
-                    selectinload(CasoTeste.projeto)
-                ),
-
-                selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template),
-                selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso)
-            )
-            .where(ExecucaoTeste.responsavel_id == usuario_id)
-        )
-
-    async def get_minhas_execucoes(
-        self, 
-        usuario_id: int, 
-        status: Optional[StatusExecucaoEnum] = None,
-        skip: int = 0,
-        limit: int = 20
-    ) -> Sequence[ExecucaoTeste]:
-        
-        query = (
-            select(ExecucaoTeste)
-            .options(
-                selectinload(ExecucaoTeste.ciclo),
                 selectinload(ExecucaoTeste.responsavel).selectinload(Usuario.nivel_acesso),
-
                 selectinload(ExecucaoTeste.caso_teste).options(
-                    selectinload(CasoTeste.passos),
-                    selectinload(CasoTeste.ciclo),
+                    selectinload(CasoTeste.passos), 
+                    selectinload(CasoTeste.ciclo), 
                     selectinload(CasoTeste.projeto)
                 ),
-
                 selectinload(ExecucaoTeste.passos_executados).selectinload(ExecucaoPasso.passo_template)
             )
             .where(ExecucaoTeste.responsavel_id == usuario_id)
@@ -131,11 +104,19 @@ class ExecucaoTesteRepository:
     async def get_execucao_passo(self, passo_id: int) -> Optional[ExecucaoPasso]:
         return await self.db.get(ExecucaoPasso, passo_id)
 
+    # --- CORREÇÃO AQUI ---
     async def update_passo(self, passo_id: int, data: ExecucaoPassoUpdate) -> Optional[ExecucaoPasso]:
         passo = await self.db.get(ExecucaoPasso, passo_id)
         
         if passo:
             update_data = data.model_dump(exclude_unset=True)
+            
+            # TRATAMENTO DE EVIDÊNCIAS: Se vier como lista, converte para JSON String
+            if 'evidencias' in update_data:
+                ev = update_data['evidencias']
+                if isinstance(ev, list):
+                    update_data['evidencias'] = json.dumps(ev)
+            
             for k, v in update_data.items():
                 setattr(passo, k, v)
             
@@ -152,9 +133,40 @@ class ExecucaoTesteRepository:
         return None
 
     async def update_status_geral(self, exec_id: int, status: StatusExecucaoEnum) -> Optional[ExecucaoTeste]:
-        execucao = await self.db.get(ExecucaoTeste, exec_id)
-        if execucao:
-            execucao.status_geral = status
-            await self.db.commit()
-            return await self.get_by_id(exec_id) 
-        return execucao
+        return await self.update_status(exec_id, status)
+
+    async def listar_passos(self, execucao_id: int):
+        query = select(ExecucaoPasso).where(ExecucaoPasso.execucao_teste_id == execucao_id)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+    
+    async def update_status(self, id: int, status: StatusExecucaoEnum):
+        stmt = (
+            update(ExecucaoTeste)
+            .where(ExecucaoTeste.id == id)
+            .values(status_geral=status)
+            .execution_options(synchronize_session="fetch")
+        )
+        await self.db.execute(stmt)
+
+        if status == StatusExecucaoEnum.reteste:
+            stmt_passos = (
+                update(ExecucaoPasso)
+                .where(
+                    ExecucaoPasso.execucao_teste_id == id,
+                    ExecucaoPasso.status == StatusPassoEnum.reprovado
+                )
+                .values(
+                    status=StatusPassoEnum.pendente,
+                    resultado_obtido="",
+                    evidencias="[]"
+                )
+            )
+            await self.db.execute(stmt_passos)
+
+        await self.db.commit()
+        
+        return await self.get_by_id(id)
+
+    async def atualizar_status_geral(self, execucao_id: int, novo_status: StatusExecucaoEnum):
+        return await self.update_status(execucao_id, novo_status)

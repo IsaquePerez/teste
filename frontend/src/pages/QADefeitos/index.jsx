@@ -1,295 +1,307 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getSession } from '../../services/api';
+import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
-import { ConfirmationModal } from '../../components/ConfirmationModal';
-import { Trash } from '../../components/icons/Trash';
-import { Search } from '../../components/icons/Search';
+import { useAuth } from '../../context/AuthContext'; 
+import { DefectModal } from '../../components/DefectModal'; 
 import './styles.css';
 
 export function QADefeitos() {
-  const isAdmin = getSession().role === 'admin';
-  const [defeitos, setDefeitos] = useState([]);
+  const { user } = useAuth();
+  const { error } = useSnackbar();
+
+  // --- TRAVA DE SEGURANÇA VISUAL ---
+  if (!user) {
+      return <div className="loading-text" style={{marginTop: '50px'}}>Carregando sessão...</div>;
+  }
+
+  const isAdmin = user.role === 'admin';
+  const isRunner = !isAdmin;
+
+  // --- ESTADOS ---
+  // Agora 'execucoes' armazena os grupos, não defeitos isolados
+  const [execucoes, setExecucoes] = useState([]); 
+  const [usuarios, setUsuarios] = useState([]); 
   const [loading, setLoading] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [galleryImages, setGalleryImages] = useState(null);
+  const [selectedExecution, setSelectedExecution] = useState(null);
   
-  // --- ESTADOS DA BUSCA E FILTROS ---
-  const [searchTerm, setSearchTerm] = useState("");
+  // --- FILTROS ---
+  const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const searchRef = useRef(null);
-
-  // --- FILTROS DE COLUNA ---
-  const [origemSearchText, setOrigemSearchText] = useState('');
-  const [isOrigemSearchOpen, setIsOrigemSearchOpen] = useState(false);
-  const origemHeaderRef = useRef(null);
-
-  const [sevSearchText, setSevSearchText] = useState('');
-  const [selectedSev, setSelectedSev] = useState('');
-  const [isSevSearchOpen, setIsSevSearchOpen] = useState(false);
-  const sevHeaderRef = useRef(null);
-
+  const wrapperRef = useRef(null);
+  
   const [statusSearchText, setStatusSearchText] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const statusHeaderRef = useRef(null);
-
-  const { success, error } = useSnackbar();
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [defectToDelete, setDefectToDelete] = useState(null);
-
+  
+  const [sevSearchText, setSevSearchText] = useState('');
+  const [selectedSev, setSelectedSev] = useState('');
+  const [isSevOpen, setIsSevOpen] = useState(false);
+  const sevHeaderRef = useRef(null);
+  
+  const [respSearchText, setRespSearchText] = useState('');
+  const [selectedResp, setSelectedResp] = useState('');
+  const [isRespOpen, setIsRespOpen] = useState(false);
+  const respHeaderRef = useRef(null);
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const truncate = (str, n = 35) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-        if (!event.target.closest('.status-cell')) setOpenMenuId(null);
-        if (searchRef.current && !searchRef.current.contains(event.target)) setShowSuggestions(false);
-        if (origemHeaderRef.current && !origemHeaderRef.current.contains(event.target)) {
-            if (!origemSearchText) setIsOrigemSearchOpen(false);
+  // --- HELPER DE AGRUPAMENTO ---
+  const groupDefects = (defects) => {
+    const groups = defects.reduce((acc, defect) => {
+        const execId = defect.execucao_teste_id;
+        if (!acc[execId]) {
+            acc[execId] = {
+                id: execId, // ID da Execução
+                projeto_nome: defect.projeto_nome,
+                caso_teste_nome: defect.caso_teste_nome,
+                responsavel_teste_nome: defect.responsavel_teste_nome,
+                responsavel_id: defect.responsavel_id,
+                created_at: defect.created_at,
+                // Array contendo todos os bugs desta execução
+                defeitos: [] 
+            };
         }
-        if (sevHeaderRef.current && !sevHeaderRef.current.contains(event.target)) {
-            if (!selectedSev) { setIsSevSearchOpen(false); setSevSearchText(''); }
-        }
-        if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
-            if (!selectedStatus) { setIsStatusSearchOpen(false); setStatusSearchText(''); }
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedSev, selectedStatus, origemSearchText]);
+        acc[execId].defeitos.push(defect);
+        return acc;
+    }, {});
+    
+    // Converte objeto para array e ordena por data
+    return Object.values(groups).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  };
 
-  useEffect(() => { loadDefeitos(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, origemSearchText, selectedSev, selectedStatus]);
-
-  const loadDefeitos = async () => {
+  // --- CARREGAMENTO DE DADOS ---
+  const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.get("/defeitos/");
-      setDefeitos(Array.isArray(data) ? data : []);
-    } catch (err) { error("Erro ao carregar defeitos."); }
-    finally { setLoading(false); }
+      const [defResponse, userResponse] = await Promise.all([
+          api.get('/defeitos/'), // Note a barra no final por precaução
+          api.get('/usuarios/')
+      ]);
+      
+      const rawDefects = Array.isArray(defResponse) ? defResponse : [];
+      const grouped = groupDefects(rawDefects);
+      
+      setExecucoes(grouped);
+      setUsuarios(Array.isArray(userResponse) ? userResponse : []);
+    } catch (err) {
+      error("Erro ao carregar dados.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- LÓGICA DE FILTRAGEM ---
-  const filteredDefeitos = defeitos.filter(d => {
-      const nomeTeste = d.execucao?.caso_teste?.nome || '';
-      
-      if (origemSearchText && !nomeTeste.toLowerCase().includes(origemSearchText.toLowerCase())) return false;
-      if (selectedSev && d.severidade !== selectedSev) return false;
-      if (selectedStatus && d.status !== selectedStatus) return false;
+  useEffect(() => {
+    loadData();
+  }, []);
 
-      if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          const matchTeste = nomeTeste.toLowerCase().includes(term);
-          const matchTitulo = d.titulo.toLowerCase().includes(term);
-          if (!matchTeste && !matchTitulo) return false;
+  // --- EVENT LISTENERS PARA FECHAR DROPDOWNS ---
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowSuggestions(false);
+      if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
+        if (!selectedStatus) { setIsStatusOpen(false); setStatusSearchText(''); }
       }
-      return true;
+      if (sevHeaderRef.current && !sevHeaderRef.current.contains(event.target)) {
+        if (!selectedSev) { setIsSevOpen(false); setSevSearchText(''); }
+      }
+      if (respHeaderRef.current && !respHeaderRef.current.contains(event.target)) {
+        if (!selectedResp) { setIsRespOpen(false); setRespSearchText(''); }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedStatus, selectedSev, selectedResp]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedStatus, selectedSev, selectedResp]);
+
+  // --- LÓGICA DE FILTRAGEM (Adaptada para Grupos) ---
+  const filteredExecucoes = execucoes.filter(group => {
+    // Filtro de Status: Verifica se ALGUM defeito do grupo tem o status selecionado
+    if (selectedStatus) {
+        const hasStatus = group.defeitos.some(d => d.status === selectedStatus);
+        if (!hasStatus) return false;
+    }
+
+    // Filtro de Severidade: Verifica se ALGUM defeito do grupo tem a severidade selecionada
+    if (selectedSev) {
+        const hasSev = group.defeitos.some(d => d.severidade === selectedSev);
+        if (!hasSev) return false;
+    }
+
+    // Filtro de Responsável
+    if (selectedResp) {
+        // Verifica pelo ID do responsável salvo no grupo ou no primeiro defeito
+        const respId = group.responsavel_id || group.defeitos[0]?.responsavel_id;
+        if (String(respId) !== String(selectedResp)) return false;
+    }
+
+    // Filtro de Texto (Busca Geral)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const proj = group.projeto_nome || '';
+      const caso = group.caso_teste_nome || '';
+      const resp = group.responsavel_teste_nome || '';
+      const idStr = String(group.id);
+      
+      // Procura também nos títulos dos defeitos internos
+      const hasDefectMatch = group.defeitos.some(d => d.titulo.toLowerCase().includes(term));
+
+      if (
+          !proj.toLowerCase().includes(term) && 
+          !caso.toLowerCase().includes(term) && 
+          !resp.toLowerCase().includes(term) && 
+          !idStr.includes(term) &&
+          !hasDefectMatch
+      ) {
+            return false;
+      }
+    }
+    return true;
   });
 
-  const globalSuggestions = searchTerm === '' ? filteredDefeitos.slice(0, 5) : filteredDefeitos.slice(0, 5);
-
-  const sevOptions = [{label:'Crítico', value:'critico'}, {label:'Alto', value:'alto'}, {label:'Médio', value:'medio'}, {label:'Baixo', value:'baixo'}];
-  const filteredSevHeader = sevOptions.filter(o => o.label.toLowerCase().includes(sevSearchText.toLowerCase()));
-
-  const statusOptions = [{label:'Aberto', value:'aberto'}, {label:'Em Teste', value:'em_teste'}, {label:'Corrigido', value:'corrigido'}, {label:'Fechado', value:'fechado'}];
-  const filteredStatusHeader = statusOptions.filter(o => o.label.toLowerCase().includes(statusSearchText.toLowerCase()));
-
-  const totalPages = Math.ceil(filteredDefeitos.length / itemsPerPage);
-  if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
-  const currentDefeitos = filteredDefeitos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredExecucoes.length / itemsPerPage);
+  const currentItems = filteredExecucoes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
-  const handleUpdateStatus = async (id, newStatus) => {    
-    setOpenMenuId(null); 
-    try { await api.put(`/defeitos/${id}`, { status: newStatus }); success(`Status atualizado!`); loadDefeitos(); } catch (e) { error("Erro ao atualizar."); }
-  };
+  // Opções para os Dropdowns
+  const statusOptions = [{label: 'Aberto', value: 'aberto'}, {label: 'Corrigido', value: 'corrigido'}, {label: 'Fechado', value: 'fechado'}];
+  const filteredStatusHeader = statusOptions.filter(o => o.label.toLowerCase().includes(statusSearchText.toLowerCase()));
   
-  const requestDelete = (d) => { setDefectToDelete(d); setIsDeleteModalOpen(true); };
-  const confirmDelete = async () => {
-      if (!defectToDelete) return;
-      try { await api.delete(`/defeitos/${defectToDelete.id}`); success(`Excluído.`); loadDefeitos(); } catch (err) { error("Erro ao excluir."); } finally { setDefectToDelete(null); }
+  const sevOptions = [{label: 'Crítico', value: 'critico'}, {label: 'Alto', value: 'alto'}, {label: 'Médio', value: 'medio'}, {label: 'Baixo', value: 'baixo'}];
+  const filteredSevHeader = sevOptions.filter(o => o.label.toLowerCase().includes(sevSearchText.toLowerCase()));
+  
+  const filteredRespHeader = usuarios.filter(u => u.nome.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
+
+  // --- HELPERS DE RENDERIZAÇÃO ---
+  // Define a severidade mais alta do grupo para exibir o badge
+  const getGroupSeverity = (defects) => {
+      if (defects.some(d => d.severidade === 'critico')) return 'critico';
+      if (defects.some(d => d.severidade === 'alto')) return 'alto';
+      if (defects.some(d => d.severidade === 'medio')) return 'medio';
+      return 'baixo';
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
+  const getSeveridadeBadge = (s) => `badge-sev-${s}`;
 
-  const getSeveridadeColor = (sev) => {
-      switch(sev) { case 'critico': return '#b91c1c'; case 'alto': return '#ef4444'; case 'medio': return '#f59e0b'; default: return '#10b981'; }
-  };
-
-  const parseEvidencias = (evidenciaString) => {
-      if (!evidenciaString) return [];
-      if (typeof evidenciaString === 'string' && evidenciaString.trim().startsWith('http') && !evidenciaString.trim().startsWith('[')) return [evidenciaString];
-      try { const parsed = JSON.parse(evidenciaString); return Array.isArray(parsed) ? parsed : [evidenciaString]; } catch (e) { return [evidenciaString]; }
-  };
-
-  const openGallery = (evidencias) => { const lista = parseEvidencias(evidencias); if (lista.length > 0) setGalleryImages(lista); };
-  const toggleMenu = (id) => { if (!isAdmin) return; setOpenMenuId(openMenuId === id ? null : id); };
-
-  const getPaginationGroup = () => {
-    const maxButtons = 5; let start = Math.max(1, currentPage - Math.floor(maxButtons / 2)); let end = Math.min(totalPages, start + maxButtons - 1);
-    if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1);
-    const pages = []; for (let i = start; i <= end; i++) pages.push(i); return pages;
+  const handleRowClick = (group) => setSelectedExecution(group);
+  
+  const handleCloseModal = (refreshNeeded) => {
+      setSelectedExecution(null);
+      if (refreshNeeded === true) {
+          loadData();
+      }
   };
 
   return (
     <main className="container">
-      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={() => { confirmDelete(); setIsDeleteModalOpen(false); }} title="Excluir?" message={`Tem certeza que deseja excluir "${defectToDelete?.titulo || ''}"?`} isDanger={true} />
       
-      <section className="card">
+      {/* Modal agora recebe o GRUPO inteiro */}
+      {selectedExecution && (
+        <DefectModal 
+          executionGroup={selectedExecution} // <--- MUDANÇA IMPORTANTE: Passamos o grupo
+          onClose={handleCloseModal}
+        />
+      )}
+
+      <section className="card" style={{ marginTop: 0 }}>
         <div className="toolbar">
-            <h3 className="page-title">Gestão de Defeitos</h3>
-            <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto', alignItems: 'center' }}>
-                <button onClick={loadDefeitos} className="btn">Atualizar</button>
-                <div className="separator"></div>
-                <div className="search-wrapper" ref={searchRef} style={{ position: 'relative', width: '250px' }}>
-                    <input 
-                        type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)}
-                        style={{ padding: '8px 0px 8px 8px', border: '1px solid #e2e8f0', borderRadius: '6px', width: '100%', fontSize: '0.9rem', outline: 'none' }}
-                    />
-                    <span className="search-icon"><Search /></span>
-                    {showSuggestions && (
-                        <ul className="dropdown-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 1000, listStyle: 'none', margin: '5px 0 0 0', padding: 0, maxHeight: '200px', overflowY: 'auto' }}>
-                            {globalSuggestions.length === 0 ? <li style={{padding:'10px', color:'#999'}}>Sem resultados.</li> : globalSuggestions.map((d) => (
-                                <li key={d.id} onClick={() => { setSearchTerm(d.titulo); setShowSuggestions(false); }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '0.9rem', color: '#334155' }} onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}>
-                                    {truncate(d.titulo, 25)}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+          <h3 className="page-title">{isRunner ? "Meus Reportes" : "Gestão de Falhas"}</h3>
+          <div className="toolbar-actions">
+            <div ref={wrapperRef} className="search-wrapper" style={{width: '300px'}}>
+                <input type="text" placeholder="Buscar projeto, caso ou runner..." className="search-input" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} />
+                <span className="search-icon">🔍</span>
             </div>
+          </div>
         </div>
 
-        {loading ? <p>Carregando...</p> : (
-          <div className="table-wrap">
-            <div className="content-area">
-                <table style={{ borderCollapse: 'separate', borderSpacing: '0 5px' }}>
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        
-                        <th style={{width: '200px', verticalAlign: 'middle'}}>
-                            <div className="th-filter-container" ref={origemHeaderRef}>
-                                {isAdmin && (isOrigemSearchOpen || origemSearchText) ? (
-                                    <div style={{position: 'relative', width: '100%'}}>
-                                        <input autoFocus type="text" className={`th-search-input ${origemSearchText ? 'active' : ''}`} placeholder="Origem..." value={origemSearchText} onChange={(e) => setOrigemSearchText(e.target.value)} onClick={(e) => e.stopPropagation()} />
-                                        <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); setOrigemSearchText(''); setIsOrigemSearchOpen(false); }}>✕</button>
-                                    </div>
-                                ) : (
-                                    <div className="th-label" onClick={() => isAdmin && setIsOrigemSearchOpen(true)} title={isAdmin ? "Filtrar Origem" : ""}>
-                                        ORIGEM {isAdmin && <span className="filter-icon">▼</span>}
-                                    </div>
-                                )}
-                            </div>
-                        </th>
-
-                        <th>Erro</th>
-                        <th>Evidências</th>
-
-                        <th style={{width: '130px', verticalAlign: 'middle'}}>
-                            <div className="th-filter-container" ref={sevHeaderRef}>
-                                {isAdmin && (isSevSearchOpen || selectedSev) ? (
-                                    <div style={{position: 'relative', width: '100%'}}>
-                                        <input autoFocus type="text" className={`th-search-input ${selectedSev ? 'active' : ''}`} placeholder="Sev..." value={selectedSev && sevSearchText==='' ? (selectedSev.charAt(0).toUpperCase()+selectedSev.slice(1)) : sevSearchText} onChange={(e) => { setSevSearchText(e.target.value); if(selectedSev) setSelectedSev(''); }} onClick={(e) => e.stopPropagation()} />
-                                        <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedSev){setSelectedSev('');setSevSearchText('')}else{setIsSevSearchOpen(false);setSevSearchText('')} }}>✕</button>
-                                        {(!selectedSev || sevSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedSev(''); setSevSearchText(''); setIsSevSearchOpen(false); }}><span style={{color:'#3b82f6'}}>Todos</span></li>{filteredSevHeader.map(o=><li key={o.value} onClick={()=>{setSelectedSev(o.value);setSevSearchText('');setIsSevSearchOpen(true)}}>{o.label}</li>)}</ul>}
-                                    </div>
-                                ) : (
-                                    <div className="th-label" onClick={() => isAdmin && setIsSevSearchOpen(true)} title={isAdmin ? "Filtrar" : ""}>SEVERIDADE {isAdmin && <span className="filter-icon">▼</span>}</div>
-                                )}
-                            </div>
-                        </th>
-
-                        <th style={{width: '130px', verticalAlign: 'middle'}}>
-                            <div className="th-filter-container" ref={statusHeaderRef}>
-                                {isAdmin && (isStatusSearchOpen || selectedStatus) ? (
-                                    <div style={{position: 'relative', width: '100%'}}>
-                                        <input autoFocus type="text" className={`th-search-input ${selectedStatus ? 'active' : ''}`} placeholder="Status..." value={selectedStatus && statusSearchText==='' ? selectedStatus.replace('_',' ').toUpperCase() : statusSearchText} onChange={(e) => { setStatusSearchText(e.target.value); if(selectedStatus) setSelectedStatus(''); }} onClick={(e) => e.stopPropagation()} />
-                                        <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedStatus){setSelectedStatus('');setStatusSearchText('')}else{setIsStatusSearchOpen(false);setStatusSearchText('')} }}>✕</button>
-                                        {(!selectedStatus || statusSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}><span style={{color:'#3b82f6'}}>Todos</span></li>{filteredStatusHeader.map(o=><li key={o.value} onClick={()=>{setSelectedStatus(o.value);setStatusSearchText('');setIsStatusSearchOpen(true)}}>{o.label}</li>)}</ul>}
-                                    </div>
-                                ) : (
-                                    <div className="th-label" onClick={() => isAdmin && setIsStatusSearchOpen(true)} title={isAdmin ? "Filtrar" : ""}>STATUS {isAdmin && <span className="filter-icon">▼</span>}</div>
-                                )}
-                            </div>
-                        </th>
-
-                        <th style={{textAlign: 'right'}}>Data</th>
-                        
-                        {isAdmin && <th style={{textAlign: 'right'}}>Ações</th>}
-                    </tr>
-                    </thead>
-                    <tbody>                    
-                    {filteredDefeitos.length === 0 ? <tr><td colSpan={isAdmin ? 8 : 7} className="no-results" style={{textAlign:'center'}}>Nenhum defeito encontrado.</td></tr> : currentDefeitos.map(d => {
-                        const temEvidencia = d.evidencias && parseEvidencias(d.evidencias).length > 0;
-                        return (
-                            <tr key={d.id}>
-                                <td className="col-id">#{d.id}</td>
-                                <td className="col-origin">
-                                    <div><strong>{d.execucao?.caso_teste?.nome || 'Teste Removido'}</strong></div>
-                                    <div>{!d.execucao?.responsavel ? <span className="resp-badge resp-unknown">Desconhecido</span> : <span className={`resp-badge ${d.execucao.responsavel.ativo ? 'resp-active' : 'resp-inactive'}`}>{d.execucao.responsavel.nome} {d.execucao.responsavel.ativo ? '' : '(Inativo)'}</span>}</div>
-                                </td>
-                                <td className="col-error"><strong>{d.titulo}</strong><div className="desc" title={d.descricao}>{truncate(d.descricao, 30)}</div></td>
-                                <td>{temEvidencia ? <button onClick={() => openGallery(d.evidencias)} className="btn-view">Ver</button> : <span style={{color: '#cbd5e1'}}>-</span>}</td>
-                                <td><span className="col-severity" style={{color: getSeveridadeColor(d.severidade)}}>{d.severidade}</span></td>                                
-                                <td className="status-cell" style={{ position: 'relative' }}> 
-                                    {isAdmin ? (                                 
-                                            <>
-                                                <button onClick={() => toggleMenu(d.id)} className={`status-badge status-${d.status || 'aberto'} status-dropdown-btn`}>{d.status.replace('_',' ').toUpperCase()} </button>
-                                            </>
-                                    ) : <span className={`status-badge status-${d.status || 'aberto'}`}>{d.status.replace('_',' ').toUpperCase()}</span>}
-                                </td>
-                                <td className="col-date">{formatDate(d.created_at)}</td>
+        {loading ? <div className="loading-text">Carregando...</div> : (
+            <div className="table-wrap">
+                <div className="content-area">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style={{width: '60px'}}>ID Exec</th>
+                                <th style={{width: '30%'}}>Projeto / Caso de Teste</th>
+                                <th style={{width: '20%'}}>Runner</th>
                                 
-                                {isAdmin && (
-                                    <td style={{textAlign: 'right'}}>
-                                        <button onClick={(e) => { e.stopPropagation(); requestDelete(d); }} className="btn danger small"><Trash /></button>
-                                    </td>
-                                )}
-                            </tr>
-                        );
-                    })}
-                    </tbody>
-                </table>
-            </div>
+                                {/* COLUNA DE RESUMO DE DEFEITOS */}
+                                <th style={{width: '20%', textAlign: 'center'}}>
+                                    Falhas Reportadas
+                                </th>
 
-            <div className="pagination-container">
-                <button onClick={() => paginate(1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">«</button>
-                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1 || totalPages === 0} className="pagination-btn nav-btn">‹</button>
-                {getPaginationGroup().map((item) => (<button key={item} onClick={() => paginate(item)} className={`pagination-btn ${currentPage === item ? 'active' : ''}`}>{item}</button>))}
-                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">›</button>
-                <button onClick={() => paginate(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn nav-btn">»</button>
+                                <th style={{width: '15%', textAlign: 'center', verticalAlign: 'middle'}}>
+                                    <div className="th-filter-container" ref={sevHeaderRef} style={{justifyContent: 'center'}}>
+                                        {isSevOpen || selectedSev ? (
+                                            <div style={{position: 'relative', width: '100%'}}>
+                                                <input autoFocus type="text" className={`th-search-input ${selectedSev ? 'active' : ''}`} placeholder="Sev..." value={selectedSev && sevSearchText === '' ? selectedSev : sevSearchText} onChange={(e) => { setSevSearchText(e.target.value); if(selectedSev) setSelectedSev(''); }} onClick={(e) => e.stopPropagation()} />
+                                                <button className="btn-clear-filter" onClick={(e) => { e.stopPropagation(); if(selectedSev){setSelectedSev('');setSevSearchText('')}else{setIsSevOpen(false);setSevSearchText('')} }}>✕</button>
+                                                {(!selectedSev || sevSearchText) && <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}><li onClick={() => { setSelectedSev(''); setSevSearchText(''); setIsSevOpen(false); }}><span style={{color:'#3b82f6'}}>Todas</span></li>{filteredSevHeader.map(o=><li key={o.value} onClick={()=>{setSelectedSev(o.value);setSevSearchText('');setIsSevOpen(true)}}>{o.label}</li>)}</ul>}
+                                            </div>
+                                        ) : <div className="th-label" onClick={() => setIsSevOpen(true)} title="Filtrar">SEVERIDADE MÁX. <span className="filter-icon">▼</span></div>}
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredExecucoes.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
+                                        Nenhuma falha encontrada.
+                                    </td>
+                                </tr>
+                            ) : (
+                                currentItems.map(group => (
+                                    <tr key={group.id} onClick={() => handleRowClick(group)} className="selectable-row" title="Clique para gerenciar falhas">
+                                        <td className="cell-id">#{group.id}</td>
+                                        <td>
+                                            <div className="cell-name">{truncate(group.projeto_nome, 25)}</div>
+                                            <div style={{fontSize: '0.8rem', color: '#64748b'}}>{truncate(group.caso_teste_nome, 40)}</div>
+                                        </td>
+                                        <td><span className="cell-resp">{truncate(group.responsavel_teste_nome, 20)}</span></td>
+                                        
+                                        {/* Badge de Contagem */}
+                                        <td style={{textAlign: 'center'}}>
+                                            <span style={{
+                                                backgroundColor: '#fee2e2', 
+                                                color: '#991b1b', 
+                                                padding: '4px 12px', 
+                                                borderRadius: '20px', 
+                                                fontSize: '0.8rem', 
+                                                fontWeight: '700'
+                                            }}>
+                                                {group.defeitos.length} Defeito(s)
+                                            </span>
+                                        </td>
+
+                                        {/* Badge da Pior Severidade */}
+                                        <td style={{textAlign: 'center'}}>
+                                            <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
+                                                {getGroupSeverity(group.defeitos).toUpperCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {filteredExecucoes.length > 0 && (
+                    <div className="pagination-container">
+                        <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
+                        {Array.from({length: totalPages}, (_, i) => (
+                            <button key={i+1} onClick={() => paginate(i+1)} className={`pagination-btn ${currentPage === i+1 ? 'active' : ''}`}>{i+1}</button>
+                        )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
+                        <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
+                    </div>
+                )}
             </div>
-          </div>
         )}
       </section>
-
-      {galleryImages && (
-          <div className="gallery-overlay" onClick={() => setGalleryImages(null)}>
-              <div className="gallery-track">
-                  {galleryImages.map((url, idx) => {
-                      const filename = url.split('/').pop();
-                      const downloadUrl = `http://localhost:8000/api/v1/testes/evidencias/download/${filename}`;
-                      return (
-                        <div key={idx} className="gallery-item">
-                            <img src={url} alt={`Evidência ${idx+1}`} className="gallery-img" onClick={(e) => e.stopPropagation()} />
-                            <div style={{ marginTop:'15px', display:'flex', alignItems:'center', justifyContent:'center', gap:'15px', color:'white' }}> 
-                                <span style={{fontSize: '1.1rem'}}>Imagem {idx + 1}</span>
-                                {isAdmin && <a href={downloadUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ textDecoration: 'none', background: 'white', color: '#333', padding: '5px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>⬇️ Baixar</a>}
-                            </div>
-                        </div>
-                      );
-                  })}
-              </div>
-              <button className="btn" style={{marginTop:'20px', background:'rgba(255,255,255,0.2)', color:'white', border:'1px solid white'}} onClick={() => setGalleryImages(null)}>Fechar Galeria</button>
-          </div>
-      )}
     </main>
   );
 }

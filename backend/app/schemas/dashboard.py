@@ -5,12 +5,14 @@ from datetime import datetime
 class DashboardKPI(BaseModel):
     total_projetos: int
     total_ciclos_ativos: int
-    total_casos_teste: int
+    total_casos_teste: int    
+    taxa_sucesso_ciclos: float    
     total_defeitos_abertos: int
-    taxa_sucesso_ciclos: float
-    total_bloqueados: int
-    total_defeitos_criticos: int
-    total_aguardando_reteste: int
+    total_defeitos_criticos: int    
+    # Unindo campos de ambas as branches
+    total_pendentes: int           # Do HEAD (Isaque)
+    total_bloqueados: int          # Do Main
+    total_aguardando_reteste: int  # Do Main
 
 class ChartDataPoint(BaseModel):
     label: str
@@ -26,6 +28,8 @@ class DashboardResponse(BaseModel):
     kpis: DashboardKPI
     charts: DashboardCharts
 
+# --- Schemas do Dashboard do Runner (Vindo da Main) ---
+
 class RunnerKPI(BaseModel):
     total_execucoes_concluidas: int
     total_defeitos_reportados: int
@@ -40,7 +44,7 @@ class RunnerRankingData(BaseModel):
 
 class StatusDistributionData(BaseModel):
     name: str   
-    value: int  
+    value: int   
     color: Optional[str] = None
 
 class TimelineItem(BaseModel):

@@ -13,9 +13,9 @@ class PrioridadeEnum(str, enum.Enum):
 class StatusExecucaoEnum(str, enum.Enum):
     pendente = "pendente"
     em_progresso = "em_progresso"
-    passou = "passou"
-    falhou = "falhou"
-    bloqueado = "bloqueado"
+    reteste = "reteste"
+    fechado = "fechado"
+    bloqueado = "bloqueado" 
 
 class StatusPassoEnum(str, enum.Enum):
     pendente = "pendente"
@@ -41,8 +41,15 @@ class SeveridadeDefeitoEnum(str, enum.Enum):
     critico = "critico"
     alto = "alto"
     medio = "medio"
-    bajo = "baixo"
+    baixo = "baixo"
 
+class StatusCasoTesteEnum(str, enum.Enum):
+    rascunho = "rascunho"   
+    ativo = "ativo"           
+    obsoleto = "obsoleto"     
+    revisao = "revisao"       
+
+# Ciclos de Teste
 class CicloTeste(Base):
     __tablename__ = "ciclos_teste"
 
@@ -68,6 +75,7 @@ class CicloTeste(Base):
     execucoes = relationship("ExecucaoTeste", back_populates="ciclo", cascade="all, delete-orphan")
     metricas = relationship("Metrica", back_populates="ciclo")
     
+    # Relacionamento inverso para acessar os casos planejados neste ciclo
     casos = relationship("CasoTeste", back_populates="ciclo")
 
     @property
@@ -78,7 +86,8 @@ class CicloTeste(Base):
     def testes_concluidos(self):
         if not self.execucoes:
             return 0
-        return sum(1 for e in self.execucoes if e.status_geral.value in ['passou', 'falhou', 'bloqueado'])
+        # CORRIGIDO: Agora conta apenas 'fechado' (já que passou/falhou sumiram)
+        return sum(1 for e in self.execucoes if e.status_geral == StatusExecucaoEnum.fechado)
     
 class CasoTeste(Base):
     __tablename__ = "casos_teste"
@@ -87,14 +96,16 @@ class CasoTeste(Base):
     projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
     responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     
+    # Campo que faltava e causava o erro
     ciclo_id = Column(Integer, ForeignKey("ciclos_teste.id"), nullable=True)
-
+    
     nome = Column(String(255), nullable=False)
     
     descricao = Column(Text)
     pre_condicoes = Column(Text)
     criterios_aceitacao = Column(Text) 
     prioridade = Column(Enum(PrioridadeEnum, name='prioridade_enum', create_type=False), default=PrioridadeEnum.media)
+    status = Column(Enum(StatusCasoTesteEnum, name='status_caso_teste_enum', create_type=False), default=StatusCasoTesteEnum.rascunho)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -106,6 +117,7 @@ class CasoTeste(Base):
     projeto = relationship("Projeto", back_populates="casos_teste")
     responsavel = relationship("Usuario")   
     
+    # Relacionamento com Ciclo
     ciclo = relationship("CicloTeste", back_populates="casos")
     
     passos = relationship("PassoCasoTeste", back_populates="caso_teste", cascade="all, delete-orphan", order_by="PassoCasoTeste.ordem")
@@ -172,9 +184,9 @@ class Defeito(Base):
     id = Column(Integer, primary_key=True, index=True)
     execucao_teste_id = Column(Integer, ForeignKey("execucoes_teste.id"), nullable=False)
     titulo = Column(String(255), nullable=False)
-    descricao = Column(Text, nullable=False)
+    descricao = Column(Text, nullable=False)    
     evidencias = Column(Text)
-    
+    logs_erro = Column(Text, nullable=True) 
     severidade = Column(Enum(SeveridadeDefeitoEnum, name='severidade_defeito_enum', create_type=False), nullable=False)
     status = Column(Enum(StatusDefeitoEnum, name='status_defeito_enum', create_type=False), default=StatusDefeitoEnum.aberto)
     

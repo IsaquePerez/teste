@@ -7,13 +7,13 @@ import { Search } from '../../components/icons/Search';
 import { Plus } from '../../components/icons/Plus';
 import './styles.css';
 
-// --- COMPONENTE REUTILIZÁVEL: SEARCHABLE SELECT (VERSÃO BLINDADA) ---
-const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled, labelKey = 'nome' }) => {
+// --- COMPONENTE REUTILIZÁVEL: SEARCHABLE SELECT ---
+const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled, labelKey = 'nome', maxLen = 25 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
 
-  const truncate = (str, n = 20) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  const truncate = (str, n) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
   useEffect(() => {
     if (!Array.isArray(options)) return;
@@ -27,7 +27,9 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
     const selectedOption = options.find(opt => String(opt.id) === String(value));
     
     if (selectedOption) {
-      setSearchTerm(selectedOption[labelKey]);
+      if (!isOpen || searchTerm === '') {
+        setSearchTerm(selectedOption[labelKey]);
+      }
     }
   }, [value, options, labelKey]); 
 
@@ -87,7 +89,7 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
           ) : (
             displayOptions.map(opt => (
               <li key={opt.id} onClick={() => handleSelect(opt)} title={opt[labelKey]}>
-                  {truncate(opt[labelKey], 50)}
+                  {truncate(opt[labelKey], maxLen)}
               </li>
             ))
           )}
@@ -137,8 +139,8 @@ export function AdminCasosTeste() {
   const itemsPerPage = 5;
 
   const [form, setForm] = useState({
-    nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '',
-    prioridade: 'media', responsavel_id: '', ciclo_id: '',
+    nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo',
+    prioridade: 'media', responsavel_id: '', ciclo_id: '', projeto_id: '',
     passos: [{ ordem: 1, acao: '', resultado_esperado: '' }]
   });
 
@@ -187,26 +189,36 @@ export function AdminCasosTeste() {
   
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedPrio, selectedCiclo, selectedResp]);
 
+  // Função auxiliar para buscar ciclos de um projeto específico
+  const fetchCiclos = async (projId) => {
+    if (!projId) {
+        setCiclos([]);
+        return;
+    }
+    try {
+        const response = await api.get(`/testes/projetos/${projId}/ciclos`);
+        setCiclos(Array.isArray(response) ? response : []);
+    } catch (err) {
+        console.error("Erro ao buscar ciclos", err);
+        setCiclos([]);
+    }
+  };
+
   const loadDadosProjeto = async (projId) => {
     setLoading(true);
     try {
-      const [casosData, ciclosData] = await Promise.all([
-          api.get(`/testes/projetos/${projId}/casos`), 
-          api.get(`/testes/projetos/${projId}/ciclos`)
-      ]);
+      const casosData = await api.get(`/testes/projetos/${projId}/casos`);
+      // Carrega os ciclos também para garantir que o filtro funcione
+      await fetchCiclos(projId);
       setCasos(Array.isArray(casosData) ? casosData : []);
-      setCiclos(Array.isArray(ciclosData) ? ciclosData : []);
     } catch (err) { error("Erro ao carregar casos e ciclos."); } finally { setLoading(false); }
   };
 
-  // --- FILTRAGEM ---
   const filteredCasos = casos.filter(c => {
       const cCicloId = c.ciclo_id || (c.ciclo ? c.ciclo.id : null);
-      
       if (selectedPrio && c.prioridade !== selectedPrio) return false;
       if (selectedCiclo && String(cCicloId) != String(selectedCiclo)) return false; 
       if (selectedResp && String(c.responsavel_id) != String(selectedResp)) return false;
-      
       if (searchTerm && !c.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
   });
@@ -219,7 +231,6 @@ export function AdminCasosTeste() {
   const filteredCicloHeader = ciclos.filter(c => c.nome.toLowerCase().includes(cicloSearchText.toLowerCase())).slice(0, 5);
   const filteredRespHeader = usuarios.filter(u => u.nome.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
 
-  // --- HELPERS DE NOME ---
   const getRespName = (id) => {
       const u = usuarios.find(user => String(user.id) == String(id));
       return u ? u.nome : '-';
@@ -227,12 +238,9 @@ export function AdminCasosTeste() {
   
   const getCicloName = (caso) => {
       if (!caso) return '-';
-      
       if (caso.ciclo && caso.ciclo.nome) return caso.ciclo.nome;
-      
       const idBusca = caso.ciclo_id || caso.cicloId;
       if (!idBusca) return '-'; 
-
       const found = ciclos.find(c => String(c.id) == String(idBusca));
       return found ? found.nome : '-';
   };
@@ -242,20 +250,53 @@ export function AdminCasosTeste() {
       return found ? found.nome : '-';
   };
 
-  // --- ACTIONS ---
   const currentProject = projetos.find(p => String(p.id) == String(selectedProjeto));
   const isProjectActive = currentProject?.status === 'ativo';
 
   const handleReset = () => {
-    setForm({ nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', prioridade: 'media', responsavel_id: '', ciclo_id: '', projeto_id: selectedProjeto || '', passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] });
+    // Reset volta para a listagem e limpa o form, mas mantém o contexto do projeto selecionado na lista
+    setForm({ nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo', prioridade: 'media', responsavel_id: '', ciclo_id: '', projeto_id: '', passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] });
     setEditingId(null); setSearchTerm(''); setView('list');
+    // Garante que os ciclos carregados sejam do projeto selecionado na lista
+    if (selectedProjeto) fetchCiclos(selectedProjeto);
   };
 
-  const handleNew = () => { if (!isProjectActive) return warning(`Projeto Inativo.`); handleReset(); setView('form'); };
-
-  const handleEdit = (caso) => {
-    let cicloIdValue = '';
+  const handleNew = async () => { 
+    if (!isProjectActive) return warning(`Projeto Inativo.`); 
     
+    // Preenche o formulário com o projeto selecionado na listagem
+    setForm({ 
+        nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo', 
+        prioridade: 'media', responsavel_id: '', 
+        ciclo_id: '', // Ciclo começa vazio
+        projeto_id: selectedProjeto, // <--- PREENCHE AUTOMATICAMENTE
+        passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] 
+    });
+    
+    // Garante que os ciclos disponíveis sejam deste projeto
+    if (selectedProjeto) {
+        await fetchCiclos(selectedProjeto);
+    }
+    
+    setView('form'); 
+  };
+
+  // --- NOVA FUNÇÃO: Trata a mudança de projeto DENTRO do formulário ---
+  const handleFormProjectChange = async (newProjectId) => {
+    // 1. Atualiza o ID do projeto no form
+    // 2. Limpa o Ciclo (pois o ciclo antigo não pertence ao novo projeto)
+    setForm(prev => ({
+        ...prev,
+        projeto_id: newProjectId,
+        ciclo_id: '' 
+    }));
+
+    // 3. Busca os ciclos do novo projeto para popular o dropdown
+    await fetchCiclos(newProjectId);
+  };
+
+  const handleEdit = async (caso) => {
+    let cicloIdValue = '';
     if (caso.ciclo_id !== null && caso.ciclo_id !== undefined) {
         cicloIdValue = caso.ciclo_id;
     } else if (caso.ciclo && caso.ciclo.id) {
@@ -275,16 +316,20 @@ export function AdminCasosTeste() {
       pre_condicoes: caso.pre_condicoes || '', 
       criterios_aceitacao: caso.criterios_aceitacao || '',
       prioridade: caso.prioridade || 'media', 
-      
+      status: caso.status || 'ativo', 
       responsavel_id: respIdValue, 
-      ciclo_id: cicloIdValue,
-      projeto_id: caso.projeto_id || selectedProjeto,
-
+      ciclo_id: cicloIdValue, 
+      projeto_id: caso.projeto_id, // Garante que o ID do projeto venha do caso
       passos: caso.passos && caso.passos.length > 0 
         ? caso.passos.map(p => ({...p})) 
         : [{ ordem: 1, acao: '', resultado_esperado: '' }]
     });
     
+    // Busca ciclos do projeto DESTE caso específico (pode ser diferente do selecionado na lista)
+    if (caso.projeto_id) {
+        await fetchCiclos(caso.projeto_id);
+    }
+
     setEditingId(caso.id); 
     setView('form');
   };
@@ -295,7 +340,8 @@ export function AdminCasosTeste() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedProjeto) return error("Selecione um projeto.");
+    // Usa form.projeto_id em vez de selectedProjeto, para respeitar a escolha do usuário no form
+    if (!form.projeto_id) return error("Selecione um projeto.");
     if (!form.nome.trim()) return warning("Título obrigatório.");
     
     const passosValidos = form.passos.filter(p => p.acao && p.acao.trim() !== '');
@@ -303,7 +349,7 @@ export function AdminCasosTeste() {
 
     const payload = { 
         ...form, 
-        projeto_id: parseInt(selectedProjeto), 
+        projeto_id: parseInt(form.projeto_id), 
         responsavel_id: form.responsavel_id ? parseInt(form.responsavel_id) : null, 
         ciclo_id: form.ciclo_id ? parseInt(form.ciclo_id) : null, 
         passos: passosValidos 
@@ -311,8 +357,11 @@ export function AdminCasosTeste() {
     
     try {
       if (editingId) { await api.put(`/testes/casos/${editingId}`, payload); success("Atualizado!"); } 
-      else { await api.post(`/testes/projetos/${selectedProjeto}/casos`, payload); success("Salvo!"); }
-      handleReset(); loadDadosProjeto(selectedProjeto);
+      else { await api.post(`/testes/projetos/${form.projeto_id}/casos`, payload); success("Salvo!"); }
+      
+      handleReset(); 
+      // Recarrega a lista baseada no filtro principal
+      if (selectedProjeto) loadDadosProjeto(selectedProjeto);
     } catch (err) { 
         const msg = err.response?.data?.detail || "Erro ao salvar.";
         error(typeof msg === 'string' ? msg : "Erro de validação."); 
@@ -320,7 +369,23 @@ export function AdminCasosTeste() {
   };
 
   const handleDelete = async () => { if (!casoToDelete) return; try { await api.delete(`/testes/casos/${casoToDelete.id}`); success("Excluído."); loadDadosProjeto(selectedProjeto); } catch (e) { error("Erro ao excluir."); } finally { setIsDeleteModalOpen(false); setCasoToDelete(null); } };
-  const handleImportarModelo = (casoId) => { const casoOrigem = casos.find(c => c.id === casoId); if (casoOrigem) { setForm(prev => ({ ...prev, nome: `${casoOrigem.nome}`, descricao: casoOrigem.descricao||'', pre_condicoes: casoOrigem.pre_condicoes||'', criterios_aceitacao: casoOrigem.criterios_aceitacao||'', prioridade: casoOrigem.prioridade, passos: casoOrigem.passos?.length > 0 ? casoOrigem.passos.map((p, i) => ({ ordem: i + 1, acao: p.acao, resultado_esperado: p.resultado_esperado })) : [{ ordem: 1, acao: '', resultado_esperado: '' }] })); setSearchTerm(''); success("Importado!"); } };
+  
+  const handleImportarModelo = (casoId) => { 
+      const casoOrigem = casos.find(c => c.id === casoId); 
+      if (casoOrigem) { 
+          setForm(prev => ({ 
+              ...prev, 
+              nome: `${casoOrigem.nome}`, 
+              descricao: casoOrigem.descricao||'', 
+              pre_condicoes: casoOrigem.pre_condicoes||'', 
+              criterios_aceitacao: casoOrigem.criterios_aceitacao||'', 
+              prioridade: casoOrigem.prioridade, 
+              passos: casoOrigem.passos?.length > 0 ? casoOrigem.passos.map((p, i) => ({ ordem: i + 1, acao: p.acao, resultado_esperado: p.resultado_esperado })) : [{ ordem: 1, acao: '', resultado_esperado: '' }] 
+          })); 
+          setSearchTerm(''); 
+          success("Importado!"); 
+      } 
+  };
 
   const totalPages = Math.ceil(filteredCasos.length / itemsPerPage);
   if (currentPage > totalPages && totalPages > 0) setCurrentPage(1);
@@ -354,22 +419,51 @@ export function AdminCasosTeste() {
               <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
                   <div className="form-grid">
                       <div>
-                        <label className="input-label"><b>Projeto</b></label>
-                        <input 
-                          type="text"
-                          className="form-control bg-gray" 
-                          style={{ cursor: 'not-allowed', color: '#666' }}
-                          value={projetos.find(p => String(p.id) === String(form.projeto_id))?.nome || 'Projeto não selecionado'}
-                          readOnly
+                        <label className="input-label">Projeto *</label>
+                        {/* USO DA NOVA FUNÇÃO DE MUDANÇA DE PROJETO */}
+                        <SearchableSelect 
+                            options={projetos.filter(p => p.status === 'ativo')} 
+                            value={form.projeto_id} 
+                            onChange={handleFormProjectChange} 
+                            placeholder="Selecione..." 
+                            disabled={!!editingId} // Bloqueia edição de projeto na edição de caso
                         />
                       </div>
                       <div><label className="input-label"><b>Título</b></label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" /></div>
                   </div>
+                  
                   <div className="form-grid">
-                      <div><label><b>Prioridade</b></label><select value={form.prioridade} onChange={e => setForm({...form, prioridade: e.target.value})} className="form-control bg-gray"><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select></div>
-                      <div><label><b>Pré-condições</b></label><input value={form.pre_condicoes} onChange={e => setForm({...form, pre_condicoes: e.target.value})} className="form-control" /></div>
+                      <div>
+                        <label>Prioridade</label>
+                        <select value={form.prioridade} onChange={e => setForm({...form, prioridade: e.target.value})} className="form-control bg-gray">
+                            <option value="alta">Alta</option>
+                            <option value="media">Média</option>
+                            <option value="baixa">Baixa</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                          <label>Status da Documentação</label>
+                          <select 
+                            value={form.status} 
+                            onChange={e => setForm({...form, status: e.target.value})} 
+                            className="form-control"
+                            style={{ 
+                                borderColor: form.status === 'ativo' ? '#10b981' : form.status === 'obsoleto' ? '#ef4444' : '#f59e0b' 
+                            }}
+                          >
+                              <option value="rascunho">Rascunho</option>
+                              <option value="ativo">Ativo</option>
+                              <option value="revisao">Em Revisão</option>
+                              <option value="obsoleto">Obsoleto</option>
+                          </select>
+                      </div>
                   </div>
-                  <div><label className="input-label">Objetivo</label><input value={form.criterios_aceitacao} onChange={e => setForm({...form, criterios_aceitacao: e.target.value})} className="form-control" /></div>
+                  
+                  <div className="form-grid">
+                      <div><label>Pré-condições</label><input value={form.pre_condicoes} onChange={e => setForm({...form, pre_condicoes: e.target.value})} className="form-control" /></div>
+                      <div><label>Objetivo</label><input value={form.criterios_aceitacao} onChange={e => setForm({...form, criterios_aceitacao: e.target.value})} className="form-control" /></div>
+                  </div>
               </div>
             </section>
             <section className="card form-section">
@@ -432,6 +526,7 @@ export function AdminCasosTeste() {
                                 value={selectedProjeto}
                                 onChange={(val) => setSelectedProjeto(val)}
                                 placeholder="Filtrar Projeto..."
+                                maxLen={15}
                             />
                         </div>
                    </div>
@@ -452,9 +547,8 @@ export function AdminCasosTeste() {
                        <thead>
                          <tr>
                            <th style={{width: '50px'}}>ID</th>
-                           <th style={{width: '30%'}}>Cenário</th>
-                           
-                           {/* HEADER PRIORIDADE */}
+                           <th style={{width: '25%'}}>Cenário</th>
+                           <th style={{width: '10%', textAlign: 'center'}}>Status</th>
                            <th style={{width: '10%', textAlign: 'center', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={prioHeaderRef} style={{justifyContent: 'center'}}>
                                     {isPrioOpen || selectedPrio ? (
@@ -467,7 +561,6 @@ export function AdminCasosTeste() {
                                 </div>
                            </th>
 
-                           {/* HEADER CICLO */}
                            <th style={{width: '15%', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={cicloHeaderRef}>
                                     {isCicloOpen || selectedCiclo ? (
@@ -480,7 +573,6 @@ export function AdminCasosTeste() {
                                 </div>
                            </th>
 
-                           {/* HEADER RESPONSAVEL */}
                            <th style={{width: '15%', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={respHeaderRef}>
                                     {isRespOpen || selectedResp ? (
@@ -499,16 +591,21 @@ export function AdminCasosTeste() {
                        </thead>
                        <tbody> 
                          {filteredCasos.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
-                                    {!selectedProjeto ? <span>Selecione um projeto para visualizar os casos de teste.</span> : <span>Nenhum caso encontrado neste projeto.</span>}
-                                </td>
-                            </tr>
+                           <tr>
+                               <td colSpan="8" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
+                                   {!selectedProjeto ? <span>Selecione um projeto para visualizar os casos de teste.</span> : <span>Nenhum caso encontrado neste projeto.</span>}
+                               </td>
+                           </tr>
                          ) : (
                            currentCasos.map(c => (
                             <tr key={c.id} className="selectable" onClick={() => handleEdit(c)}>
                                 <td className="cell-id">#{c.id}</td>
                                 <td><div className="cell-name" title={c.nome}>{truncate(c.nome, 30)}</div></td>
+                                <td style={{textAlign: 'center'}}>
+                                    <span className={`badge status-${c.status || 'rascunho'}`}>
+                                        {c.status ? c.status.toUpperCase() : 'RASCUNHO'}
+                                    </span>
+                                </td>
                                 <td className="cell-priority" style={{textAlign: 'center'}}><span className={`badge priority-badge ${c.prioridade}`}>{c.prioridade?.toUpperCase()}</span></td>
                                 <td style={{color: '#64748b'}}>{truncate(getCicloName(c), 20)}</td>
                                 <td><span className="cell-resp">{c.responsavel_id ? truncate(getRespName(c.responsavel_id), 20) : '-'}</span></td>

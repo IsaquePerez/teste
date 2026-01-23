@@ -33,6 +33,7 @@ class ProjetoService:
 
     async def update_projeto(self, id: int, dados: ProjetoUpdate) -> Optional[ProjetoResponse]:
         try:
+            # model_dump(exclude_unset=True) é importante para parciais
             item = await self.repo.update(id, dados.model_dump(exclude_unset=True))
             if item:
                 return ProjetoResponse.model_validate(item)

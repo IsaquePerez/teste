@@ -43,6 +43,7 @@ function App() {
               <Route path="/admin/sistemas" element={<AdminSistemas />} />
               <Route path="/admin/modulos" element={<AdminModulos />} />
               <Route path="/admin/projetos" element={<AdminProjetos />} />
+              <Route path="/projetos/:id" element={<AdminProjetos />} />
               <Route path="/admin/casos" element={<AdminCasosTeste />} />
               <Route path="/admin/ciclos" element={<AdminCiclos />} />
               <Route path="/admin/performance" element={<RunnerDashboard />} />

@@ -1,8 +1,8 @@
-"""Auto: 2026-01-19 14:59
+"""Auto: 2026-01-23 14:12
 
-Revision ID: d465eaf545d6
+Revision ID: 628fab6bb5ce
 Revises: 
-Create Date: 2026-01-19 14:59:10.590136
+Create Date: 2026-01-23 14:12:15.473257
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'd465eaf545d6'
+revision: str = '628fab6bb5ce'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -124,6 +124,7 @@ def upgrade() -> None:
     sa.Column('pre_condicoes', sa.Text(), nullable=True),
     sa.Column('criterios_aceitacao', sa.Text(), nullable=True),
     sa.Column('prioridade', sa.Enum('alta', 'media', 'baixa', name='prioridade_enum'), nullable=True),
+    sa.Column('status', sa.Enum('rascunho', 'ativo', 'obsoleto', 'revisao', name='status_caso_teste_enum'), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['ciclo_id'], ['ciclos_teste.id'], ),
@@ -159,7 +160,7 @@ def upgrade() -> None:
     sa.Column('ciclo_teste_id', sa.Integer(), nullable=False),
     sa.Column('caso_teste_id', sa.Integer(), nullable=False),
     sa.Column('responsavel_id', sa.Integer(), nullable=True),
-    sa.Column('status_geral', sa.Enum('pendente', 'em_progresso', 'passou', 'falhou', 'bloqueado', name='status_execucao_enum'), nullable=True),
+    sa.Column('status_geral', sa.Enum('pendente', 'em_progresso', 'reteste', 'fechado', 'bloqueado', name='status_execucao_enum'), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['caso_teste_id'], ['casos_teste.id'], ),
@@ -187,6 +188,7 @@ def upgrade() -> None:
     sa.Column('titulo', sa.String(length=255), nullable=False),
     sa.Column('descricao', sa.Text(), nullable=False),
     sa.Column('evidencias', sa.Text(), nullable=True),
+    sa.Column('logs_erro', sa.Text(), nullable=True),
     sa.Column('severidade', sa.Enum('critico', 'alto', 'medio', 'bajo', name='severidade_defeito_enum'), nullable=False),
     sa.Column('status', sa.Enum('aberto', 'em_teste', 'corrigido', 'fechado', name='status_defeito_enum'), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),

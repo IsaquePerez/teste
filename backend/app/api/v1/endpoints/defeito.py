@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 
 from app.core.database import get_db
 from app.services.defeito_service import DefeitoService
@@ -29,10 +29,11 @@ async def listar_defeitos_execucao(
 
 @router.get("/", response_model=List[DefeitoResponse])
 async def listar_todos_defeitos(
+    responsavel_id: Optional[int] = Query(None, description="Filtrar por ID do responsável"),
     current_user: Usuario = Depends(get_current_user),
     service: DefeitoService = Depends(get_service)
 ):
-    return await service.listar_todos(current_user)
+    return await service.listar_todos(current_user, filtro_responsavel_id=responsavel_id)
 
 @router.put("/{id}", response_model=DefeitoResponse)
 async def atualizar_defeito(
@@ -53,4 +54,3 @@ async def excluir_defeito(
     sucesso = await service.excluir_defeito(id)
     if not sucesso:
         raise HTTPException(status_code=404, detail="Defeito não encontrado")
-    return

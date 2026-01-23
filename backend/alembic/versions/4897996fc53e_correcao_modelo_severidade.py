@@ -1,8 +1,8 @@
-"""initial_schema
+"""correcao modelo severidade
 
-Revision ID: 5908458bac38
-Revises: d465eaf545d6
-Create Date: 2026-01-19 14:59:14.466863
+Revision ID: 4897996fc53e
+Revises: 628fab6bb5ce
+Create Date: 2026-01-23 18:15:07.300211
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5908458bac38'
-down_revision: Union[str, None] = 'd465eaf545d6'
+revision: str = '4897996fc53e'
+down_revision: Union[str, None] = '628fab6bb5ce'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,30 +1,27 @@
-import styles from './styles.module.css';
+import React from 'react';
+import ReactDOM from 'react-dom'; 
+import './EvidenceGallery.css';
 
 export function EvidenceGallery({ images, onClose }) {
   if (!images) return null;
 
-  return (
-    <div className={styles.galleryOverlay} onClick={onClose}>
-      <div className={styles.galleryTrack}>
-        {images.map((url, idx) => (
-          <div key={idx} className={styles.galleryItem}>
-            <img 
-              src={url} 
-              alt={`Evidência ${idx+1}`} 
-              className={styles.galleryImg} 
-              onClick={(e) => e.stopPropagation()} 
-            />
-            <div style={{marginTop:'15px', fontSize:'1.2rem'}}>Imagem {idx + 1}</div>
-          </div>
-        ))}
+  const imageList = Array.isArray(images) ? images : [images];
+
+  return ReactDOM.createPortal(
+    <div className="gallery-overlay" onClick={onClose}>
+      <div className="gallery-content" onClick={e => e.stopPropagation()}>
+        <button className="gallery-close" onClick={onClose}>&times;</button>
+        
+        <div className="gallery-track">
+          {imageList.map((url, index) => (
+            <div key={index} className="gallery-item">
+              <img src={url} alt={`Evidência ${index + 1}`} className="gallery-img" />
+              <span className="gallery-counter">{index + 1} / {imageList.length}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <button 
-        className="btn" 
-        style={{marginTop:'20px', background:'white', color:'black'}} 
-        onClick={onClose}
-      >
-        Fechar Galeria
-      </button>
-    </div>
+    </div>,
+    document.body 
   );
 }

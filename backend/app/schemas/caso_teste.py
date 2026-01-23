@@ -1,7 +1,16 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
 
+# --- ENUMS (Adicione isso se não estiver importando do model) ---
+class StatusCasoTesteEnum(str, Enum):
+    rascunho = "rascunho"
+    ativo = "ativo"
+    obsoleto = "obsoleto"
+    revisao = "revisao"
+
+# --- AUXILIARES ---
 class ProjetoSimple(BaseModel):
     id: int
     nome: str
@@ -41,6 +50,8 @@ class CasoTesteBase(BaseModel):
     pre_condicoes: Optional[str] = None
     criterios_aceitacao: Optional[str] = None
     prioridade: str = "media"
+    # ADICIONADO AQUI PARA LEITURA/CRIAÇÃO PADRÃO
+    status: Optional[StatusCasoTesteEnum] = StatusCasoTesteEnum.rascunho 
 
 class CasoTesteCreate(CasoTesteBase):
     responsavel_id: Optional[int] = None
@@ -53,6 +64,10 @@ class CasoTesteUpdate(BaseModel):
     pre_condicoes: Optional[str] = None
     criterios_aceitacao: Optional[str] = None
     prioridade: Optional[str] = None
+    
+    # --- OBRIGATÓRIO TER AQUI PARA A EDIÇÃO FUNCIONAR ---
+    status: Optional[StatusCasoTesteEnum] = None 
+    
     responsavel_id: Optional[int] = None
     ciclo_id: Optional[int] = None
     passos: Optional[List[dict]] = None 
@@ -61,14 +76,12 @@ class CasoTesteResponse(CasoTesteBase):
     id: int
     projeto_id: int
     responsavel_id: Optional[int] = None
-    
     ciclo_id: Optional[int] = None 
 
     created_at: datetime
     updated_at: Optional[datetime] = None
     
     projeto: Optional[ProjetoSimple] = None
-    
     responsavel: Optional[UsuarioSimple] = None
     ciclo: Optional[CicloSimple] = None 
 

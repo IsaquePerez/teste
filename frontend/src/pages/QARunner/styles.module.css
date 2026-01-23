@@ -1,275 +1,241 @@
-
-
+/* Layout Principal Grid */
 .container {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 20px;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 140px); /* Ajuste conforme seu header */
   overflow: hidden;
 }
 
-
+/* SIDEBAR */
 .sidebar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   overflow-y: auto;
-  height: 100%;
-  padding-right: 5px;
+  padding: 16px;
 }
 
-.taskCard {
-  background-color: white;
-  border-radius: 6px;
-  padding: 15px;
-  margin-bottom: 15px;
+.emptyState {
+  color: #64748b;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.taskList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.taskItem {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
-  border-left: 5px solid #cbd5e1;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background 0.2s;
+  border-radius: 8px;
+  margin-bottom: 4px;
 }
 
-.taskCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+.taskItem:hover {
+  background-color: #f8fafc;
 }
 
-.active {
+.taskItem.active {
   background-color: #eff6ff;
-  border-color: #3b82f6;
+  border: 1px solid #bfdbfe;
 }
-
-
-.statusPassed { border-left-color: #10b981; }
-.statusFailed { border-left-color: #ef4444; }
-.statusInProgress { border-left-color: #3b82f6; }
 
 .taskHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
-.taskTitle {
-  margin: 0;
-  font-size: 1rem;
-  color: #1e293b;
+.taskId {
+  font-size: 0.75rem;
+  color: #64748b;
   font-weight: 600;
 }
 
-.taskBadge {
-  font-size: 0.7rem;
-  background-color: #f3f4f6;
-  color: #334155;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
+.taskTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
 }
 
-.taskProject {
-  font-size: 0.8rem;
+.taskFooter {
+  font-size: 0.75rem;
   color: #64748b;
+  text-transform: capitalize;
 }
 
-
-.playerArea {
-  height: 100%;
-  overflow-y: auto;
-  padding-right: 5px;
-}
-
-.playerCard {
-  background-color: white;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: 100%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.executionHeader {
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 20px;
-  margin-bottom: 25px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.executionTitle {
-  margin: 0 0 8px 0;
-  font-size: 1.5rem;
-  color: #0f172a;
-}
-
-.executionDesc {
-  color: #64748b;
-  font-size: 0.95rem;
-}
-
-
-.stepsList {
+/* PLAYER (Área Direita) */
+.playerContainer {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.stepItem {
-  display: grid;
-  grid-template-columns: 40px 1fr 140px;
-  gap: 20px;
-  padding: 25px;
-  border-bottom: 1px solid #f1f5f9;
+.playerEmpty {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+}
+
+.playerHeader {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.description {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 5px 0 0 0;
+}
+
+.btnFinish {
+  background-color: #2563eb;
+  color: white;
+  padding: 10px 20px;
   border-radius: 8px;
-  margin-bottom: 15px;
-  background-color: white;
-  transition: background-color 0.3s;
-  border: 1px solid transparent;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.stepApproved {
-  background-color: #f0fdf4;
-  border-color: #bbf7d0;
+.btnFinish:hover {
+  background-color: #1d4ed8;
 }
 
-.stepFailed {
-  background-color: #fef2f2;
-  border-color: #fecaca;
+/* Steps List */
+.stepsContainer {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stepCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s;
+  background: white;
+}
+
+/* Cores de borda baseadas no status */
+.stepCard.pendente { border-left: 4px solid #94a3b8; }
+.stepCard.aprovado { border-left: 4px solid #10b981; background-color: #f0fdf4; }
+.stepCard.reprovado { border-left: 4px solid #ef4444; background-color: #fef2f2; }
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .stepNumber {
   font-weight: 700;
-  color: #001C42;
-  font-size: 1.2rem;
-  text-align: center;
+  color: #475569;
+  font-size: 0.85rem;
+  text-transform: uppercase;
 }
 
-.stepAction {
-  font-weight: 600;
-  font-size: 1.05rem;
-  margin-bottom: 8px;
+.stepStatusBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.stepContent {
+  margin-bottom: 16px;
+}
+
+.stepInfo {
+  margin-bottom: 6px;
+  font-size: 0.95rem;
   color: #334155;
 }
 
-.stepExpected {
-  color: #059669;
-  font-size: 0.95rem;
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: rgba(16, 185, 129, 0.1);
-  border-radius: 6px;
-  border-left: 3px solid #059669;
-}
-
-.evidenceArea {
+.stepActions {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
-  align-items: center;
-  margin-top: 10px;
 }
 
-.btnUpload {
-  background-color: #f8fafc;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  padding: 6px 12px;
-  border-radius: 4px;
+.btnAction {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
   cursor: pointer;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-weight: 600;
+  color: #64748b;
   transition: all 0.2s;
 }
 
-.btnUpload:hover {
-  background-color: #e2e8f0;
-}
+.btnApprove:hover { background-color: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.btnApprove.selected { background-color: #10b981; color: white; border-color: #10b981; }
 
-.evidenceChip {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 15px;
-  font-size: 0.85rem;
+.btnFail:hover { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.btnFail.selected { background-color: #ef4444; color: white; border-color: #ef4444; }
+
+/* Evidências no Card */
+.evidenceStrip {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.evidenceLink {
-  color: #2563eb;
-  text-decoration: none;
-  cursor: pointer;
+.thumbWrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
 }
 
-.evidenceLink:hover {
-  text-decoration: underline;
-}
-
-.deleteBtn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0;
-}
-
-.deleteBtn:hover {
-  color: #ef4444;
-}
-
-.stepActionsCol {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  justify-content: center;
-}
-
-.emptyState {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.thumbImg {
+  width: 100%;
   height: 100%;
-  color: #94a3b8;
-  font-size: 1.1rem;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  border: 2px dashed #e2e8f0;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
 }
 
-
-.galleryOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0,0,0,0.9);
-  z-index: 2000;
+.btnRemoveEvidence {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.galleryTrack {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  max-width: 90%;
-  padding: 20px;
-  scroll-snap-type: x mandatory;
-}
-
-.galleryItem {
-  text-align: center;
-  color: white;
-  min-width: 100%;
-  scroll-snap-align: center;
-}
-
-.galleryImg {
-  max-height: 80vh;
-  max-width: 100%;
-  border: 2px solid white;
-  border-radius: 4px;
 }

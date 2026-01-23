@@ -194,14 +194,26 @@
   border: 1px dashed #e2e8f0;
 }
 
+/* --- TABELA E BADGES --- */
 .cell-id { color: #64748b; }
 .cell-name { font-weight: 600; color: #334155; }
 .cell-priority { text-align: center; }
-/* .priority-badge { background-color: #f1f5f9; color: #475569; } */
+
+/* Base para badges de prioridade - Neutro */
+.priority-badge { 
+  background-color: #f1f5f9; 
+  color: #475569; 
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 .cell-resp { color: #475569; font-size: 0.85rem; }
 .cell-steps { text-align: center; color: #64748b; }
 .cell-actions { text-align: right; }
 
+/* Cores específicas de Prioridade (Vindo da MAIN) */
 .priority-badge.alta {
   background-color: #001C42 !important;
   color: #ffffff !important;
@@ -234,6 +246,7 @@
   color: #64748b;
 }
 
+/* --- DROPDOWN CUSTOMIZADO --- */
 .custom-dropdown {
   position: absolute;
   top: 100%;
@@ -267,6 +280,7 @@
   background-color: #f1f5f9;
 }
 
+/* --- PAGINAÇÃO --- */
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -319,4 +333,31 @@
   background-color: #f1f5f9;
   border-color: #e2e8f0;
   color: #cbd5e1;
+}
+
+/* --- STATUS BADGES (Mantido do HEAD para suportar Rascunho/Ativo/Obsoleto) --- */
+.status-ativo {
+    background-color: #dcfce7; /* Verde claro */
+    color: #166534; /* Verde escuro */
+    border: 1px solid #bbf7d0;
+}
+
+.status-rascunho {
+    background-color: #f3f4f6; /* Cinza claro */
+    color: #374151; /* Cinza escuro */
+    border: 1px solid #e5e7eb;
+    border-style: dashed;
+}
+
+.status-obsoleto {
+    background-color: #fee2e2; /* Vermelho claro */
+    color: #991b1b; /* Vermelho escuro */
+    border: 1px solid #fecaca;
+    text-decoration: line-through;
+}
+
+.status-revisao {
+    background-color: #ffedd5; /* Laranja claro */
+    color: #9a3412; /* Laranja escuro */
+    border: 1px solid #fed7aa;
 }
