@@ -16,6 +16,7 @@ class StatusExecucaoEnum(str, enum.Enum):
     reteste = "reteste"
     fechado = "fechado"
     bloqueado = "bloqueado" 
+    falha = "falha"  
 
 class StatusPassoEnum(str, enum.Enum):
     pendente = "pendente"
@@ -75,7 +76,6 @@ class CicloTeste(Base):
     execucoes = relationship("ExecucaoTeste", back_populates="ciclo", cascade="all, delete-orphan")
     metricas = relationship("Metrica", back_populates="ciclo")
     
-    # Relacionamento inverso para acessar os casos planejados neste ciclo
     casos = relationship("CasoTeste", back_populates="ciclo")
 
     @property
@@ -86,7 +86,6 @@ class CicloTeste(Base):
     def testes_concluidos(self):
         if not self.execucoes:
             return 0
-        # CORRIGIDO: Agora conta apenas 'fechado' (já que passou/falhou sumiram)
         return sum(1 for e in self.execucoes if e.status_geral == StatusExecucaoEnum.fechado)
     
 class CasoTeste(Base):
@@ -95,8 +94,6 @@ class CasoTeste(Base):
     id = Column(Integer, primary_key=True, index=True)
     projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
     responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    
-    # Campo que faltava e causava o erro
     ciclo_id = Column(Integer, ForeignKey("ciclos_teste.id"), nullable=True)
     
     nome = Column(String(255), nullable=False)

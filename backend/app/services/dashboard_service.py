@@ -17,7 +17,7 @@ class DashboardService:
         "fechado": "#10b981",       
         "bloqueado": "#ef4444",     
         "passou": "#10b981",
-        "falhou": "#ef4444"
+        "falha": "#ef4444"  # CORRIGIDO: de "falhou" para "falha" para bater com o Enum
     }
 
     SEVERITY_COLORS = {
@@ -155,9 +155,10 @@ class DashboardService:
             dist_data = await self.repo.get_status_distribution(None)
             rigor_chart = self._format_chart_data(dist_data, self.STATUS_COLORS)
 
+        # CORREÇÃO AQUI: item já é um objeto date, removemos o .date
         velocity_chart = [
             ChartDataPoint(
-                label=item.date.strftime("%d/%m"),
+                label=item.strftime("%d/%m"), 
                 value=count,
                 color="#3b82f6"
             ) for item, count in velocity_data
