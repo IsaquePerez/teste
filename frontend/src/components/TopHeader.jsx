@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { AccessibilityFont } from '../components/AccessibiliyFont';
 
 export function TopHeader({ toggleSidebar }) {
   const { user, logout } = useAuth();
@@ -58,16 +59,22 @@ export function TopHeader({ toggleSidebar }) {
     
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
 
-       
+       <AccessibilityFont />
+
         <button
-          onClick={toggleTheme}
-          className="theme-toggle-btn"
-          title={isDark ? 'Modo claro' : 'Modo escuro'}
-        >
-          <ion-icon
-            name={isDark ? 'contrast' : 'contrast-outline'}
-          ></ion-icon>
-        </button>
+  onClick={toggleTheme}
+  className="theme-toggle-btn"
+  title={isDark ? 'Modo claro' : 'Modo escuro'}
+>
+  <i
+    className={
+      isDark
+        ? 'bi bi-sun'
+        : 'bi bi-moon-stars-fill'
+    }
+    style={{ fontSize: '1.3rem' }}
+  ></i>
+</button>
 
       
         <div className="header-user-badge">

@@ -43,18 +43,8 @@ export function QARunner() {
         const data = await api.get(`/testes/execucoes/${t.id}`);
         setActiveExecucao(data);
 
-        // --- SUA LÓGICA DE AUTO-START (INTEGRADA) ---
-        if (data.status_geral === 'pendente') {
-            await api.put(`/testes/execucoes/${data.id}/finalizar?status=em_progresso`);
-            // Atualiza visualmente na lista e no player
-            setTarefas(prev => prev.map(task => 
-                task.id === t.id ? {...task, status_geral: 'em_progresso'} : task
-            ));
-            setActiveExecucao(prev => ({ ...prev, status_geral: 'em_progresso' }));
-            info(`Execução iniciada automaticamente: ${t.caso_teste?.nome}`);
-        }
-        // ----------------------------------------------
-
+        
+       
     } catch (e) { 
         error("Erro ao carregar execução."); 
     }
@@ -93,7 +83,7 @@ export function QARunner() {
 
   const updatePasso = async (passoId, status) => {
       try {
-          await api.put(`/testes/passos/${passoId}`, { status }); // Ajustei endpoint para padrão REST se necessário
+          await api.put(`/testes/execucoes/passos/${passoId}`, { status }); // Ajustei endpoint para padrão REST se necessário
           const updatedPassos = activeExecucao.passos_executados.map(p => {
               if(p.id === passoId) return { ...p, status };
               return p;
@@ -168,7 +158,10 @@ export function QARunner() {
           const novaLista = listaAtual.filter(url => url !== urlToDelete);
           const novoJSON = JSON.stringify(novaLista);
 
-          await api.put(`/testes/passos/${passoId}`, { evidencias: novoJSON });
+          await api.put(
+  `/testes/execucoes/passos/${passoId}`,
+  { evidencias: novoJSON }
+);
           
           const updatedPassos = activeExecucao.passos_executados.map(p => {
               if(p.id === passoId) return { ...p, evidencias: novoJSON };

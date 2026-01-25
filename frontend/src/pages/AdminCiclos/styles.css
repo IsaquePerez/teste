@@ -257,3 +257,9 @@ body.dark {
   --bg-table: #020617;
 }
 
+
+body.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+

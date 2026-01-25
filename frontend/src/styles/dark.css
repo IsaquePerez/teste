@@ -197,3 +197,58 @@ body.dark td span {
   border-radius: 6px;
   padding: 2px 8px;
 }
+
+body.dark .sidebar {
+  background-color: #071A2D;
+}
+
+:root {
+  --icon-color: #374151;
+  --icon-hover-bg: #E5E7EB;
+  --icon-active-bg: #D1D5DB;
+}
+
+body.dark {
+  --icon-color: #E5E7EB;
+  --icon-hover-bg: #2A2A2A;
+  --icon-active-bg: #3A3A3A;
+}
+
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--icon-color);
+  transition: background 0.25s ease, transform 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--icon-hover-bg);
+  transform: scale(1.08);
+}
+
+.theme-toggle-btn:active {
+  background-color: var(--icon-active-bg);
+  transform: scale(0.95);
+}
+
+:root {
+  --icon-color: #374151;
+  --icon-hover-bg: #E5E7EB;
+  --icon-active-bg: #D1D5DB;
+}
+
+body.dark {
+  --icon-color: #E5E7EB;
+  --icon-hover-bg: #2A2A2A;
+  --icon-active-bg: #3A3A3A;
+}

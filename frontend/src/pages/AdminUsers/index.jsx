@@ -395,7 +395,7 @@ export function AdminUsers() {
                                     <div className="cell-name">{truncate(item.nome, 20)}</div>
                                     {item.username && <div style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'2px'}}>#{truncate(item.username, 20)}</div>}
                                 </td>
-                                <td style={{color:'#64748b'}}>{formatEmail(item.email)}</td>
+                                <td className="cell-email">{formatEmail(item.email)}</td>
                                 <td>
                                     <span className={`badge system`} style={{backgroundColor: item.nivel_acesso_id === 1 ? '#e0f2fe' : '#f1f5f9', color: item.nivel_acesso_id === 1 ? '#0369a1' : '#475569'}}>
                                         {item.nivel_acesso_id === 1 ? 'ADMIN' : 'USER'}
