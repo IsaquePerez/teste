@@ -4,4 +4,4 @@ CREATE TYPE status_ciclo_enum AS ENUM ('planejado', 'em_execucao', 'concluido', 
 CREATE TYPE prioridade_enum AS ENUM ('alta', 'media', 'baixa');
 CREATE TYPE tipo_metrica_enum AS ENUM ('cobertura', 'eficiencia', 'defeitos', 'qualidade', 'produtividade');
 CREATE TYPE status_passo_enum AS ENUM ('pendente', 'aprovado', 'reprovado', 'bloqueado');
-CREATE TYPE status_execucao_enum AS ENUM ('pendente', 'em_progresso', 'passou', 'falhou', 'bloqueado');
+CREATE TYPE status_execucao_enum AS ENUM ('pendente', 'em_progresso', 'reteste', 'fechado', 'bloqueado');
