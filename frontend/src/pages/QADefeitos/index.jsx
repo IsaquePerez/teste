@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import { useAuth } from '../../context/AuthContext'; 
 import { DefectModal } from '../../components/DefectModal'; 
+import { Search } from '../../components/icons/Search'
 import './styles.css';
 
 export function QADefeitos() {
@@ -18,7 +19,6 @@ export function QADefeitos() {
   const isRunner = !isAdmin;
 
   // --- ESTADOS ---
-  // Agora 'execucoes' armazena os grupos, não defeitos isolados
   const [execucoes, setExecucoes] = useState([]); 
   const [usuarios, setUsuarios] = useState([]); 
   const [loading, setLoading] = useState(false);
@@ -55,13 +55,12 @@ export function QADefeitos() {
         const execId = defect.execucao_teste_id;
         if (!acc[execId]) {
             acc[execId] = {
-                id: execId, // ID da Execução
+                id: execId,
                 projeto_nome: defect.projeto_nome,
                 caso_teste_nome: defect.caso_teste_nome,
                 responsavel_teste_nome: defect.responsavel_teste_nome,
                 responsavel_id: defect.responsavel_id,
                 created_at: defect.created_at,
-                // Array contendo todos os bugs desta execução
                 defeitos: [] 
             };
         }
@@ -69,7 +68,6 @@ export function QADefeitos() {
         return acc;
     }, {});
     
-    // Converte objeto para array e ordena por data
     return Object.values(groups).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   };
 
@@ -78,7 +76,7 @@ export function QADefeitos() {
     setLoading(true);
     try {
       const [defResponse, userResponse] = await Promise.all([
-          api.get('/defeitos/'), // Note a barra no final por precaução
+          api.get('/defeitos/'),
           api.get('/usuarios/')
       ]);
       
@@ -99,7 +97,7 @@ export function QADefeitos() {
     loadData();
   }, []);
 
-  // --- EVENT LISTENERS PARA FECHAR DROPDOWNS ---
+  // --- FECHAR DROPDOWNS ---
   useEffect(() => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowSuggestions(false);
@@ -119,15 +117,13 @@ export function QADefeitos() {
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedStatus, selectedSev, selectedResp]);
 
-  // --- LÓGICA DE FILTRAGEM (Adaptada para Grupos) ---
+  // --- LÓGICA DE FILTRAGEM ---
   const filteredExecucoes = execucoes.filter(group => {
-    // Filtro de Status: Verifica se ALGUM defeito do grupo tem o status selecionado
     if (selectedStatus) {
         const hasStatus = group.defeitos.some(d => d.status === selectedStatus);
         if (!hasStatus) return false;
     }
 
-    // Filtro de Severidade: Verifica se ALGUM defeito do grupo tem a severidade selecionada
     if (selectedSev) {
         const hasSev = group.defeitos.some(d => d.severidade === selectedSev);
         if (!hasSev) return false;
@@ -135,7 +131,6 @@ export function QADefeitos() {
 
     // Filtro de Responsável
     if (selectedResp) {
-        // Verifica pelo ID do responsável salvo no grupo ou no primeiro defeito
         const respId = group.responsavel_id || group.defeitos[0]?.responsavel_id;
         if (String(respId) !== String(selectedResp)) return false;
     }
@@ -148,7 +143,6 @@ export function QADefeitos() {
       const resp = group.responsavel_teste_nome || '';
       const idStr = String(group.id);
       
-      // Procura também nos títulos dos defeitos internos
       const hasDefectMatch = group.defeitos.some(d => d.titulo.toLowerCase().includes(term));
 
       if (
@@ -178,7 +172,6 @@ export function QADefeitos() {
   const filteredRespHeader = usuarios.filter(u => u.nome.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
 
   // --- HELPERS DE RENDERIZAÇÃO ---
-  // Define a severidade mais alta do grupo para exibir o badge
   const getGroupSeverity = (defects) => {
       if (defects.some(d => d.severidade === 'critico')) return 'critico';
       if (defects.some(d => d.severidade === 'alto')) return 'alto';
@@ -200,10 +193,9 @@ export function QADefeitos() {
   return (
     <main className="container">
       
-      {/* Modal agora recebe o GRUPO inteiro */}
       {selectedExecution && (
         <DefectModal 
-          executionGroup={selectedExecution} // <--- MUDANÇA IMPORTANTE: Passamos o grupo
+          executionGroup={selectedExecution}
           onClose={handleCloseModal}
         />
       )}
@@ -214,7 +206,7 @@ export function QADefeitos() {
           <div className="toolbar-actions">
             <div ref={wrapperRef} className="search-wrapper" style={{width: '300px'}}>
                 <input type="text" placeholder="Buscar projeto, caso ou runner..." className="search-input" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} />
-                <span className="search-icon">🔍</span>
+                <span className="search-icon"><Search /></span>
             </div>
           </div>
         </div>
@@ -229,7 +221,6 @@ export function QADefeitos() {
                                 <th style={{width: '30%'}}>Projeto / Caso de Teste</th>
                                 <th style={{width: '20%'}}>Runner</th>
                                 
-                                {/* COLUNA DE RESUMO DE DEFEITOS */}
                                 <th style={{width: '20%', textAlign: 'center'}}>
                                     Falhas Reportadas
                                 </th>
@@ -264,7 +255,6 @@ export function QADefeitos() {
                                         </td>
                                         <td><span className="cell-resp">{truncate(group.responsavel_teste_nome, 20)}</span></td>
                                         
-                                        {/* Badge de Contagem */}
                                         <td style={{textAlign: 'center'}}>
                                             <span style={{
                                                 backgroundColor: '#fee2e2', 
@@ -274,11 +264,11 @@ export function QADefeitos() {
                                                 fontSize: '0.8rem', 
                                                 fontWeight: '700'
                                             }}>
+                                        
                                                 {group.defeitos.length} Defeito(s)
                                             </span>
                                         </td>
 
-                                        {/* Badge da Pior Severidade */}
                                         <td style={{textAlign: 'center'}}>
                                             <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
                                                 {getGroupSeverity(group.defeitos).toUpperCase()}

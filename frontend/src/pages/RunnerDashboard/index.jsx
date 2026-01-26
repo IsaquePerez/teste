@@ -83,7 +83,7 @@ export function RunnerDashboard() {
               minWidth: '250px'
             }}
         >
-            <option value="">Visão Geral da Equipa</option>
+            <option value="">Visão Geral da Equipe</option>
             {runners.map(r => (
                 <option key={r.id} value={r.id}>{r.nome}</option>
             ))}

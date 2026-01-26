@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { useSnackbar } from '../../context/SnackbarContext'; 
+import { useSnackbar } from '../../context/SnackbarContext';
 
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { RegisterDefectModal } from '../../components/RegisterDefectModal';
@@ -8,6 +8,8 @@ import { TaskSidebar } from './TaskSidebar';
 import { ExecutionPlayer } from './ExecutionPlayer';
 import { EvidenceGallery } from './EvidenceGallery';
 import styles from './styles.module.css';
+
+
 
 export function QARunner() {
   const [tarefas, setTarefas] = useState([]);
@@ -129,8 +131,6 @@ export function QARunner() {
               )
           }));
           
-          // Opcional: Se quiseres limpar no backend IMEDIATAMENTE para garantir consistência em refresh
-          // Podes manter ou remover este bloco try/catch dependendo se queres 100% offline-first behavior
           try {
              await api.put(`/testes/execucoes/passos/${passoId}`, { status: 'aprovado', evidencias: '[]' });
           } catch (e) { console.log("Update silencioso falhou, será enviado no final"); }
@@ -200,7 +200,7 @@ export function QARunner() {
       try {
           await api.put(`/testes/execucoes/passos/${currentStepId}`, { 
               status: 'reprovado',
-              evidencias: evidenciasJSON // Importante: Enviar como string JSON
+              evidencias: evidenciasJSON 
           });
       } catch (e) { console.log("Update silencioso falhou"); }
 
@@ -232,7 +232,6 @@ export function QARunner() {
     });
   };
 
-  // --- CORREÇÃO DO ERRO 404 AQUI ---
   const finishExecutionConfirm = async (statusFinal) => {
       setLoading(true);
       try {
@@ -243,11 +242,10 @@ export function QARunner() {
           }
 
           // 2. Atualiza os Passos no Backend
-          // CRUCIAL: Filtra apenas IDs que pertencem à execução ativa para evitar 404
           const validStepIds = new Set(activeExecucao.passos_executados.map(p => String(p.id)));
           
           const stepPromises = Object.entries(stepStatuses)
-              .filter(([passoId]) => validStepIds.has(String(passoId))) // Remove lixo do localStorage
+              .filter(([passoId]) => validStepIds.has(String(passoId)))
               .map(([passoId, status]) => 
                   api.put(`/testes/execucoes/passos/${passoId}`, { status })
               );

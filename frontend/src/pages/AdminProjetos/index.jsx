@@ -388,13 +388,13 @@ export function AdminProjetos() {
                        </thead>
                        <tbody>
                          {filteredData.length === 0 ? (
-                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum projeto encontrado com os filtros atuais.</td></tr>
+                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum projeto encontrado.</td></tr>
                          ) : (
                              currentData.map(item => (
                                 <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
                                     <td className="cell-id">#{item.id}</td>
                                     <td className="cell-name">{truncate(item.nome, 15)}</td>
-                                    <td style={{color:'#64748b'}}>{truncate(item.descricao, 30)}</td>
+                                    <td className="text-secondary">{truncate(item.descricao, 30)}</td>
                                     <td style={{fontSize: '0.85rem'}}>
                                         {(() => {
                                             const resp = usersFormatted.find(u => u.id === item.responsavel_id);

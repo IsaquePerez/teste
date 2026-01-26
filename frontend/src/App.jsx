@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import './styles/index.css';
 import { NotFound } from './pages/NotFound';
 import { ResetPassword } from './pages/ResetPassword';
+import { ForgotPassword } from './pages/ForgotPassword';
 
 import { SnackbarProvider } from './context/SnackbarContext';
 import { Snackbar } from './components/Snackbar';
@@ -19,8 +20,7 @@ import { AdminCasosTeste } from './pages/AdminCasosTeste';
 import { AdminCiclos } from './pages/AdminCiclos';
 import { QADefeitos } from './pages/QADefeitos';
 import { QARunner } from './pages/QARunner';
-import { Dashboard } from './pages/Dashboard';
-import { ForgotPassword } from './pages/ForgotPassword';
+import { Dashboard } from './pages/Dashboard'; 
 import { RunnerDashboard } from './pages/RunnerDashboard';
 
 function App() {

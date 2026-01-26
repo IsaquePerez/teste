@@ -353,7 +353,7 @@ export function AdminCiclos() {
                             <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
                                 <td className="cell-id">#{item.id}</td>
                                 <td><div className="cell-name">{truncate(item.nome, 20)}</div><div style={{fontSize:'0.75rem', color:'#94a3b8'}}>{truncate(item.descricao, 30)}</div></td>
-                                <td style={{color:'#64748b'}}>{truncate(getProjetoName(item.projeto_id), 20)}</td>
+                                <td className="cell-project">{truncate(getProjetoName(item.projeto_id), 20)}</td>
                                 <td style={{textAlign: 'center', fontSize: '0.85rem', color:'#64748b'}}>{formatDate(item.data_inicio)} - {formatDate(item.data_fim)}</td>
                                 <td className="cell-status">
                                     <span className={`status-badge ${item.status}`}>{item.status.replace('_', ' ').toUpperCase()}</span>

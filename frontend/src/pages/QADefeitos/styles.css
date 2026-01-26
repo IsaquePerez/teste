@@ -96,7 +96,7 @@
   color: #cbd5e1;
 }
 
-/* Classes extras para a tabela */
+
 .selectable-row {
     cursor: pointer;
     transition: background-color 0.2s;
@@ -105,35 +105,35 @@
     background-color: #f8fafc;
 }
 
-/* Status Badges */
+
 .badge-status-aberto { background-color: #fee2e2; color: #991b1b; } /* Vermelho */
 .badge-status-corrigido { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; } /* Azul (Importante para ver o reteste) */
 .badge-status-fechado { background-color: #dcfce7; color: #166534; } /* Verde */
 .badge-status-rejeitado { background-color: #f1f5f9; color: #64748b; text-decoration: line-through; }
 
-/* Severidade Badges */
+
 .badge-sev-critico { background-color: #7f1d1d; color: white; }
 .badge-sev-alto { background-color: #b91c1c; color: white; }
 .badge-sev-medio { background-color: #f59e0b; color: white; }
 .badge-sev-baixo { background-color: #10b981; color: white; }
 
-/* --- OVERLAY DE CONFIRMAÇÃO DE DOWNLOAD (Fundo Escuro) --- */
+
 .download-confirm-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(15, 23, 42, 0.7); /* Fundo escuro */
+  background-color: rgba(15, 23, 42, 0.7); 
   z-index: 9999; /* Garante que fique acima do Modal do Defeito */
   display: flex; /* ESSENCIAL PARA CENTRALIZAR */
-  justify-content: center; /* Centraliza Horizontalmente */
-  align-items: center; /* Centraliza Verticalmente */
+  justify-content: center; 
+  align-items: center; 
   backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease-out;
 }
 
-/* --- CAIXA DE CONFIRMAÇÃO (O Card Branco) --- */
+
 .download-confirm-box {
   background: white;
   padding: 30px;
@@ -146,7 +146,7 @@
   animation: scaleUp 0.2s ease-out;
 }
 
-/* Título da pergunta */
+
 .download-confirm-box h3 {
   margin-top: 0;
   margin-bottom: 10px;
@@ -155,7 +155,7 @@
   font-weight: 700;
 }
 
-/* Texto descritivo */
+
 .download-confirm-box p {
   color: #64748b;
   margin-bottom: 24px;
@@ -163,15 +163,52 @@
   line-height: 1.5;
 }
 
-/* Botões do confirm */
+
 .confirm-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
 }
 
-/* Animação suave de entrada */
+
 @keyframes scaleUp {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+
+body.dark .toolbar .btn {
+  background-color: #0A2A66;  
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body.dark .toolbar .btn:hover {
+  background-color: #0D3B8C;
+}
+
+body.dark .toolbar .btn:active {
+  background-color: #081F4D;
+}
+
+body.dark .card {
+  background-color: #020617;
+  border-color: #1e293b;
+  color: #e5e7eb;
+}
+
+body.dark .card h3,
+body.dark .card .page-title {
+  color: #f8fafc;
+}
+
+body.dark .card .muted,
+body.dark .card td div,
+body.dark .card td {
+  color: #cbd5e1;
+}
+
+body.dark .card hr,
+body.dark .pagination-container {
+  border-color: #1e293b;
 }

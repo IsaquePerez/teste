@@ -26,6 +26,7 @@
   transform: translateY(-50%);
   opacity: 0.4;
   font-size: 0.9rem;
+  pointer-events: none
 }
 
 .form-section {

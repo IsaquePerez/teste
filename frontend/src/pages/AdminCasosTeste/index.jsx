@@ -4,6 +4,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { Trash } from '../../components/icons/Trash';
 import { Search } from '../../components/icons/Search';
+import { Plus } from '../../components/icons/Plus';
 import './styles.css';
 
 // --- COMPONENTE REUTILIZÁVEL: SEARCHABLE SELECT ---
@@ -490,10 +491,10 @@ export function AdminCasosTeste() {
               </div>
             </section>
             <section className="card">
-               <div className="steps-header-row"><h3 className="section-subtitle" style={{marginBottom: 0}}>Passos</h3><button type="button" onClick={addStep} className="btn btn-add-step">+ Passo</button></div>
+               <div className="steps-header-row"><h3 className="section-subtitle" style={{marginBottom: 0}}>Passos</h3><button type="button" onClick={addStep} className="btn btn-add-step"><Plus />Adicionar Passo</button></div>
                <div className="steps-container">
                  {form.passos.map((passo, idx) => (
-                   <div key={idx} className="step-row"><div className="step-index">{idx + 1}</div><input placeholder="Ação" value={passo.acao} onChange={e => updateStep(idx, 'acao', e.target.value)} className="form-control small-text" /><input placeholder="Resultado Esperado" value={passo.resultado_esperado} onChange={e => updateStep(idx, 'resultado_esperado', e.target.value)} className="form-control small-text" /><button type="button" onClick={() => removeStep(idx)} className="btn danger small btn-remove-step">✕</button></div>
+                   <div key={idx} className="step-row"><div className="step-index">{idx + 1}</div><input placeholder="Ação" value={passo.acao} onChange={e => updateStep(idx, 'acao', e.target.value)} className="form-control small-text" /><input placeholder="Resultado Esperado" value={passo.resultado_esperado} onChange={e => updateStep(idx, 'resultado_esperado', e.target.value)} className="form-control small-text" /><button type="button" onClick={() => removeStep(idx)} className="btn danger small btn-remove-step"><Trash /></button></div>
                  ))}
                </div>
                <div className="form-actions">
@@ -606,7 +607,7 @@ export function AdminCasosTeste() {
                                     </span>
                                 </td>
                                 <td className="cell-priority" style={{textAlign: 'center'}}><span className={`badge priority-badge ${c.prioridade}`}>{c.prioridade?.toUpperCase()}</span></td>
-                                <td style={{color: '#64748b'}}>{truncate(getCicloName(c), 20)}</td>
+                                <td className="cell-ciclo">{truncate(getCicloName(c), 20)}</td>
                                 <td><span className="cell-resp">{c.responsavel_id ? truncate(getRespName(c.responsavel_id), 20) : '-'}</span></td>
                                 <td className="cell-steps" style={{textAlign: 'center'}}>{c.passos?.length || 0}</td>
                                 <td className="cell-actions"><button onClick={(e) => { e.stopPropagation(); setCasoToDelete(c); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon"><Trash /></button></td>
