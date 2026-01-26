@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './styles.module.css';
+import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
 export function ExecutionPlayer({ 
   tasks, execution, onFinish, onStepAction, onViewGallery, readOnly 
@@ -14,30 +15,66 @@ export function ExecutionPlayer({
     );
   }
 
-  // CORREÇÃO 1: Alterado de passo_caso_teste para passo_template na ordenação
+  // Ordenação dos passos
   const passosOrdenados = execution.passos_executados?.sort((a, b) => a.passo_template?.ordem - b.passo_template?.ordem) || [];
 
   return (
     <div className={styles.playerContainer}>
       <div className={styles.playerHeader}>
-        <div>
-          <h2>{execution.caso_teste?.nome}</h2>
-          <p className={styles.description}>{execution.caso_teste?.descricao}</p>
-          {readOnly && (
-             <span className={`badge-pill ${execution.status_geral === 'passou' ? 'baixo' : 'critico'}`} style={{marginTop:'8px', display:'inline-block'}}>
-                {execution.status_geral.toUpperCase()}
-             </span>
-          )}
+        <div className={styles.headerContent}>
+          
+          {/* Título, Status e Botão na mesma linha */}
+          <div className={styles.titleRow}>
+             <h2>{execution.caso_teste?.nome}</h2>
+             
+             {readOnly && (
+                <span className={`badge-pill ${execution.status_geral === 'passou' ? 'baixo' : 'critico'}`}>
+                    {execution.status_geral.toUpperCase()}
+                </span>
+             )}
+
+            {/* BOTÃO COM MARGIN-LEFT: AUTO PARA FICAR NA DIREITA */}
+            <button 
+                className={styles.btnFinish} 
+                onClick={onFinish}
+                disabled={readOnly}
+                style={{ 
+                    marginLeft: 'auto', /* Empurra o botão para a direita */
+                    opacity: readOnly ? 0.5 : 1, 
+                    cursor: readOnly ? 'not-allowed' : 'pointer' 
+                }}
+            >
+              {readOnly ? 'Tarefa Concluída' : 'Finalizar Tarefa'}
+            </button>
+          </div>
+
+          {/* === ÁREA DE METADADOS (PRÉ-CONDIÇÕES E OBJETIVO) === */}
+          <div className={styles.metaContainer}>
+            
+            {/* Pré-condições */}
+            {execution.caso_teste?.pre_condicoes && (
+                <div className={styles.metaBoxWarning}>
+                    <strong><AlertTriangle size={15}/> Pré-condições:</strong>
+                    <p>{execution.caso_teste.pre_condicoes}</p>
+                </div>
+            )}
+
+            {/* Objetivo */}
+            {execution.caso_teste?.criterios_aceitacao && (
+                <div className={styles.metaBoxInfo}>
+                    <strong><Info size={15}/> Objetivo:</strong>
+                    <p>{execution.caso_teste.criterios_aceitacao}</p>
+                </div>
+            )}
+            
+            {/* Descrição Extra */}
+            {execution.caso_teste?.descricao && execution.caso_teste?.descricao !== execution.caso_teste?.criterios_aceitacao && (
+                <div className={styles.metaBoxSimple}>
+                   <strong>Descrição:</strong> {execution.caso_teste.descricao}
+                </div>
+            )}
+          </div>
         </div>
-        
-        <button 
-            className={styles.btnFinish} 
-            onClick={onFinish}
-            disabled={readOnly}
-            style={{ opacity: readOnly ? 0.5 : 1, cursor: readOnly ? 'not-allowed' : 'pointer' }}
-        >
-          {readOnly ? 'Tarefa Concluída' : 'Finalizar Tarefa'}
-        </button>
       </div>
 
       <div className={styles.stepsContainer}>
@@ -55,7 +92,6 @@ export function ExecutionPlayer({
               </div>
 
               <div className={styles.stepContent}>
-                {/* CORREÇÃO 2: Alterado para passo_template */}
                 <div className={styles.stepInfo}>
                   <strong>Ação:</strong> {passo.passo_template?.acao}
                 </div>

@@ -165,18 +165,10 @@ export function QARunner() {
       }));
 
       const evidenciasJSON = JSON.stringify(listaFinalEvidencias);
-      const passoAtual = activeExecucao.passos_executados.find(p => p.id === currentStepId);
-      
-      // === ATUALIZAÇÃO AQUI ===
-      const template = passoAtual?.passo_template;
-      const acaoPasso = template?.acao || "Ação desconhecida";
-      const resultadoPasso = template?.resultado_esperado || "Sem resultado esperado";
-      
-      // Criamos uma string formatada com separador "|||" para o Modal ler depois
-      const tituloCompleto = `${defectInfo.titulo} (DetalhesPasso: ${acaoPasso} ||| ${resultadoPasso})`;
 
+      // --- CORREÇÃO: Mantemos o título LIMPO aqui para não sujar o formulário de edição ---
       const newDefect = { 
-          titulo: tituloCompleto,
+          titulo: defectInfo.titulo, // Título original do usuário
           descricao: defectInfo.descricao,
           severidade: defectInfo.severidade,
           status: 'aberto', 
@@ -231,11 +223,30 @@ export function QARunner() {
   const finishExecutionConfirm = async (statusFinal) => {
       setLoading(true);
       try {
+          // 1. Cria os defeitos da fila
           for (const defect of defectsQueue) {
               const { _passo_id_local, ...payload } = defect;
-              await api.post("/defeitos/", payload);
+              
+              // --- CORREÇÃO: Formata o título APENAS no momento do envio ---
+              const passoRelacionado = activeExecucao.passos_executados.find(p => p.id === _passo_id_local);
+              const template = passoRelacionado?.passo_template;
+              
+              const acaoPasso = template?.acao || "Ação desconhecida";
+              const resultadoPasso = template?.resultado_esperado || "Sem resultado esperado";
+              
+              // Formatação "escondida" para o DefectModal ler depois
+              const tituloFormatado = `${payload.titulo} (DetalhesPasso: ${acaoPasso} ||| ${resultadoPasso})`;
+              
+              // Cria payload final com título modificado
+              const payloadFinal = {
+                  ...payload,
+                  titulo: tituloFormatado
+              };
+
+              await api.post("/defeitos/", payloadFinal);
           }
 
+          // 2. Atualiza os Passos no Backend
           const validStepIds = new Set(activeExecucao.passos_executados.map(p => String(p.id)));
           
           const stepPromises = Object.entries(stepStatuses)
@@ -246,6 +257,7 @@ export function QARunner() {
           
           await Promise.all(stepPromises);
 
+          // 3. Finaliza a Execução
           await api.put(`/testes/execucoes/${activeExecucao.id}/finalizar?status=${statusFinal}`);
           
           setActiveExecucao(prev => ({ ...prev, status_geral: statusFinal }));
