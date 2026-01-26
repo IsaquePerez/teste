@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Logout } from './icons/Logout';
 import { List } from './icons/List';
 import { AccessibilityFont } from '../components/AccessibiliyFont';
+import { Sun, Moon } from './icons/ThemeIcons';
 
 export function TopHeader({ toggleSidebar }) {
   const { user, logout } = useAuth();
@@ -51,8 +52,7 @@ export function TopHeader({ toggleSidebar }) {
                 marginRight: '8px',
                 transition: 'all 0.3s ease',
                 transform: isHovered ? 'scale(1.2)' : 'scale(1.0)',
-                filter: 'drop-shadow(0px 5px 10px rgba(0,0,0, 0.5))'
-                // filter: 'drop-shadow(0px 5px 10px rgba(100,100,100, 0.5))' (adicionar quando tiver tema claro/escuro)
+                filter: isDark ? 'drop-shadow(0px 5px 10px rgba(100,100,100, 0.5))' : 'drop-shadow(0px 5px 10px rgba(0,0,0, 0.5))',
               }} 
             />
         </div>
@@ -61,24 +61,19 @@ export function TopHeader({ toggleSidebar }) {
     
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
 
-       <AccessibilityFont />
+        <AccessibilityFont />
 
         <button
-  onClick={toggleTheme}
-  className="theme-toggle-btn"
-  title={isDark ? 'Modo claro' : 'Modo escuro'}
->
-  <i
-    className={
-      isDark
-        ? 'bi bi-sun'
-        : 'bi bi-moon-stars-fill'
-    }
-    style={{ fontSize: '1.3rem' }}
-  ></i>
-</button>
+          onClick={toggleTheme}
+          className="theme-toggle-btn"
+          title={isDark ? 'Modo claro' : 'Modo escuro'}
+        >
+          {isDark
+            ? (<Sun style={{ fontSize: '1.3rem '}}/>)
+            : (<Moon style={{ fontSize: '1.3rem '}}/>)
+          }
+        </button>
 
-      
         <div className="header-user-badge">
           <span
             className="header-user-name"
@@ -95,9 +90,12 @@ export function TopHeader({ toggleSidebar }) {
             {primeiroNome}
           </span>
         </div>
-
-        
-        <button onClick={logout} className="btn danger header-logout-btn">
+        <button
+          onClick={logout}
+          className="btn danger header-logout-btn"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px'}}
+        >
+          <Logout />
           Sair
         </button>
       </div>
