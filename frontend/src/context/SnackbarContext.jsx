@@ -12,17 +12,18 @@ export function SnackbarProvider({ children }) {
   }, []);
 
   
-  const addSnackbar = useCallback((message, type = 'info') => {
-    const id = Date.now(); 
-    
-    
-    setSnackbars((prev) => [...prev, { id, message, type }]);
+const addSnackbar = useCallback((message, type = 'info') => {
+  const id = Date.now(); 
+  
+  setSnackbars((prev) => {
+    const activeSnackbars = prev.length >= 2 ? prev.slice(1) : prev;
+    return [...activeSnackbars, { id, message, type }];
+  });
 
-    
-    setTimeout(() => {
-      removeSnackbar(id);
-    }, 3000);
-  }, [removeSnackbar]);
+  setTimeout(() => {
+    removeSnackbar(id);
+  }, 3000);
+}, [removeSnackbar]);
 
   
   const success = (msg) => addSnackbar(msg, 'success');

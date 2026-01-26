@@ -9,8 +9,6 @@ import { ExecutionPlayer } from './ExecutionPlayer';
 import { EvidenceGallery } from './EvidenceGallery';
 import styles from './styles.module.css';
 
-
-
 export function QARunner() {
   const [tarefas, setTarefas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +71,6 @@ export function QARunner() {
           }
 
           setActiveExecucao(data);
-          // Reinicia estados visuais, mas o useEffect acima vai recuperar do localStorage se existir
           setDefectsQueue([]);
           setStepStatuses({});
           setDefectToEdit(null);
@@ -118,12 +115,10 @@ export function QARunner() {
   };
 
   const processStepAction = async (passoId, acao) => {
-      // Atualiza apenas localmente (State + LocalStorage via useEffect)
       if (acao === 'aprovado') {
           setDefectsQueue(prev => prev.filter(d => d._passo_id_local !== passoId));
           setStepStatuses(prev => ({ ...prev, [passoId]: 'aprovado' }));
 
-          // Atualiza visualmente o objeto activeExecucao para remover evidências antigas da UI
           setActiveExecucao(prev => ({
               ...prev,
               passos_executados: prev.passos_executados.map(p => 
@@ -162,7 +157,6 @@ export function QARunner() {
 
       const listaFinalEvidencias = [...(existingImages || []), ...novasEvidenciasUrls];
       
-      // Atualiza UI
       setActiveExecucao(prev => ({
           ...prev,
           passos_executados: prev.passos_executados.map(p => 
@@ -172,12 +166,9 @@ export function QARunner() {
 
       const evidenciasJSON = JSON.stringify(listaFinalEvidencias);
 
-      const passoAtual = activeExecucao.passos_executados.find(p => p.id === currentStepId);
-      const nomeAcaoPasso = passoAtual?.passo_caso_teste?.acao || "Passo desconhecido";
-      const tituloCompleto = `${defectInfo.titulo} (Passo: ${nomeAcaoPasso})`;
-
+      // --- CORREÇÃO: Mantemos o título LIMPO aqui para não sujar o formulário de edição ---
       const newDefect = { 
-          titulo: tituloCompleto,
+          titulo: defectInfo.titulo, // Título original do usuário
           descricao: defectInfo.descricao,
           severidade: defectInfo.severidade,
           status: 'aberto', 
@@ -187,16 +178,13 @@ export function QARunner() {
           _passo_id_local: currentStepId 
       };
 
-      // Guarda na Fila (LocalStorage)
       setDefectsQueue(prev => {
           const filtered = prev.filter(d => d._passo_id_local !== currentStepId);
           return [...filtered, newDefect];
       });
 
-      // Guarda Status (LocalStorage)
       setStepStatuses(prev => ({ ...prev, [currentStepId]: 'reprovado' }));
       
-      // Envia update silencioso para persistir evidência em caso de F5
       try {
           await api.put(`/testes/execucoes/passos/${currentStepId}`, { 
               status: 'reprovado',
@@ -238,7 +226,24 @@ export function QARunner() {
           // 1. Cria os defeitos da fila
           for (const defect of defectsQueue) {
               const { _passo_id_local, ...payload } = defect;
-              await api.post("/defeitos/", payload);
+              
+              // --- CORREÇÃO: Formata o título APENAS no momento do envio ---
+              const passoRelacionado = activeExecucao.passos_executados.find(p => p.id === _passo_id_local);
+              const template = passoRelacionado?.passo_template;
+              
+              const acaoPasso = template?.acao || "Ação desconhecida";
+              const resultadoPasso = template?.resultado_esperado || "Sem resultado esperado";
+              
+              // Formatação "escondida" para o DefectModal ler depois
+              const tituloFormatado = `${payload.titulo} (DetalhesPasso: ${acaoPasso} ||| ${resultadoPasso})`;
+              
+              // Cria payload final com título modificado
+              const payloadFinal = {
+                  ...payload,
+                  titulo: tituloFormatado
+              };
+
+              await api.post("/defeitos/", payloadFinal);
           }
 
           // 2. Atualiza os Passos no Backend
@@ -258,7 +263,6 @@ export function QARunner() {
           setActiveExecucao(prev => ({ ...prev, status_geral: statusFinal }));
           success("Tarefa fechada com sucesso!");
           
-          // Limpa LocalStorage
           localStorage.removeItem(`queue_${activeExecucao.id}`);
           localStorage.removeItem(`statuses_${activeExecucao.id}`);
           setDefectsQueue([]);
@@ -272,7 +276,6 @@ export function QARunner() {
       } finally { setLoading(false); }
   };
 
-  // Garante que o player recebe array nas evidências para evitar quebra
   const executionWithLocalState = activeExecucao ? {
       ...activeExecucao,
       passos_executados: activeExecucao.passos_executados.map(p => {

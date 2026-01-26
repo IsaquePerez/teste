@@ -86,6 +86,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) =
 export function AdminModulos() {
   const [modulos, setModulos] = useState([]);
   const [sistemas, setSistemas] = useState([]);
+  const [projetos, setProjetos] = useState([]); 
   
   const [view, setView] = useState('list');
   const [form, setForm] = useState({ nome: '', descricao: '', sistema_id: '', ativo: true });
@@ -109,6 +110,8 @@ export function AdminModulos() {
   const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
   const statusHeaderRef = useRef(null);
 
+  const [selectedProjeto, setSelectedProjeto] = useState('');
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -116,7 +119,7 @@ export function AdminModulos() {
   const getSistemaName = (id) => sistemas.find(s => s.id === id)?.nome || '-';
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedSistemaId, selectedStatus]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedSistemaId, selectedStatus, selectedProjeto]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -136,17 +139,24 @@ export function AdminModulos() {
 
   const loadData = async () => {
     try {
-        const [modsResponse, sisResponse] = await Promise.all([
+        const [modsResponse, sisResponse, projResponse] = await Promise.all([
             api.get("/modulos/"),
-            api.get("/sistemas/")
+            api.get("/sistemas/"),
+            api.get("/projetos/")
         ]);
         setModulos(modsResponse.data || modsResponse || []);
         setSistemas(sisResponse.data || sisResponse || []);
+        setProjetos(projResponse.data || projResponse || []); 
     } catch (e) { error("Erro ao carregar dados."); }
   };
 
   const filteredModulos = modulos.filter(m => {
       if (selectedSistemaId && m.sistema_id !== parseInt(selectedSistemaId)) return false;
+      if (selectedProjeto) {
+          const proj = projetos.find(p => String(p.id) === String(selectedProjeto));
+          if (proj && m.id !== proj.modulo_id) return false;
+      }
+
       if (selectedStatus !== '') {
           const statusBool = selectedStatus === 'true';
           if (m.ativo !== statusBool) return false;
@@ -155,9 +165,7 @@ export function AdminModulos() {
       return true;
   });
 
-  const globalSuggestions = searchTerm === '' 
-    ? filteredModulos.slice(0, 5) 
-    : filteredModulos.slice(0, 5);
+  const globalSuggestions = searchTerm === '' ? filteredModulos.slice(0, 5) : filteredModulos.slice(0, 5);
 
   const filteredSistemasForHeader = sistemas.filter(s => s.nome.toLowerCase().includes(sistemaSearchText.toLowerCase())).slice(0, 5);
   const statusOptions = [{ label: 'Ativo', value: 'true' }, { label: 'Inativo', value: 'false' }];
@@ -267,6 +275,17 @@ export function AdminModulos() {
           <div className="toolbar">
               <h2 className="page-title">Módulos</h2>
               <div className="toolbar-actions">
+                <div className="filter-group">
+                    <span className="filter-label">PROJETO:</span>
+                    <div style={{width: '200px'}}>
+                        <SearchableSelect 
+                            options={projetos.filter(p => p.status === 'ativo')}
+                            value={selectedProjeto}
+                            onChange={(val) => setSelectedProjeto(val)}
+                            placeholder="Filtrar Projeto..."
+                        />
+                    </div>
+                </div>
                 <button onClick={handleNew} className="btn primary btn-new">Novo Módulo</button>
                 <div className="separator"></div>
                 <div ref={globalSearchRef} className="search-wrapper">
@@ -373,7 +392,7 @@ export function AdminModulos() {
                       </thead>
                       <tbody>
                           {filteredModulos.length === 0 ? (
-                              <tr><td colSpan="5" className="no-results">Nenhum módulo encontrado.</td></tr>
+                            <tr><td colSpan="5" className="no-results">Nenhum módulo encontrado.</td></tr>
                           ) : (
                               currentModulos.map(m => (
                                   <tr key={m.id} onClick={() => handleSelectRow(m)} className={'selectable'} style={{opacity: m.ativo ? 1 : 0.6}}>

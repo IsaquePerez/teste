@@ -162,20 +162,18 @@ export function QADefeitos() {
   const currentItems = filteredExecucoes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
-  // Opções para os Dropdowns
-  const statusOptions = [{label: 'Aberto', value: 'aberto'}, {label: 'Corrigido', value: 'corrigido'}, {label: 'Fechado', value: 'fechado'}];
-  const filteredStatusHeader = statusOptions.filter(o => o.label.toLowerCase().includes(statusSearchText.toLowerCase()));
-  
+  const statusOptions = [{label: 'Aberto', value: 'aberto'}, {label: 'Corrigido', value: 'corrigido'}, {label: 'Fechado', value: 'fechado'}];  
   const sevOptions = [{label: 'Crítico', value: 'critico'}, {label: 'Alto', value: 'alto'}, {label: 'Médio', value: 'medio'}, {label: 'Baixo', value: 'baixo'}];
   const filteredSevHeader = sevOptions.filter(o => o.label.toLowerCase().includes(sevSearchText.toLowerCase()));
-  
-  const filteredRespHeader = usuarios.filter(u => u.nome.toLowerCase().includes(respSearchText.toLowerCase())).slice(0, 5);
 
   // --- HELPERS DE RENDERIZAÇÃO ---
   const getGroupSeverity = (defects) => {
-      if (defects.some(d => d.severidade === 'critico')) return 'critico';
-      if (defects.some(d => d.severidade === 'alto')) return 'alto';
-      if (defects.some(d => d.severidade === 'medio')) return 'medio';
+      const openDefects = defects.filter(d => d.status === 'aberto');
+      const targetList = openDefects.length > 0 ? openDefects : defects;
+
+      if (targetList.some(d => d.severidade === 'critico')) return 'critico';
+      if (targetList.some(d => d.severidade === 'alto')) return 'alto';
+      if (targetList.some(d => d.severidade === 'medio')) return 'medio';
       return 'baixo';
   };
 
@@ -218,11 +216,11 @@ export function QADefeitos() {
                         <thead>
                             <tr>
                                 <th style={{width: '60px'}}>ID Exec</th>
-                                <th style={{width: '30%'}}>Projeto / Caso de Teste</th>
+                                <th style={{width: '30%'}}>Caso de Teste / Projeto</th>
                                 <th style={{width: '20%'}}>Runner</th>
                                 
                                 <th style={{width: '20%', textAlign: 'center'}}>
-                                    Falhas Reportadas
+                                    Falhas Reportadas (Abertas)
                                 </th>
 
                                 <th style={{width: '15%', textAlign: 'center', verticalAlign: 'middle'}}>
@@ -246,36 +244,41 @@ export function QADefeitos() {
                                     </td>
                                 </tr>
                             ) : (
-                                currentItems.map(group => (
-                                    <tr key={group.id} onClick={() => handleRowClick(group)} className="selectable-row" title="Clique para gerenciar falhas">
-                                        <td className="cell-id">#{group.id}</td>
-                                        <td>
-                                            <div className="cell-name">{truncate(group.projeto_nome, 25)}</div>
-                                            <div style={{fontSize: '0.8rem', color: '#64748b'}}>{truncate(group.caso_teste_nome, 40)}</div>
-                                        </td>
-                                        <td><span className="cell-resp">{truncate(group.responsavel_teste_nome, 20)}</span></td>
-                                        
-                                        <td style={{textAlign: 'center'}}>
-                                            <span style={{
-                                                backgroundColor: '#fee2e2', 
-                                                color: '#991b1b', 
-                                                padding: '4px 12px', 
-                                                borderRadius: '20px', 
-                                                fontSize: '0.8rem', 
-                                                fontWeight: '700'
-                                            }}>
-                                        
-                                                {group.defeitos.length} Defeito(s)
-                                            </span>
-                                        </td>
+                                currentItems.map(group => {
+                                    const openDefectsCount = group.defeitos.filter(d => d.status === 'aberto').length;
+                                    const totalDefects = group.defeitos.length;
 
-                                        <td style={{textAlign: 'center'}}>
-                                            <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
-                                                {getGroupSeverity(group.defeitos).toUpperCase()}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
+                                    return (
+                                        <tr key={group.id} onClick={() => handleRowClick(group)} className="selectable-row" title="Clique para gerenciar falhas">
+                                            <td className="cell-id">#{group.id}</td>
+                                            <td>
+                                                <div>{truncate(group.caso_teste_nome, 40)}</div>
+                                                <div style={{fontSize: '0.8rem', color: '#64748b'}} className="cell-name">{truncate(group.projeto_nome, 25)}</div>
+                                            </td>
+                                            <td><span className="cell-resp">{truncate(group.responsavel_teste_nome, 20)}</span></td>
+                                            
+                                            <td style={{textAlign: 'center'}}>
+                                                <span style={{
+                                                    backgroundColor: openDefectsCount > 0 ? '#fee2e2' : '#f1f5f9', 
+                                                    color: openDefectsCount > 0 ? '#991b1b' : '#64748b', 
+                                                    padding: '4px 12px', 
+                                                    borderRadius: '20px', 
+                                                    fontSize: '0.8rem', 
+                                                    fontWeight: '700',
+                                                    border: openDefectsCount > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0'
+                                                }}>
+                                                    {openDefectsCount} Aberto(s) <span style={{fontWeight: 400, fontSize: '0.75rem'}}>/ {totalDefects}</span>
+                                                </span>
+                                            </td>
+
+                                            <td style={{textAlign: 'center'}}>
+                                                <span className={`badge ${getSeveridadeBadge(getGroupSeverity(group.defeitos))}`}>
+                                                    {getGroupSeverity(group.defeitos).toUpperCase()}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>

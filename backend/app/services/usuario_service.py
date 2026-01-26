@@ -24,6 +24,7 @@ class UsuarioService:
         return None
 
     async def create_usuario(self, usuario_data: UsuarioCreate) -> UsuarioResponse:
+        # Service cria o objeto ORM e faz o hash da senha
         db_usuario = Usuario(
             nome=usuario_data.nome,
             username=usuario_data.username,
@@ -34,6 +35,7 @@ class UsuarioService:
         )
         
         try:
+            # Chama o método corrigido no repo passando o objeto ORM
             novo_usuario_db = await self.repo.create_usuario(db_usuario)
             return UsuarioResponse.model_validate(novo_usuario_db)
         except IntegrityError as e:
@@ -55,6 +57,7 @@ class UsuarioService:
             raise HTTPException(status_code=400, detail="Nenhum dado fornecido para atualização.")
 
         try:
+            # Chama o método corrigido no repo
             usuario_atualizado_db = await self.repo.update_usuario(usuario_id, update_user)
             if usuario_atualizado_db:
                 return UsuarioResponse.model_validate(usuario_atualizado_db)
