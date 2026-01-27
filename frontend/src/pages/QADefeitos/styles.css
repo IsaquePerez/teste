@@ -127,25 +127,24 @@
 }
 
 .badge-sev-critico { 
-    background-color: #0f172a; /* Very Dark Blue (Slate-900) */
+    background-color: #051B32;
     color: white; 
 }
 
 .badge-sev-alto { 
-    background-color: #1e3a8a; /* Dark Blue (Blue-900) */
+    background-color: #02376B;
     color: white; 
 }
 
 .badge-sev-medio { 
-    background-color: #4379f0; /* Medium Blue (Blue-600) */
+    background-color: #004D8B;
     color: white; 
 }
 
 .badge-sev-baixo { 
-    background-color: #60a5fa; /* Light Blue (Blue-400) */
+    background-color: #ACCBE0;
     color: white; 
 }
-
 
 .download-confirm-overlay {
   position: fixed;
@@ -154,8 +153,8 @@
   width: 100vw;
   height: 100vh;
   background-color: rgba(15, 23, 42, 0.7); 
-  z-index: 9999; /* Garante que fique acima do Modal do Defeito */
-  display: flex; /* ESSENCIAL PARA CENTRALIZAR */
+  z-index: 9999;
+  display: flex;
   justify-content: center; 
   align-items: center; 
   backdrop-filter: blur(2px);

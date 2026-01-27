@@ -234,10 +234,25 @@
   letter-spacing: 0.05em;
 }
 
-.badge.severity-critico { background-color: #ef4444; }
-.badge.severity-alto { background-color: #f97316; }
-.badge.severity-medio { background-color: #eab308; }
-.badge.severity-baixo { background-color: #3b82f6; }
+.badge.severity-critico { 
+    background-color: #051B32;
+    color: white; 
+}
+
+.badge.severity-alto { 
+    background-color: #02376B;
+    color: white; 
+}
+
+.badge.severity-medio { 
+    background-color: #004D8B;
+    color: white; 
+}
+
+.badge.severity-baixo { 
+    background-color: #ACCBE0;
+    color: white; 
+}
 
 .status-tag {
   font-size: 0.7rem;
@@ -249,8 +264,8 @@
   text-transform: uppercase;
 }
 
-.status-tag.status-corrigido { color: #166534; background: #dcfce7; }
-.status-tag.status-aberto { color: #b91c1c; background: #fee2e2; }
+.status-tag.status-corrigido { color: #64748b; background: #f1f5f9; border: 1px solid #e2e8f0 }
+.status-tag.status-aberto { color: #1e40af; background: #dbeafe; border: 1px solid #bfdbfe }
 
 .modal-footer {
   padding: 20px 25px;

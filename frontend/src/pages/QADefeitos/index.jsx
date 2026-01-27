@@ -259,9 +259,9 @@ export function QADefeitos() {
                                             
                                             <td style={{textAlign: 'center'}}>
                                                 <span style={{
-                                                    backgroundColor: openDefectsCount > 0 ? '#dbeafe' : '#f1f5f9', // Blue-100 vs Slate-100
-                                                    color: openDefectsCount > 0 ? '#1e40af' : '#64748b',           // Blue-800 vs Slate-500
-                                                    border: openDefectsCount > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0', // Blue-200 vs Slate-200
+                                                    backgroundColor: openDefectsCount > 0 ? '#dbeafe' : '#f1f5f9',
+                                                    color: openDefectsCount > 0 ? '#1e40af' : '#64748b',
+                                                    border: openDefectsCount > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
                                                     padding: '4px 12px',
                                                     borderRadius: '20px',
                                                     fontSize: '0.8rem',
