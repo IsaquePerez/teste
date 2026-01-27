@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
-import { Users, User, ChevronDown, Activity, Bug, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Users, User, ChevronDown } from 'lucide-react';
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import './styles.css';
@@ -16,17 +16,29 @@ export function RunnerDashboard() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null); 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   
   const { error } = useSnackbar();
 
-  // BUSCA USUARIOS
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Busca Usuários
   useEffect(() => {
     api.get('/usuarios/')
       .then(resp => setUsers(resp || []))
       .catch(() => error("Erro ao carregar lista de usuários."));
   }, [error]);
 
-  // BUSCA DADOS DE PERFORMANCE
+  // Busca Performance
   useEffect(() => {
     async function loadPerformance() {
       setLoading(true);
@@ -54,11 +66,14 @@ export function RunnerDashboard() {
   const safeData = data || {};
   const isTeamView = !selectedUser;
 
+  // Helpers para decidir quais valores mostrar nos cards
+  const stats = isTeamView ? (safeData.stats_equipe || {}) : (safeData.stats_testador || {});
+
   return (
-    <main className="container performance-container">
+    <main className="container dashboard-container">
       
-      {/* HEADER E DROPDOWN */}
-      <div className="performance-header">
+      {/* HEADER & DROPDOWN */}
+      <div className="header-flex">
         <div>
           <h2 className="section-title">
             {isTeamView ? 'Performance da Equipe' : `Performance: ${selectedUser.nome}`}
@@ -70,20 +85,20 @@ export function RunnerDashboard() {
           </p>
         </div>
 
-        <div className="user-dropdown-wrapper">
-          <button 
-            className="dropdown-trigger-btn"
+        <div className="system-dropdown-container" ref={dropdownRef}>
+          <div 
+            className="dropdown-trigger"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
-            <div className="dropdown-trigger-content">
-                {isTeamView ? <Users size={18} /> : <User size={18} />}
-                <span>{isTeamView ? 'Visão Geral (Equipe)' : selectedUser.nome}</span>
-            </div>
-            <ChevronDown size={16} />
-          </button>
+             <span>
+                {isTeamView ? <Users size={16} color="#64748b"/> : <User size={16} color="#3b82f6"/>}
+                {isTeamView ? 'Visão Geral (Equipe)' : selectedUser.nome}
+             </span>
+             <ChevronDown size={18} color="#64748b" />
+          </div>
 
           {isDropdownOpen && (
-            <div className="dropdown-menu-list">
+            <div className="dropdown-menu">
               <div 
                 className={`dropdown-item ${isTeamView ? 'active' : ''}`}
                 onClick={() => handleUserSelect(null)}
@@ -91,7 +106,7 @@ export function RunnerDashboard() {
                 <Users size={16} />
                 <span>Visão da Equipe</span>
               </div>
-              <div className="dropdown-divider"></div>
+              <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
               {users.map(u => (
                 <div 
                   key={u.id} 
@@ -107,77 +122,69 @@ export function RunnerDashboard() {
         </div>
       </div>
 
-      {/* GRID DE KPIS */}
-      <div className="kpi-grid">
+      {/* KPI GRID */}
+      <div className="kpi-grid-dashboard-full">
         {isTeamView ? (
           <>
-            <KPICard 
-              label="Taxa de Aprovação" 
-              value={`${safeData.stats_equipe?.taxa_aprovacao || 0}%`}
-              icon={<CheckCircle size={24} color="#10b981" />}
-              desc="Testes com sucesso vs falhas"
-              color="#10b981"
+            <KpiCard 
+              value={`${stats.taxa_aprovacao || 0}%`} 
+              label="TAXA DE APROVAÇÃO" 
+              color="#10b981" 
+              gradient="linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" 
             />
-            <KPICard 
-              label="Densidade de Defeitos" 
-              value={safeData.stats_equipe?.densidade_defeitos || 0}
-              icon={<Bug size={24} color="#ef4444" />}
-              desc="Bugs encontrados por execução"
-              color="#ef4444"
+            <KpiCard 
+              value={stats.densidade_defeitos || 0} 
+              label="DENSIDADE DE DEFEITOS" 
+              color="#ef4444" 
+              gradient="linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)" 
             />
-            <KPICard 
-              label="Execuções Totais" 
-              value={safeData.stats_equipe?.total_executions || 0} 
-              icon={<Activity size={24} color="#3b82f6" />} 
-              desc="Volume total no período"
-              color="#3b82f6"
+            <KpiCard 
+              value={stats.total_executions || 0} 
+              label="EXECUÇÕES TOTAIS" 
+              color="#3b82f6" 
+              gradient="linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)" 
             />
-            <KPICard 
-              label="Bugs Totais" 
-              value={safeData.stats_equipe?.total_defects || 0} 
-              icon={<AlertTriangle size={24} color="#f59e0b" />} 
-              desc="Total de defeitos reportados"
-              color="#f59e0b"
+            <KpiCard 
+              value={stats.total_defects || 0} 
+              label="BUGS TOTAIS" 
+              color="#f59e0b" 
+              gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" 
             />
           </>
         ) : (
           <>
-            <KPICard 
-              label="Caçador de Bugs" 
-              value={safeData.stats_testador?.bugs_reportados || 0}
-              icon={<Bug size={24} color="#ef4444" />}
-              desc="Defeitos únicos reportados"
-              color="#ef4444"
+            <KpiCard 
+              value={stats.bugs_reportados || 0} 
+              label="BUGS REPORTADOS" 
+              color="#ef4444" 
+              gradient="linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)" 
             />
-            <KPICard 
-              label="Produtividade" 
-              value={safeData.stats_testador?.total_execucoes || 0}
-              icon={<Activity size={24} color="#3b82f6" />}
-              desc="Casos de teste executados"
-              color="#3b82f6"
+            <KpiCard 
+              value={stats.total_execucoes || 0} 
+              label="PRODUTIVIDADE (CASOS)" 
+              color="#3b82f6" 
+              gradient="linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)" 
             />
-            <KPICard 
-              label="Taxa de Bloqueio" 
-              value={`${safeData.stats_testador?.taxa_bloqueio || 0}%`}
-              icon={<AlertTriangle size={24} color="#f59e0b" />}
-              desc="% de testes impedidos"
-              color="#f59e0b"
+            <KpiCard 
+              value={`${stats.taxa_bloqueio || 0}%`} 
+              label="TAXA DE BLOQUEIO" 
+              color="#f59e0b" 
+              gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" 
             />
-            <KPICard 
-              label="Rigor (Aprovações)" 
-              value={`${(100 - (safeData.stats_testador?.taxa_bloqueio || 0)).toFixed(1)}%`}
-              icon={<CheckCircle size={24} color="#10b981" />}
-              desc="Estimativa de fluxo limpo"
-              color="#10b981"
+            <KpiCard 
+              value={`${(100 - (stats.taxa_bloqueio || 0)).toFixed(1)}%`} 
+              label="FLUXO LIMPO (APROV)" 
+              color="#10b981" 
+              gradient="linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" 
             />
           </>
         )}
       </div>
 
-      {/* GRAFICOS */}
-      <div className="charts-grid">
+      {/* CHARTS GRID  */}
+      <div className="charts-grid-dashboard-full">
         
-        {/* VELOCIDADE */}
+        {/* Gráfico 1: Velocidade  */}
         <div className="chart-card">
           <h3 className="chart-title">{isTeamView ? 'Velocidade da Equipe (30 dias)' : 'Ritmo de Trabalho Individual'}</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -191,7 +198,7 @@ export function RunnerDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* STATUS E RIGOR */}
+        {/* Gráfico 2: Status/Rigor (Pie) */}
         <div className="chart-card">
           <h3 className="chart-title">{isTeamView ? 'Status Global' : 'Perfil de Rigor'}</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -199,12 +206,12 @@ export function RunnerDashboard() {
               <Pie
                 data={safeData.grafico_rigor || []}
                 cx="50%" cy="50%"
-                innerRadius={60} outerRadius={80}
+                innerRadius={60} outerRadius={90}
                 paddingAngle={5}
                 dataKey="value"
               >
                 {(safeData.grafico_rigor || []).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} stroke="none"/>
                 ))}
               </Pie>
               <Tooltip />
@@ -212,38 +219,56 @@ export function RunnerDashboard() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* TOP OFENSORES */}
-      <div className="chart-card full-width">
-        <h3 className="chart-title">Módulos Mais Críticos (Top Ofensores)</h3>
-        <ResponsiveContainer width="100%" height={250}>
-            <BarChart layout="vertical" data={safeData.grafico_top_modulos || []} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-              <XAxis type="number" />
-              <YAxis dataKey="label" type="category" width={150} tick={{fontSize: 12}} />
-              <Tooltip cursor={{fill: 'transparent'}} />
-              <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={25} />
-            </BarChart>
-        </ResponsiveContainer>
+        {/* Gráfico 3: Top Ofensores */}
+        <div className="chart-card full-width">
+          <h3 className="chart-title">Módulos Mais Críticos (Top Ofensores)</h3>
+          <ResponsiveContainer width="100%" height={250}>
+              <BarChart layout="vertical" data={safeData.grafico_top_modulos || []} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                <XAxis type="number" />
+                <YAxis dataKey="label" type="category" width={150} tick={{fontSize: 12}} />
+                <Tooltip cursor={{fill: 'transparent'}} />
+                <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={25} />
+              </BarChart>
+          </ResponsiveContainer>
+        </div>
+
       </div>
 
     </main>
   );
 }
 
-function KPICard({ label, value, icon, desc, color }) {
+// Componente Visual KpiCard 
+function KpiCard({ value, label, color, gradient }) {
+  const fakeData = Array.from({length: 8}, () => ({ val: 30 + Math.random() * 50 }));
+  
   return (
-    <div className="kpi-card" style={{ borderLeft: `5px solid ${color}` }}>
-      <div className="kpi-header">
-        <div className="kpi-icon-box" style={{ background: `${color}15` }}>
-            {icon}
-        </div>
+    <div 
+      className="kpi-card" 
+      style={{ 
+        borderLeft: `5px solid ${color}`,
+        background: gradient || '#ffffff'
+      }}
+    >
+      <div className="kpi-content">
         <h3 className="kpi-value">{value}</h3>
-      </div>
-      <div>
         <span className="kpi-label">{label}</span>
-        <span className="kpi-desc">{desc}</span>
+      </div>
+      <div className="kpi-chart-mini">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={fakeData}>
+            <Line 
+              type="monotone" 
+              dataKey="val" 
+              stroke={color} 
+              strokeWidth={3} 
+              dot={false} 
+              isAnimationActive={true}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
