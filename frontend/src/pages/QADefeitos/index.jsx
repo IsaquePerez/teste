@@ -259,13 +259,13 @@ export function QADefeitos() {
                                             
                                             <td style={{textAlign: 'center'}}>
                                                 <span style={{
-                                                    backgroundColor: openDefectsCount > 0 ? '#fee2e2' : '#f1f5f9', 
-                                                    color: openDefectsCount > 0 ? '#991b1b' : '#64748b', 
-                                                    padding: '4px 12px', 
-                                                    borderRadius: '20px', 
-                                                    fontSize: '0.8rem', 
-                                                    fontWeight: '700',
-                                                    border: openDefectsCount > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0'
+                                                    backgroundColor: openDefectsCount > 0 ? '#dbeafe' : '#f1f5f9', // Blue-100 vs Slate-100
+                                                    color: openDefectsCount > 0 ? '#1e40af' : '#64748b',           // Blue-800 vs Slate-500
+                                                    border: openDefectsCount > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0', // Blue-200 vs Slate-200
+                                                    padding: '4px 12px',
+                                                    borderRadius: '20px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700'
                                                 }}>
                                                     {openDefectsCount} Aberto(s) <span style={{fontWeight: 400, fontSize: '0.75rem'}}>/ {totalDefects}</span>
                                                 </span>

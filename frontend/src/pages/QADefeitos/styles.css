@@ -112,10 +112,39 @@
 .badge-status-rejeitado { background-color: #f1f5f9; color: #64748b; text-decoration: line-through; }
 
 
-.badge-sev-critico { background-color: #7f1d1d; color: white; }
-.badge-sev-alto { background-color: #b91c1c; color: white; }
-.badge-sev-medio { background-color: #f59e0b; color: white; }
-.badge-sev-baixo { background-color: #10b981; color: white; }
+.badge-sev-critico,
+.badge-sev-alto,
+.badge-sev-medio,
+.badge-sev-baixo {
+    display: inline-block;
+    width: 75px;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-sev-critico { 
+    background-color: #0f172a; /* Very Dark Blue (Slate-900) */
+    color: white; 
+}
+
+.badge-sev-alto { 
+    background-color: #1e3a8a; /* Dark Blue (Blue-900) */
+    color: white; 
+}
+
+.badge-sev-medio { 
+    background-color: #4379f0; /* Medium Blue (Blue-600) */
+    color: white; 
+}
+
+.badge-sev-baixo { 
+    background-color: #60a5fa; /* Light Blue (Blue-400) */
+    color: white; 
+}
 
 
 .download-confirm-overlay {
