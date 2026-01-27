@@ -93,7 +93,6 @@ export function TopHeader({ toggleSidebar }) {
         <button
           onClick={logout}
           className="btn danger header-logout-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px'}}
         >
           <Logout />
           Sair
