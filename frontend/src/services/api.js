@@ -35,10 +35,8 @@ async function request(endpoint, options = {}) {
   try {
     const response = await fetch(url, config);
     
-  
     const isLoginRequest = url.includes("/login");
-
-    if ((response.status === 401 || response.status === 403) && !isLoginRequest) {
+    if (response.status === 401 && !isLoginRequest) {
       clearSession();
       throw new Error("Sessão expirada.");
     }
