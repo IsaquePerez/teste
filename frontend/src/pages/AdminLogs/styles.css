@@ -1,0 +1,68 @@
+.logs-page-container {
+    padding: 20px;
+    max-width: 100%;
+}
+
+.log-action-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+
+.log-action-CRIAR {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.log-action-ATUALIZAR {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.log-action-DELETAR {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.log-action-LOGIN {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.log-entidade-badge {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.log-user-avatar {
+    width: 24px;
+    height: 24px;
+    background-color: #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: #475569;
+    margin-right: 8px;
+}
+
+.log-user-cell {
+    display: flex;
+    align-items: center;
+}
