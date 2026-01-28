@@ -357,7 +357,7 @@ export function AdminLogs() {
                                             </div>
                                         </td>
                                         <td style={{fontWeight: 600, color: '#334155'}}>
-                                            {row.sistema_nome || '-'}
+                                            {row.sistema_nome || 'Acesso'}
                                         </td>
                                         <td style={{textAlign: 'center'}}>
                                             <span className={`log-action-badge log-action-${row.acao}`}>
