@@ -5,8 +5,8 @@ from typing import Sequence, Optional
 from app.core.database import AsyncSessionLocal
 from app.schemas.usuario import UsuarioCreate, UsuarioResponse, UsuarioUpdate
 from app.services.usuario_service import UsuarioService
-from app.services.log_service import LogService # <--- Importar LogService
-from app.api.deps import get_current_active_user # <--- Importar dependência de utilizador
+from app.services.log_service import LogService 
+from app.api.deps import get_current_active_user
 from app.models.usuario import Usuario
 
 router = APIRouter()
@@ -18,26 +18,32 @@ async def get_db_session() -> AsyncSession:
 def get_usuario_service(db: AsyncSession = Depends(get_db_session)) -> UsuarioService:
     return UsuarioService(db)
 
+def truncar_texto(texto: str, limite: int = 5) -> str:
+    if not texto:
+        return ""
+    if len(texto) > limite:
+        return texto[:limite] + "..."
+    return texto
+
 @router.post("/", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED, summary="Criar novo usuário")
 async def create_usuario(
     usuario: UsuarioCreate,
     service: UsuarioService = Depends(get_usuario_service),
-    db: AsyncSession = Depends(get_db_session), # <--- Injeção DB
-    current_user: Usuario = Depends(get_current_active_user) # <--- Injeção Usuário
+    db: AsyncSession = Depends(get_db_session),
+    current_user: Usuario = Depends(get_current_active_user)
 ):
     novo_usuario = await service.create_usuario(usuario)
     
-    # --- LOG ---
+    nome_log = truncar_texto(novo_usuario.nome, 5)
+
     log_service = LogService(db)
     await log_service.registrar_acao(
         usuario_id=current_user.id,
         acao="CRIAR",
         entidade="Usuario",
         entidade_id=novo_usuario.id,
-        # sistema_id=None, # Usuários geralmente são globais, mas podes adicionar se fizer sentido
-        detalhes=f"Criou o usuário '{novo_usuario.nome}' ({novo_usuario.username})"
+        detalhes=f"Criou o usuário '{nome_log}' ({novo_usuario.username})"
     )
-    # -----------
     
     return novo_usuario
 
@@ -65,23 +71,23 @@ async def update_usuario(
     usuario_id: int,
     usuario: UsuarioUpdate,
     service: UsuarioService = Depends(get_usuario_service),
-    db: AsyncSession = Depends(get_db_session), # <--- Injeção DB
+    db: AsyncSession = Depends(get_db_session),
     current_user: Usuario = Depends(get_current_active_user)
 ):
     updated_usuario = await service.update_usuario(usuario_id, usuario)
     if not updated_usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
-    # --- LOG ---
+    nome_log = truncar_texto(updated_usuario.nome, 5)
+
     log_service = LogService(db)
     await log_service.registrar_acao(
         usuario_id=current_user.id,
         acao="ATUALIZAR",
         entidade="Usuario",
         entidade_id=updated_usuario.id,
-        detalhes=f"Atualizou o usuário '{updated_usuario.nome}'"
+        detalhes=f"Atualizou o usuário '{nome_log}' ({updated_usuario.username})"
     )
-    # -----------
 
     return updated_usuario
 
@@ -89,26 +95,25 @@ async def update_usuario(
 async def delete_usuario(
     usuario_id: int,
     service: UsuarioService = Depends(get_usuario_service),
-    db: AsyncSession = Depends(get_db_session), # <--- Injeção DB
+    db: AsyncSession = Depends(get_db_session),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    # Buscar dados antes de apagar para o log
     usuario_alvo = await service.get_usuario_by_id(usuario_id)
-    nome_usuario = usuario_alvo.nome if usuario_alvo else str(usuario_id)
-
+    
+    if not usuario_alvo:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    nome_log = truncar_texto(usuario_alvo.nome, 5)
+    username_log = usuario_alvo.username
     success = await service.delete_usuario(usuario_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
-    # --- LOG ---
+        raise HTTPException(status_code=404, detail="Erro ao remover usuário")
     log_service = LogService(db)
     await log_service.registrar_acao(
         usuario_id=current_user.id,
         acao="DELETAR",
         entidade="Usuario",
         entidade_id=usuario_id,
-        detalhes=f"Apagou o usuário '{nome_usuario}'"
+        detalhes=f"Apagou o usuário '{nome_log}' ({username_log})"
     )
-    # -----------
     
     return

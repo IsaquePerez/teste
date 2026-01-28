@@ -36,11 +36,7 @@ class ExecucaoTesteService:
             return ExecucaoTesteResponse.model_validate(execucao)
         return None
 
-    async def registrar_resultado_passo(self, passo_id: int, dados: ExecucaoPassoUpdate) -> ExecucaoPassoResponse:
-        # --- MAPPER DE STATUS PARA CORRIGIR O ERRO DE ENUM ---
-        # Frontend envia: "passou", "falhou"
-        # Banco espera: "aprovado", "reprovado" (Conforme seu models/testing.py)
-        
+    async def registrar_resultado_passo(self, passo_id: int, dados: ExecucaoPassoUpdate) -> ExecucaoPassoResponse:        
         status_map = {
             "passou": "aprovado",
             "sucesso": "aprovado",
@@ -50,18 +46,11 @@ class ExecucaoTesteService:
             "falha": "reprovado",
             "failed": "reprovado"
         }
-        
-        # Tenta traduzir, se não conseguir, mantém o original (pode ser que já esteja certo)
         status_convertido = status_map.get(dados.status, dados.status)
-
-        # Atualiza o DTO com o valor correto
         dados.status = status_convertido
-
-        # Validação extra antes de enviar pro banco
         try:
             StatusPassoEnum(dados.status)
         except ValueError:
-            # Se ainda assim falhar, loga ou lança erro mais claro, mas vamos tentar prosseguir
             pass
         
         passo_atual = await self.repo.get_execucao_passo(passo_id)
@@ -69,8 +58,6 @@ class ExecucaoTesteService:
             raise HTTPException(status_code=404, detail="Passo de execução não encontrado")
 
         atualizado = await self.repo.update_passo(passo_id, dados)
-        
-        # Atualiza status geral da execução
         await self._atualizar_status_execucao(passo_atual.execucao_teste_id)
         
         return ExecucaoPassoResponse.model_validate(atualizado)
@@ -80,14 +67,12 @@ class ExecucaoTesteService:
         if not execucao:
             return
 
-        passos = execucao.passos_executados # Corrigido nome do relacionamento
+        passos = execucao.passos_executados
         todos_status = [p.status for p in passos]
-        
-        # Lógica de consolidação baseada no seu Enum (aprovado/reprovado)
         if all(s == StatusPassoEnum.aprovado for s in todos_status):
              await self.repo.update_status_geral(execucao_id, StatusExecucaoEnum.fechado) 
         elif any(s == StatusPassoEnum.reprovado for s in todos_status): 
-             await self.repo.update_status_geral(execucao_id, StatusExecucaoEnum.em_progresso) # Ou outro status de falha geral
+             await self.repo.update_status_geral(execucao_id, StatusExecucaoEnum.em_progresso)
         else:
              if execucao.status_geral == StatusExecucaoEnum.pendente:
                  await self.repo.update_status_geral(execucao_id, StatusExecucaoEnum.em_progresso)
@@ -104,23 +89,16 @@ class ExecucaoTesteService:
         import uuid
         
         os.makedirs("evidencias", exist_ok=True)
-        
-        # 1. Gerar nome seguro (UUID) para evitar caracteres inválidos na URL
         extension = os.path.splitext(file.filename)[1]
         if not extension:
             extension = ".jpg"
             
         safe_filename = f"{passo_id}_{uuid.uuid4()}{extension}"
         file_path = f"evidencias/{safe_filename}"
-        
-        # 2. Resetar o ponteiro do arquivo antes de ler
         await file.seek(0)
         
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
-        # 3. Retornar Dicionário compatível com o Frontend
-        # O Frontend espera: response.data.url
         full_url = f"http://localhost:8000/evidencias/{safe_filename}"
         
         return {"url": full_url}

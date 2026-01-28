@@ -12,7 +12,8 @@ from app.core.database import get_db
 from app.api.deps import get_current_user, get_current_active_user
 from app.models.usuario import Usuario
 from app.models.projeto import Projeto
-from app.models.testing import StatusExecucaoEnum
+from app.models.modulo import Modulo
+from app.models.testing import StatusExecucaoEnum, CicloTeste
 
 from app.services.caso_teste_service import CasoTesteService
 from app.services.ciclo_teste_service import CicloTesteService
@@ -42,8 +43,28 @@ def get_execucao_service(db: AsyncSession = Depends(get_db)) -> ExecucaoTesteSer
 
 # --- HELPER PARA OBTER SISTEMA_ID ---
 async def get_sistema_id_from_projeto(db: AsyncSession, projeto_id: int) -> Optional[int]:
-    result = await db.execute(select(Projeto.sistema_id).where(Projeto.id == projeto_id))
-    return result.scalar()
+    query = select(Projeto.sistema_id, Projeto.modulo_id).where(Projeto.id == projeto_id)
+    result = await db.execute(query)
+    projeto = result.first()
+    
+    if not projeto: return None
+    if projeto.sistema_id: return projeto.sistema_id
+        
+    if projeto.modulo_id:
+        query_mod = select(Modulo.sistema_id).where(Modulo.id == projeto.modulo_id)
+        result_mod = await db.execute(query_mod)
+        return result_mod.scalar()
+    return None
+
+# --- HELPER QUE FALTAVA ---
+async def get_sistema_id_from_ciclo(db: AsyncSession, ciclo_id: int) -> Optional[int]:
+    query = select(CicloTeste.projeto_id).where(CicloTeste.id == ciclo_id)
+    result = await db.execute(query)
+    projeto_id = result.scalar()
+    
+    if projeto_id:
+        return await get_sistema_id_from_projeto(db, projeto_id)
+    return None
 
 # --- GESTÃO DE CASOS DE TESTE ---
 @router.get("/casos", response_model=List[CasoTesteResponse])
@@ -252,12 +273,15 @@ async def criar_execucao(
     current_user: Usuario = Depends(get_current_active_user)
 ):
     nova_exec = await service.alocar_teste(dados.ciclo_teste_id, dados.caso_teste_id, dados.responsavel_id)
+    sistema_id = await get_sistema_id_from_ciclo(db, dados.ciclo_teste_id)
+    
     log_service = LogService(db)
     await log_service.registrar_acao(
         usuario_id=current_user.id,
         acao="CRIAR",
         entidade="ExecucaoTeste",
         entidade_id=nova_exec.id,
+        sistema_id=sistema_id,
         detalhes=f"Alocou teste (Caso: {dados.caso_teste_id}, Ciclo: {dados.ciclo_teste_id})"
     )
     
@@ -306,14 +330,19 @@ async def finalizar_execucao_manual(
     
     if not execucao:
         raise HTTPException(status_code=404, detail="Execução não encontrada")
-    
+    sistema_id = None
+    if execucao.ciclo_teste_id:
+        sistema_id = await get_sistema_id_from_ciclo(db, execucao.ciclo_teste_id)
+    status_str = status.value if hasattr(status, "value") else str(status)
+
     log_service = LogService(db)
     await log_service.registrar_acao(
         usuario_id=current_user.id,
         acao="ATUALIZAR",
         entidade="ExecucaoTeste",
         entidade_id=execucao_id,
-        detalhes=f"Finalizou execução com status: {status}"
+        sistema_id=sistema_id,
+        detalhes=f"Finalizou execução com status: {status_str}"
     )
         
     return {"message": "Execução atualizada", "status": status}

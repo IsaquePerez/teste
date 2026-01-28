@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import List, Optional, Union # <--- Adicionado Union
+from typing import List, Optional, Union
 
 from app.schemas.caso_teste import CasoTesteResponse, UsuarioSimple, PassoCasoTesteResponse
 from app.models.testing import StatusExecucaoEnum
@@ -20,11 +20,10 @@ class ExecucaoTesteCreate(ExecucaoTesteBase):
     pass
 
 class ExecucaoPassoUpdate(BaseModel):
-    model_config = ConfigDict(extra='ignore') # Ignora campos extra por segurança
+    model_config = ConfigDict(extra='ignore')
 
     status: Optional[str] = None
     resultado_obtido: Optional[str] = None
-    # ALTERAÇÃO: Aceita Lista ou String
     evidencias: Optional[Union[List[str], str]] = None 
 
 class ExecucaoPassoResponse(ExecucaoPassoBase):
