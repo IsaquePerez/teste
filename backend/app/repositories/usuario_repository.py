@@ -8,7 +8,6 @@ class UsuarioRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # GET 
     async def get_by_id(self, user_id: int) -> Optional[Usuario]:
         query = select(Usuario).options(selectinload(Usuario.nivel_acesso)).where(Usuario.id == user_id)
         result = await self.db.execute(query)
@@ -25,49 +24,33 @@ class UsuarioRepository:
         return result.scalars().first()
 
     async def get_all_usuarios(self, ativo: Optional[bool] = None) -> List[Usuario]:
-        query = select(Usuario).options(selectinload(Usuario.nivel_acesso))
+        query = select(Usuario).options(selectinload(Usuario.nivel_acesso)).order_by(Usuario.id)
         if ativo is not None:
             query = query.where(Usuario.ativo == ativo)
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    # CREATE 
-    async def create(self, usuario: Any) -> Usuario:
-        db_obj = Usuario(
-            nome=usuario.nome,
-            username=usuario.username,
-            email=usuario.email,
-            senha_hash=usuario.senha, 
-            nivel_acesso_id=usuario.nivel_acesso_id,
-            ativo=usuario.ativo
-        )
-        self.db.add(db_obj)
-        await self.db.commit()
-        await self.db.refresh(db_obj)
-        
-        query = select(Usuario).options(selectinload(Usuario.nivel_acesso)).where(Usuario.id == db_obj.id)
+    async def create(self, usuario: Usuario) -> Usuario:
+        self.db.add(usuario)
+        await self.db.commit()        
+        query = select(Usuario).options(selectinload(Usuario.nivel_acesso)).where(Usuario.id == usuario.id)
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    # UPDATE 
-    async def update(self, db_obj: Usuario, obj_in: Union[Any, Dict[str, Any]]) -> Usuario:
-        if isinstance(obj_in, dict):
-            update_data = obj_in
-        else:
-            update_data = obj_in.model_dump(exclude_unset=True)
-            
-        if "senha" in update_data:
-            update_data["senha_hash"] = update_data.pop("senha")
-            
+    async def update(self, user_id: int, update_data: Dict[str, Any]) -> Optional[Usuario]:
+        db_obj = await self.get_by_id(user_id)
+        if not db_obj:
+            return None
+
         for field, value in update_data.items():
-            setattr(db_obj, field, value)
+            if hasattr(db_obj, field):
+                setattr(db_obj, field, value)
             
         self.db.add(db_obj)
         await self.db.commit()
-        await self.db.refresh(db_obj)
-        return db_obj
-
-    # DELETE 
+        
+        return await self.get_by_id(user_id)
+    
     async def delete(self, user_id: int) -> bool:
         usuario = await self.get_by_id(user_id)
         if usuario:

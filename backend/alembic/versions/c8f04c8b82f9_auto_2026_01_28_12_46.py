@@ -1,8 +1,8 @@
-"""Auto: 2026-01-27 19:05
+"""Auto: 2026-01-28 12:46
 
-Revision ID: 9dd3c1332332
+Revision ID: c8f04c8b82f9
 Revises: 
-Create Date: 2026-01-27 19:05:43.261486
+Create Date: 2026-01-28 12:46:06.926646
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '9dd3c1332332'
+revision: str = 'c8f04c8b82f9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

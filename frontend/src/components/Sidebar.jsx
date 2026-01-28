@@ -86,6 +86,10 @@ export function Sidebar({ role, isOpen, closeSidebar }) {
               
               <div className="nav-section">MONITORAMENTO</div>
               <Link to="/qa/defeitos" className={isActive('/qa/defeitos')}>Gestão de Defeitos</Link>
+
+              <div className="nav-section">Logs</div>
+              <Link to="/admin/logs" className={isActive('/admin/logs')}>Logs do Sistema</Link>
+              
             </>
           )}
 
