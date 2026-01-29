@@ -105,9 +105,10 @@ class DashboardService:
         return RunnerDashboardResponse(kpis=kpis, charts=charts)
 
     
-    async def get_performance_analytics(self, user_id: Optional[int] = None) -> PerformanceResponse:
-        velocity_data = await self.repo.get_performance_velocity(user_id)
-        modules_data = await self.repo.get_top_offending_modules_perf(user_id)
+    async def get_performance_analytics(self, user_id: Optional[int] = None, sistema_id: Optional[int] = None) -> PerformanceResponse:
+        
+        velocity_data = await self.repo.get_performance_velocity(user_id, sistema_id)
+        modules_data = await self.repo.get_top_offending_modules_perf(user_id, sistema_id)
 
         team_stats = None
         tester_stats = None
@@ -115,7 +116,7 @@ class DashboardService:
 
         if user_id:
             # logica para visao individual
-            stats = await self.repo.get_user_stats_aggregates(user_id)
+            stats = await self.repo.get_user_stats_aggregates(user_id, sistema_id)
             
             total = stats["total_executions"]
             blocked = stats["blocked_executions"]
@@ -130,11 +131,13 @@ class DashboardService:
                 taxa_bloqueio=block_rate
             )
 
-            dist_data = await self.repo.get_status_distribution(user_id)
+            
+            dist_data = await self.repo.get_status_distribution(user_id, sistema_id)
             rigor_chart = self._format_chart_data(dist_data, self.STATUS_COLORS)
 
         else:
-            stats = await self.repo.get_team_stats_aggregates()
+            
+            stats = await self.repo.get_team_stats_aggregates(sistema_id)
             
             total_exec = stats["total_executions"]
             passed = stats["passed_executions"]
@@ -155,10 +158,10 @@ class DashboardService:
                 total_defects=defects
             )
 
-            dist_data = await self.repo.get_status_distribution(None)
+            
+            dist_data = await self.repo.get_status_distribution(None, sistema_id)
             rigor_chart = self._format_chart_data(dist_data, self.STATUS_COLORS)
 
-        # item já é um objeto date, removemos o .date
         velocity_chart = [
             ChartDataPoint(
                 label=item.strftime("%d/%m"), 

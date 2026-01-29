@@ -3,7 +3,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
-import { Users, User, ChevronDown } from 'lucide-react';
+import { Users, User, ChevronDown, Monitor } from 'lucide-react'; 
 import { api } from '../../services/api';
 import { useSnackbar } from '../../context/SnackbarContext';
 import './styles.css';
@@ -13,37 +13,55 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 export function RunnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  
+  // Estados para Testadores
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null); 
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const userDropdownRef = useRef(null);
+
+  // Estados para Sistemas 
+  const [systems, setSystems] = useState([]);
+  const [selectedSystem, setSelectedSystem] = useState(null);
+  const [isSystemDropdownOpen, setIsSystemDropdownOpen] = useState(false);
+  const systemDropdownRef = useRef(null);
   
   const { error } = useSnackbar();
 
-  // Fecha dropdown ao clicar fora
+  
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setIsUserDropdownOpen(false);
+      }
+      if (systemDropdownRef.current && !systemDropdownRef.current.contains(event.target)) {
+        setIsSystemDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Busca Usuários
+  // Busca Usuários e Sistemas
   useEffect(() => {
-    api.get('/usuarios/')
-      .then(resp => setUsers(resp || []))
-      .catch(() => error("Erro ao carregar lista de usuários."));
+    Promise.all([
+      api.get('/usuarios/'),
+      api.get('/sistemas/') 
+    ]).then(([usersResp, systemsResp]) => {
+      setUsers(usersResp || []);
+      setSystems(systemsResp || []);
+    }).catch(() => error("Erro ao carregar filtros."));
   }, [error]);
 
-  // Busca Performance
+  // Busca Performance 
   useEffect(() => {
     async function loadPerformance() {
       setLoading(true);
       try {
-        const params = selectedUser ? { user_id: selectedUser.id } : {};
+        const params = {};
+        if (selectedUser) params.user_id = selectedUser.id;
+        if (selectedSystem) params.sistema_id = selectedSystem.id; 
+
         const response = await api.get('/dashboard-runners/performance', { params });
         setData(response);
       } catch (err) {
@@ -54,12 +72,17 @@ export function RunnerDashboard() {
       }
     }
     loadPerformance();
-  }, [selectedUser, error]);
+  }, [selectedUser, selectedSystem, error]);
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
-    setIsDropdownOpen(false);
+    setIsUserDropdownOpen(false);
   };
+
+  const handleSystemSelect = (system) => {
+    setSelectedSystem(system);
+    setIsSystemDropdownOpen(false);
+  }
 
   if (loading && !data) return <div className="loading-container">Carregando performance...</div>;
 
@@ -69,56 +92,101 @@ export function RunnerDashboard() {
   // Helpers para decidir quais valores mostrar nos cards
   const stats = isTeamView ? (safeData.stats_equipe || {}) : (safeData.stats_testador || {});
 
+  // Título dinâmico
+  const getTitle = () => {
+    let title = isTeamView ? 'Performance da Equipe' : `Performance: ${selectedUser.nome}`;
+    if (selectedSystem) title += ` em ${selectedSystem.nome}`;
+    else title += ` (Geral)`;
+    return title;
+  }
+
   return (
     <main className="container dashboard-container">
       
-      {/* HEADER & DROPDOWN */}
+      {/* HEADER & DROPDOWNS */}
       <div className="header-flex">
         <div>
-          <h2 className="section-title">
-            {isTeamView ? 'Performance da Equipe' : `Performance: ${selectedUser.nome}`}
-          </h2>
+          <h2 className="section-title">{getTitle()}</h2>
           <p className="section-subtitle">
-            {isTeamView 
-              ? 'Análise de saúde do produto e ritmo do time' 
-              : 'Análise individual de entrega e qualidade'}
+            Análise de qualidade e entrega filtrada
           </p>
         </div>
 
-        <div className="system-dropdown-container" ref={dropdownRef}>
-          <div 
-            className="dropdown-trigger"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          >
-             <span>
-                {isTeamView ? <Users size={16} color="#64748b"/> : <User size={16} color="#3b82f6"/>}
-                {isTeamView ? 'Visão Geral (Equipe)' : selectedUser.nome}
-             </span>
-             <ChevronDown size={18} color="#64748b" />
+        <div style={{ display: 'flex', gap: '16px' }}>
+          
+          {/* DROPDOWN DE SISTEMAS */}
+          <div className="system-dropdown-container" ref={systemDropdownRef}>
+            <div 
+              className="dropdown-trigger"
+              onClick={() => setIsSystemDropdownOpen(!isSystemDropdownOpen)}
+            >
+              <span>
+                  <Monitor size={16} color="#64748b"/>
+                  {selectedSystem ? selectedSystem.nome : 'Todos os Sistemas'}
+              </span>
+              <ChevronDown size={18} color="#64748b" />
+            </div>
+
+            {isSystemDropdownOpen && (
+              <div className="dropdown-menu">
+                <div 
+                  className={`dropdown-item ${!selectedSystem ? 'active' : ''}`}
+                  onClick={() => handleSystemSelect(null)}
+                >
+                  <Monitor size={16} />
+                  <span>Todos os Sistemas</span>
+                </div>
+                <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
+                {systems.map(s => (
+                  <div 
+                    key={s.id} 
+                    className={`dropdown-item ${selectedSystem?.id === s.id ? 'active' : ''}`}
+                    onClick={() => handleSystemSelect(s)}
+                  >
+                    <span>{s.nome}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {isDropdownOpen && (
-            <div className="dropdown-menu">
-              <div 
-                className={`dropdown-item ${isTeamView ? 'active' : ''}`}
-                onClick={() => handleUserSelect(null)}
-              >
-                <Users size={16} />
-                <span>Visão da Equipe</span>
-              </div>
-              <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
-              {users.map(u => (
-                <div 
-                  key={u.id} 
-                  className={`dropdown-item ${selectedUser?.id === u.id ? 'active' : ''}`}
-                  onClick={() => handleUserSelect(u)}
-                >
-                  <User size={16} />
-                  <span>{u.nome}</span>
-                </div>
-              ))}
+          {/* DROPDOWN DE USUÁRIOS */}
+          <div className="system-dropdown-container" ref={userDropdownRef}>
+            <div 
+              className="dropdown-trigger"
+              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+            >
+              <span>
+                  {isTeamView ? <Users size={16} color="#64748b"/> : <User size={16} color="#3b82f6"/>}
+                  {isTeamView ? 'Visão Geral' : selectedUser.nome}
+              </span>
+              <ChevronDown size={18} color="#64748b" />
             </div>
-          )}
+
+            {isUserDropdownOpen && (
+              <div className="dropdown-menu">
+                <div 
+                  className={`dropdown-item ${isTeamView ? 'active' : ''}`}
+                  onClick={() => handleUserSelect(null)}
+                >
+                  <Users size={16} />
+                  <span>Visão da Equipe</span>
+                </div>
+                <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }}></div>
+                {users.map(u => (
+                  <div 
+                    key={u.id} 
+                    className={`dropdown-item ${selectedUser?.id === u.id ? 'active' : ''}`}
+                    onClick={() => handleUserSelect(u)}
+                  >
+                    <User size={16} />
+                    <span>{u.nome}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
 
@@ -186,7 +254,7 @@ export function RunnerDashboard() {
         
         {/* Gráfico 1: Velocidade  */}
         <div className="chart-card">
-          <h3 className="chart-title">{isTeamView ? 'Velocidade da Equipe (30 dias)' : 'Ritmo de Trabalho Individual'}</h3>
+          <h3 className="chart-title">Velocidade de Entrega (30 dias)</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={safeData.grafico_velocidade || []} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -198,9 +266,9 @@ export function RunnerDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Gráfico 2: Status/Rigor (Pie) */}
+        {/* Gráfico 2: Status/Rigor */}
         <div className="chart-card">
-          <h3 className="chart-title">{isTeamView ? 'Status Global' : 'Perfil de Rigor'}</h3>
+          <h3 className="chart-title">Status e Rigor</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
