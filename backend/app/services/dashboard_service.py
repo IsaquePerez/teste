@@ -149,13 +149,16 @@ class DashboardService:
 
             team_stats = TeamStats(
                 taxa_aprovacao=pass_rate,
-                densidade_defeitos=defect_density
+                densidade_defeitos=defect_density,
+                total_executions=total_exec,
+                passed_executions=passed,
+                total_defects=defects
             )
 
             dist_data = await self.repo.get_status_distribution(None)
             rigor_chart = self._format_chart_data(dist_data, self.STATUS_COLORS)
 
-        # CORREÇÃO AQUI: item já é um objeto date, removemos o .date
+        # item já é um objeto date, removemos o .date
         velocity_chart = [
             ChartDataPoint(
                 label=item.strftime("%d/%m"), 

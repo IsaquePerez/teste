@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../../services/api';
+import { api, getSession } from '../../services/api';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
-import { useSnackbar } from '../../context/SnackbarContext'; 
+import { useSnackbar } from '../../context/SnackbarContext';
 import { Eye, EyeOff } from 'lucide-react';
 import { Trash } from '../../components/icons/Trash';
 import { Search } from '../../components/icons/Search';
@@ -12,9 +12,10 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
-  
+
   const { success, error, warning } = useSnackbar();
-  
+  const currentUser = getSession();
+
   // --- CONFIGURAÇÃO DA PAGINAÇÃO ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -203,7 +204,20 @@ export function AdminUsers() {
     return pages;
   };
 
-  const isFormInvalid =  !form.nome.trim() || !form.username.trim() || !form.email.trim() || (!editingId && !form.senha);
+  const isFormInvalid =  !form.nome.trim() || !form.username.trim() || !form.email.trim() || (!editingId && !form.senha);
+
+  const isEditingSelf = (() => {
+    if (!editingId || !currentUser?.username) return false;
+    
+    const sessionIdentifier = currentUser.username.toLowerCase().trim();
+    
+    const loggedInUserInList = users.find(u => 
+        (u.username && u.username.toLowerCase() === sessionIdentifier) ||
+        (u.email && u.email.toLowerCase() === sessionIdentifier)
+    );
+    
+    return loggedInUserInList && String(loggedInUserInList.id) === String(editingId);
+  })();
 
   return (
     <main className="container">
@@ -232,8 +246,15 @@ export function AdminUsers() {
                       <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="form-control"/>
                     </div>
                     <div className="toggle-wrapper" style={{gridColumn: '3', marginTop: '28px'}}>
-                        <label className="switch">
-                            <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({...form, ativo: e.target.checked})}/>
+                        <label
+                          className="switch"
+                          style={{
+                            opacity: isEditingSelf ? 0.6 : 1,
+                            cursor: isEditingSelf ? 'not-allowed' : 'pointer'
+                          }}
+                          title={isEditingSelf ? "Você não pode desativar seu próprio usuário." : ""}
+                        >
+                            <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({...form, ativo: e.target.checked})} disabled={isEditingSelf}/>
                             <span className="slider"></span>
                         </label>
                         <span className="toggle-label">{form.ativo ? 'Ativo' : 'Inativo'}</span>
@@ -288,12 +309,12 @@ export function AdminUsers() {
 
       {view === 'list' && (
         <section className="card" style={{marginTop: 0}}>
-           <div className="toolbar">
-               <h3 className="page-title">Usuários</h3>
-               <div className="toolbar-actions">
+           <div className="toolbar">
+               <h3 className="page-title">Usuários</h3>
+               <div className="toolbar-actions">
                   <button onClick={() => setView('form')} className="btn primary btn-new">Novo Usuário</button>
                   <div className="separator"></div>
-                   <div className="search-wrapper" ref={globalSearchRef}>
+                   <div className="search-wrapper" ref={globalSearchRef}>
                         <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
                         <span className="search-icon"><Search /></span>
                         {showSuggestions && (
@@ -314,20 +335,20 @@ export function AdminUsers() {
                                 )}
                             </ul>
                         )}
-                   </div>
-               </div>
-           </div>
+                   </div>
+               </div>
+           </div>
 
-           {loading ? <div className="loading-text">Carregando...</div> : (
-             <div className="table-wrap">
-               <div className="content-area">
-                   <table>
-                       <thead>
-                         <tr>
-                           <th style={{width: '60px'}}>ID</th>
-                           <th>Nome / Username</th>
-                           <th>Email</th>
-                           <th style={{width: '120px', verticalAlign: 'middle'}}>
+           {loading ? <div className="loading-text">Carregando...</div> : (
+             <div className="table-wrap">
+               <div className="content-area">
+                   <table>
+                       <thead>
+                         <tr>
+                           <th style={{width: '60px'}}>ID</th>
+                           <th>Nome / Username</th>
+                           <th>Email</th>
+                           <th style={{width: '120px', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={roleHeaderRef}>
                                     {isRoleSearchOpen || selectedRoleId ? (
                                         <div style={{position: 'relative', width: '100%'}}>
@@ -353,8 +374,8 @@ export function AdminUsers() {
                                         <div className="th-label" onClick={() => setIsRoleSearchOpen(true)} title="Filtrar Role">ROLE <span className="filter-icon">▼</span></div>
                                     )}
                                 </div>
-                           </th>
-                           <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
+                           </th>
+                           <th style={{textAlign: 'center', width: '140px', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
                                     {isStatusSearchOpen || selectedStatus ? (
                                         <div style={{position: 'relative', width: '100%'}}>
@@ -380,15 +401,15 @@ export function AdminUsers() {
                                         <div className="th-label" onClick={() => setIsStatusSearchOpen(true)} title="Filtrar Status">STATUS <span className="filter-icon">▼</span></div>
                                     )}
                                 </div>
-                           </th>
-                           <th style={{textAlign: 'right'}}>Ações</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         {filteredUsers.length === 0 ? (
+                           </th>
+                           <th style={{textAlign: 'right'}}>Ações</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {filteredUsers.length === 0 ? (
                             <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum usuário encontrado.</td></tr>
-                         ) : (
-                           currentUsers.map(item => (
+                         ) : (
+                           currentUsers.map(item => (
                             <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
                                 <td className="cell-id">#{item.id}</td>
                                 <td>
@@ -410,22 +431,22 @@ export function AdminUsers() {
                                     <button onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon"><Trash /></button>
                                 </td>
                             </tr>
-                           ))
-                         )}
-                       </tbody>
-                     </table>
-               </div>
-               {filteredUsers.length > 0 && (
-                   <div className="pagination-container">
+                           ))
+                         )}
+                       </tbody>
+                     </table>
+               </div>
+               {filteredUsers.length > 0 && (
+                   <div className="pagination-container">
                       <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
                       {getPaginationGroup().map((item) => (
                         <button key={item} onClick={() => paginate(item)} className={`pagination-btn ${currentPage === item ? 'active' : ''}`}>{item}</button>
                       ))}
                       <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
-                   </div>
-               )}
-             </div>
-           )}
+                   </div>
+               )}
+             </div>
+           )}
         </section>
       )}
     </main>

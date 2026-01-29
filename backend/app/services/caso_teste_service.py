@@ -14,7 +14,6 @@ class CasoTesteService:
         self.projeto_repo = ProjetoRepository(db)
 
     async def _validar_usuario_ativo(self, usuario_id: int):
-        # CORREÇÃO CRÍTICA: get_by_id (não get_usuario_by_id)
         user = await self.user_repo.get_by_id(usuario_id)
         if not user:
             raise HTTPException(
@@ -38,8 +37,11 @@ class CasoTesteService:
         novo_caso = await self.repo.create(projeto_id, dados)
         return CasoTesteResponse.model_validate(novo_caso)
 
+    async def listar_todos(self) -> List[CasoTesteResponse]:
+        casos = await self.repo.get_all()
+        return [CasoTesteResponse.model_validate(c) for c in casos]
+    
     async def listar_casos_teste(self, projeto_id: int) -> List[CasoTesteResponse]:
-        # O repositório AGORA tem esse método
         casos = await self.repo.get_all_by_projeto(projeto_id)
         return [CasoTesteResponse.model_validate(c) for c in casos]
 

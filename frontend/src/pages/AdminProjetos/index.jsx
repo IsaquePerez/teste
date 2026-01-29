@@ -6,12 +6,14 @@ import { Trash } from '../../components/icons/Trash';
 import { Search } from '../../components/icons/Search';
 import './styles.css';
 
+// Componente SearchableSelect mantido igual (já tem limite de 5 itens e truncate)
 const SearchableSelect = ({ options, value, onChange, placeholder, disabled, labelKey = 'nome' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
 
-  const truncate = (str, n = 35) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
+  // Limite de caracteres solicitado
+  const truncate = (str, n = 30) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
   useEffect(() => {
     const selectedOption = options.find(opt => String(opt.id) === String(value));
@@ -26,6 +28,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsOpen(false);
+        // Se fechou sem selecionar, restaura o texto do valor atual ou limpa
         const selectedOption = options.find(opt => String(opt.id) === String(value));
         setSearchTerm(selectedOption ? selectedOption[labelKey] : '');
       }
@@ -38,6 +41,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
     opt[labelKey].toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Limite de 5 itens por vez no dropdown
   const displayOptions = filteredOptions.slice(0, 5);
 
   const handleSelect = (option) => {
@@ -56,7 +60,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
         onChange={(e) => {
           setSearchTerm(e.target.value);
           setIsOpen(true);
-          if (e.target.value === '') onChange('');
+          if (e.target.value === '') onChange(''); // Limpar filtro se apagar texto
         }}
         onFocus={() => !disabled && setIsOpen(true)}
         disabled={disabled}
@@ -110,6 +114,7 @@ export function AdminProjetos() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
+  // --- FILTROS ---
   const [respSearchText, setRespSearchText] = useState(''); 
   const [selectedRespId, setSelectedRespId] = useState(''); 
   const [isRespSearchOpen, setIsRespSearchOpen] = useState(false);
@@ -119,6 +124,9 @@ export function AdminProjetos() {
   const [selectedStatus, setSelectedStatus] = useState(''); 
   const [isStatusSearchOpen, setIsStatusSearchOpen] = useState(false);
   const statusHeaderRef = useRef(null);
+
+  // NOVO ESTADO: Filtro de Módulo na Toolbar
+  const [selectedModId, setSelectedModId] = useState(''); 
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -130,11 +138,9 @@ export function AdminProjetos() {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
-      
       if (respHeaderRef.current && !respHeaderRef.current.contains(event.target)) {
         if (!selectedRespId) { setIsRespSearchOpen(false); setRespSearchText(''); }
       }
-
       if (statusHeaderRef.current && !statusHeaderRef.current.contains(event.target)) {
         if (!selectedStatus) { setIsStatusSearchOpen(false); setStatusSearchText(''); }
       }
@@ -145,7 +151,8 @@ export function AdminProjetos() {
 
   useEffect(() => { loadData(); }, []);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedRespId, selectedStatus]);
+  // Reseta paginação se qualquer filtro mudar
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedRespId, selectedStatus, selectedModId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -164,12 +171,13 @@ export function AdminProjetos() {
   const usersFormatted = usuarios.map(u => ({ ...u, labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}` }));
   const getRespName = (id) => { const u = usersFormatted.find(user => user.id === id); return u ? u.nome : '-'; };
 
-  // --- FILTRAGEM PRINCIPAL ---
+  // --- LÓGICA DE FILTRAGEM ATUALIZADA ---
   const filteredData = projetos.filter(p => {
+      // Filtro de Módulo (Novo)
+      if (selectedModId && p.modulo_id !== parseInt(selectedModId)) return false;
+
       if (selectedRespId && p.responsavel_id !== parseInt(selectedRespId)) return false;
-      
       if (selectedStatus && p.status !== selectedStatus) return false;
-      
       if (searchTerm && !p.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       
       return true;
@@ -285,6 +293,17 @@ export function AdminProjetos() {
            <div className="toolbar">
                <h3 className="page-title">Projetos</h3>
                <div className="toolbar-actions">
+                  <span className="filter-label">Módulo:</span>
+                   <div style={{width: '220px', marginRight: '10px'}}>
+                        <SearchableSelect 
+                            options={modulos}
+                            value={selectedModId}
+                            onChange={setSelectedModId}
+                            placeholder="Filtrar por Módulo..."
+                            labelKey="nome"
+                        />
+                   </div>
+
                    <button onClick={() => setView('form')} className="btn primary btn-new">Novo Projeto</button>
                    <div className="separator"></div>
                    <div ref={wrapperRef} className="search-wrapper">
@@ -312,9 +331,11 @@ export function AdminProjetos() {
                        <thead>
                          <tr>
                            <th style={{width: '60px'}}>ID</th>
-                           <th>Nome</th>
-                           <th>Descrição</th>                           
-                           <th style={{width: '220px', verticalAlign: 'middle'}}>
+                           <th style={{width: '25%'}}>Nome</th>
+                           <th style={{width: '30%'}}>Descrição</th>
+                           
+                           {/* HEADER RESPONSÁVEL */}
+                           <th style={{width: '25%', verticalAlign: 'middle'}}>
                                 <div className="th-filter-container" ref={respHeaderRef}>
                                     {isRespSearchOpen || selectedRespId ? (
                                         <div style={{position: 'relative', width: '100%'}}>
@@ -326,10 +347,10 @@ export function AdminProjetos() {
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <button className="btn-clear-filter" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (selectedRespId) { setSelectedRespId(''); setRespSearchText(''); } 
-                                                    else { setIsRespSearchOpen(false); setRespSearchText(''); }
-                                                }}>✕</button>
+                                                e.stopPropagation();
+                                                if (selectedRespId) { setSelectedRespId(''); setRespSearchText(''); } 
+                                                else { setIsRespSearchOpen(false); setRespSearchText(''); }
+                                            }}>✕</button>
                                             {(!selectedRespId || respSearchText) && (
                                                 <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0}}>
                                                     <li onClick={() => { setSelectedRespId(''); setRespSearchText(''); setIsRespSearchOpen(false); }}>
@@ -349,7 +370,8 @@ export function AdminProjetos() {
                                     )}
                                 </div>
                            </th>
-                           <th style={{width: '140px', verticalAlign: 'middle', textAlign: 'center'}}>
+
+                           <th style={{width: '120px', verticalAlign: 'middle', textAlign: 'center'}}>
                                 <div className="th-filter-container" ref={statusHeaderRef} style={{justifyContent: 'center'}}>
                                     {isStatusSearchOpen || selectedStatus ? (
                                         <div style={{position: 'relative', width: '100%'}}>
@@ -361,10 +383,10 @@ export function AdminProjetos() {
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <button className="btn-clear-filter" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
-                                                    else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
-                                                }}>✕</button>
+                                                e.stopPropagation();
+                                                if (selectedStatus) { setSelectedStatus(''); setStatusSearchText(''); } 
+                                                else { setIsStatusSearchOpen(false); setStatusSearchText(''); }
+                                            }}>✕</button>
                                             {(!selectedStatus || statusSearchText) && (
                                                 <ul className="custom-dropdown" style={{width: '100%', top: '32px', left: 0, textAlign: 'left'}}>
                                                     <li onClick={() => { setSelectedStatus(''); setStatusSearchText(''); setIsStatusSearchOpen(false); }}>
@@ -388,13 +410,14 @@ export function AdminProjetos() {
                        </thead>
                        <tbody>
                          {filteredData.length === 0 ? (
-                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum projeto encontrado.</td></tr>
+                           <tr><td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px'}}>Nenhum projeto encontrado.</td></tr>
                          ) : (
-                             currentData.map(item => (
+                            currentData.map(item => (
                                 <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
                                     <td className="cell-id">#{item.id}</td>
-                                    <td className="cell-name">{truncate(item.nome, 15)}</td>
-                                    <td className="text-secondary">{truncate(item.descricao, 30)}</td>
+                                    <td className="cell-name">{truncate(item.nome, 20)}</td>
+                                    <td className="text-secondary">{truncate(item.descricao, 40)}</td>
+                                    
                                     <td style={{fontSize: '0.85rem'}}>
                                         {(() => {
                                             const resp = usersFormatted.find(u => u.id === item.responsavel_id);
@@ -403,12 +426,13 @@ export function AdminProjetos() {
                                             ) : '-';
                                         })()}
                                     </td>
+                                    
                                     <td className="cell-status"><span className={`status-badge ${item.status}`}>{item.status}</span></td>
                                     <td className="cell-actions">
                                         <button onClick={(e) => { e.stopPropagation(); setItemToDelete(item); setIsDeleteModalOpen(true); }} className="btn danger small btn-action-icon"><Trash /></button>
                                     </td>
                                 </tr>
-                             ))
+                            ))
                          )}
                        </tbody>
                      </table>

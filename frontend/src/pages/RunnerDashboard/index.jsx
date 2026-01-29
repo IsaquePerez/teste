@@ -222,7 +222,7 @@ export function RunnerDashboard() {
 
         {/* Gráfico 3: Top Ofensores */}
         <div className="chart-card full-width">
-          <h3 className="chart-title">Módulos Mais Críticos (Top Ofensores)</h3>
+          <h3 className="chart-title">Módulos Mais Críticos</h3>
           <ResponsiveContainer width="100%" height={250}>
               <BarChart layout="vertical" data={safeData.grafico_top_modulos || []} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />

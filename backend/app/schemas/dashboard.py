@@ -71,7 +71,10 @@ class RunnerDashboardResponse(BaseModel):
 
 class TeamStats(BaseModel):
     taxa_aprovacao: float        
-    densidade_defeitos: float    
+    densidade_defeitos: float
+    total_executions: int
+    passed_executions: int
+    total_defects: int
 
 class TesterStats(BaseModel):
     bugs_reportados: int

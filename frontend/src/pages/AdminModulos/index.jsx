@@ -275,17 +275,6 @@ export function AdminModulos() {
           <div className="toolbar">
               <h2 className="page-title">Módulos</h2>
               <div className="toolbar-actions">
-                <div className="filter-group">
-                    <span className="filter-label">PROJETO:</span>
-                    <div style={{width: '200px'}}>
-                        <SearchableSelect 
-                            options={projetos.filter(p => p.status === 'ativo')}
-                            value={selectedProjeto}
-                            onChange={(val) => setSelectedProjeto(val)}
-                            placeholder="Filtrar Projeto..."
-                        />
-                    </div>
-                </div>
                 <button onClick={handleNew} className="btn primary btn-new">Novo Módulo</button>
                 <div className="separator"></div>
                 <div ref={globalSearchRef} className="search-wrapper">

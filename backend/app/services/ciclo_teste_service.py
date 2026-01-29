@@ -1,15 +1,24 @@
+from typing import Sequence, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from datetime import datetime
 
 from app.repositories.ciclo_teste_repository import CicloTesteRepository
 from app.schemas.ciclo_teste import CicloTesteCreate, CicloTesteUpdate, CicloTesteResponse
+from app.models.testing import CicloTeste 
 from app.core.errors import tratar_erro_integridade
 
 class CicloTesteService:
     def __init__(self, db: AsyncSession):
         self.repo = CicloTesteRepository(db)
+
+    async def get_all_ciclos(self) -> Sequence[CicloTesteResponse]:
+        ciclos = await self.repo.get_all()
+        return [CicloTesteResponse.model_validate(c) for c in ciclos]
+    
+    async def obter_ciclo(self, ciclo_id: int) -> Optional[CicloTeste]:
+        return await self.repo.get_by_id(ciclo_id)
 
     async def criar_ciclo(self, projeto_id: int, dados: CicloTesteCreate):
         existente = await self.repo.get_by_nome_projeto(dados.nome, projeto_id)
@@ -18,7 +27,6 @@ class CicloTesteService:
         
         if dados.data_inicio:
             hoje = datetime.now().date()
-            
             data_inicio_check = dados.data_inicio
             if isinstance(data_inicio_check, datetime):
                 data_inicio_check = data_inicio_check.date()

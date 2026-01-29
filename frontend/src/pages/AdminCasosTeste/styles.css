@@ -200,7 +200,6 @@
 .cell-name { font-weight: 600; color: #334155; }
 .cell-priority { text-align: center; }
 
-/* Base para badges de prioridade - Neutro */
 .priority-badge { 
   background-color: #f1f5f9; 
   color: #475569; 
@@ -210,11 +209,6 @@
   font-weight: 600;
 }
 
-.cell-resp { color: #475569; font-size: 0.85rem; }
-.cell-steps { text-align: center; color: #64748b; }
-.cell-actions { text-align: right; }
-
-/* Cores específicas de Prioridade (Vindo da MAIN) */
 .priority-badge.alta {
   background-color: #001C42 !important;
   color: #ffffff !important;
@@ -229,6 +223,51 @@
   background-color: #f1f5f9;
   color: #475569;
 }
+
+.status-ativo,
+.status-rascunho,
+.status-obsoleto,
+.status-revisao {
+    display: inline-block;
+    width: 75px;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-ativo {
+  background-color: #021633;
+  color: #ffffff;
+  border: 1px solid;
+}
+
+.status-revisao {
+  background-color: #0b3d6e;
+  color: #e0f2fe;
+  border: 1px solid;
+}
+
+.status-rascunho {
+  background-color: #4c5e79;
+  color: #e2e8f0;
+  border: 1px solid;
+  border-style: dashed;
+}
+
+.status-obsoleto {
+  background-color: #f1f5f9;
+  color: #475569 !important;
+  border: 1px solid #1e293b;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.cell-resp { color: #475569; font-size: 0.85rem; }
+.cell-steps { text-align: center; color: #64748b; }
+.cell-actions { text-align: right; }
 
 .btn-action-icon {
   padding: 6px 10px;
@@ -335,34 +374,6 @@
   border-color: #e2e8f0;
   color: #cbd5e1;
 }
-
-
-.status-ativo {
-    background-color: #dcfce7; 
-    color: #166534; 
-    border: 1px solid #bbf7d0;
-}
-
-.status-rascunho {
-    background-color: #f3f4f6; 
-    color: #374151; 
-    border: 1px solid #e5e7eb;
-    border-style: dashed;
-}
-
-.status-obsoleto {
-    background-color: #fee2e2; 
-    color: #991b1b; 
-    border: 1px solid #fecaca;
-    text-decoration: line-through;
-}
-
-.status-revisao {
-    background-color: #ffedd5; 
-    color: #9a3412;
-    border: 1px solid #fed7aa;
-}
-
 
 body.dark {
   --card-bg: #1e1e1e;

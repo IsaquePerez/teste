@@ -11,7 +11,8 @@ from .endpoints import (
     dashboard, 
     runner_dashboard, 
     esqueceu_senha, 
-    recupera_senha
+    recupera_senha,
+    logs
 )
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboar
 api_router.include_router(runner_dashboard.router, prefix="/dashboard-runners", tags=["Dashboard"])
 api_router.include_router(esqueceu_senha.router, prefix="/forgot-password", tags=["Esqueceu Senha"])
 api_router.include_router(recupera_senha.router, prefix="/reset-password", tags=["Recuperar Senha"])
+api_router.include_router(logs.router, prefix="/logs", tags=["Logs"])

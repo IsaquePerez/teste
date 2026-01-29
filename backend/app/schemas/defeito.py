@@ -56,7 +56,7 @@ class DefeitoBase(BaseModel):
                 "médio": "medio", "medium": "medio",
                 "crítico": "critico", "critico": "critico", "critical": "critico",
                 "alto": "alto", "high": "alto",
-                "baixo": "baixo", "low": "baixo", "bajo": "baixo"
+                "baixo": "baixo", "low": "baixo", "baixo": "baixo"
             }
             return mapa.get(v, v)
         return v

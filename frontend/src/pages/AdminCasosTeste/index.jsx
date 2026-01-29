@@ -54,13 +54,20 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
     ? safeOptions 
     : safeOptions.filter(opt => opt[labelKey] && opt[labelKey].toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const displayOptions = filteredOptions.slice(0, 5);
+  const displayOptions = filteredOptions.slice(0, 50);
 
   const handleSelect = (option) => {
     onChange(option.id);
     setSearchTerm(option[labelKey]);
     setIsOpen(false);
   };
+
+  const handleClear = (e) => {
+      e.stopPropagation();
+      onChange('');
+      setSearchTerm('');
+      setIsOpen(false);
+  }
 
   return (
     <div ref={wrapperRef} className="search-wrapper" style={{ width: '100%', position: 'relative' }}>
@@ -82,6 +89,11 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, disabled
       
       {isOpen && !disabled && (
         <ul className="custom-dropdown" style={{ width: '100%', top: '100%', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+            {/* Opção Fixa para Limpar */}
+            <li onClick={handleClear} style={{ color: '#3b82f6', fontWeight: 'bold', borderBottom: '1px solid #eee' }}>
+                Todos os Projetos
+            </li>
+
           {displayOptions.length === 0 ? (
             <li style={{ color: '#999', cursor: 'default', padding: '10px' }}>
                 {searchTerm ? 'Sem resultados' : 'Digite para buscar...'}
@@ -107,7 +119,7 @@ export function AdminCasosTeste() {
   const [casos, setCasos] = useState([]);
   
   const { success, error, warning, info } = useSnackbar();
-  const [selectedProjeto, setSelectedProjeto] = useState('');
+  const [selectedProjeto, setSelectedProjeto] = useState(''); // Começa vazio para mostrar tudo
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
   const [editingId, setEditingId] = useState(null);
@@ -170,33 +182,27 @@ export function AdminCasosTeste() {
         const [projData, userData] = await Promise.all([api.get("/projetos"), api.get("/usuarios/")]);
         setProjetos(Array.isArray(projData) ? projData : []); 
         setUsuarios(Array.isArray(userData) ? userData : []);
-        
-        const ativos = (Array.isArray(projData) ? projData : []).filter(p => p.status === 'ativo');
-        if (ativos.length > 0) setSelectedProjeto(ativos[0].id);
+        // REMOVIDO: setSelectedProjeto(ativos[0].id) -> Agora começa vazio para carregar tudo
       } catch (e) { error("Erro ao carregar dados iniciais."); }
     };
     loadBasics();
   }, []);
 
+  // Carrega dados sempre que o projeto muda (ou se for vazio, carrega tudo)
   useEffect(() => { 
-      if (selectedProjeto) {
-          loadDadosProjeto(selectedProjeto);
-      } else {
-          setCasos([]); 
-          setCiclos([]);
-      }
+      loadDadosProjeto(selectedProjeto);
   }, [selectedProjeto]);
   
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedPrio, selectedCiclo, selectedResp]);
 
-  // Função auxiliar para buscar ciclos de um projeto específico
+  // Função auxiliar para buscar ciclos
   const fetchCiclos = async (projId) => {
-    if (!projId) {
-        setCiclos([]);
-        return;
-    }
     try {
-        const response = await api.get(`/testes/projetos/${projId}/ciclos`);
+        let url = '/testes/ciclos'; // Endpoint geral se não houver projeto selecionado
+        if (projId) {
+            url = `/testes/projetos/${projId}/ciclos`;
+        }
+        const response = await api.get(url);
         setCiclos(Array.isArray(response) ? response : []);
     } catch (err) {
         console.error("Erro ao buscar ciclos", err);
@@ -207,11 +213,23 @@ export function AdminCasosTeste() {
   const loadDadosProjeto = async (projId) => {
     setLoading(true);
     try {
-      const casosData = await api.get(`/testes/projetos/${projId}/casos`);
-      // Carrega os ciclos também para garantir que o filtro funcione
+      let url = '/testes/casos'; // Endpoint GERAL para buscar TODOS os casos
+      if (projId) {
+          url = `/testes/projetos/${projId}/casos`;
+      }
+      
+      const casosData = await api.get(url);
+      
+      // Carrega também os ciclos correspondentes (todos ou do projeto)
       await fetchCiclos(projId);
+      
       setCasos(Array.isArray(casosData) ? casosData : []);
-    } catch (err) { error("Erro ao carregar casos e ciclos."); } finally { setLoading(false); }
+    } catch (err) { 
+        error("Erro ao carregar casos e ciclos."); 
+        setCasos([]);
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   const filteredCasos = casos.filter(c => {
@@ -251,29 +269,27 @@ export function AdminCasosTeste() {
   };
 
   const currentProject = projetos.find(p => String(p.id) == String(selectedProjeto));
-  const isProjectActive = currentProject?.status === 'ativo';
+  const isProjectActive = selectedProjeto ? currentProject?.status === 'ativo' : true; // Se nenhum selecionado, permite novo (mas valida no form)
 
   const handleReset = () => {
-    // Reset volta para a listagem e limpa o form, mas mantém o contexto do projeto selecionado na lista
-    setForm({ nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo', prioridade: 'media', responsavel_id: '', ciclo_id: '', projeto_id: '', passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] });
+    setForm({ nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo', prioridade: 'media', responsavel_id: '', ciclo_id: '', projeto_id: selectedProjeto || '', passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] });
     setEditingId(null); setSearchTerm(''); setView('list');
-    // Garante que os ciclos carregados sejam do projeto selecionado na lista
-    if (selectedProjeto) fetchCiclos(selectedProjeto);
+    // Recarrega a lista
+    loadDadosProjeto(selectedProjeto);
   };
 
   const handleNew = async () => { 
-    if (!isProjectActive) return warning(`Projeto Inativo.`); 
+    if (selectedProjeto && !isProjectActive) return warning(`Projeto selecionado está Inativo.`); 
     
-    // Preenche o formulário com o projeto selecionado na listagem
     setForm({ 
         nome: '', descricao: '', pre_condicoes: '', criterios_aceitacao: '', status: 'ativo', 
         prioridade: 'media', responsavel_id: '', 
-        ciclo_id: '', // Ciclo começa vazio
-        projeto_id: selectedProjeto, // <--- PREENCHE AUTOMATICAMENTE
+        ciclo_id: '', 
+        projeto_id: selectedProjeto || '', // Pode começar vazio se nenhum filtro estiver ativo
         passos: [{ ordem: 1, acao: '', resultado_esperado: '' }] 
     });
     
-    // Garante que os ciclos disponíveis sejam deste projeto
+    // Se tiver projeto selecionado, atualiza ciclos
     if (selectedProjeto) {
         await fetchCiclos(selectedProjeto);
     }
@@ -281,17 +297,12 @@ export function AdminCasosTeste() {
     setView('form'); 
   };
 
-  // --- NOVA FUNÇÃO: Trata a mudança de projeto DENTRO do formulário ---
   const handleFormProjectChange = async (newProjectId) => {
-    // 1. Atualiza o ID do projeto no form
-    // 2. Limpa o Ciclo (pois o ciclo antigo não pertence ao novo projeto)
     setForm(prev => ({
         ...prev,
         projeto_id: newProjectId,
         ciclo_id: '' 
     }));
-
-    // 3. Busca os ciclos do novo projeto para popular o dropdown
     await fetchCiclos(newProjectId);
   };
 
@@ -319,13 +330,13 @@ export function AdminCasosTeste() {
       status: caso.status || 'ativo', 
       responsavel_id: respIdValue, 
       ciclo_id: cicloIdValue, 
-      projeto_id: caso.projeto_id, // Garante que o ID do projeto venha do caso
+      projeto_id: caso.projeto_id, 
       passos: caso.passos && caso.passos.length > 0 
         ? caso.passos.map(p => ({...p})) 
         : [{ ordem: 1, acao: '', resultado_esperado: '' }]
     });
     
-    // Busca ciclos do projeto DESTE caso específico (pode ser diferente do selecionado na lista)
+    // Busca ciclos do projeto deste caso específico
     if (caso.projeto_id) {
         await fetchCiclos(caso.projeto_id);
     }
@@ -340,7 +351,6 @@ export function AdminCasosTeste() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Usa form.projeto_id em vez de selectedProjeto, para respeitar a escolha do usuário no form
     if (!form.projeto_id) return error("Selecione um projeto.");
     if (!form.nome.trim()) return warning("Título obrigatório.");
     
@@ -360,8 +370,6 @@ export function AdminCasosTeste() {
       else { await api.post(`/testes/projetos/${form.projeto_id}/casos`, payload); success("Salvo!"); }
       
       handleReset(); 
-      // Recarrega a lista baseada no filtro principal
-      if (selectedProjeto) loadDadosProjeto(selectedProjeto);
     } catch (err) { 
         const msg = err.response?.data?.detail || "Erro ao salvar.";
         error(typeof msg === 'string' ? msg : "Erro de validação."); 
@@ -392,11 +400,10 @@ export function AdminCasosTeste() {
   const currentCasos = filteredCasos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const paginate = (n) => setCurrentPage(n);
 
-
   const usersFormatted = usuarios.map(u => ({ ...u, labelCompleto: `${u.nome} ${u.username ? `(@${u.username})` : ''}` }));
   const testers = usersFormatted.filter(u => u.nivel_acesso_id === 2 && u.ativo);
 
-  const isFormInvalid =  !String(form.ciclo_id).trim() || !String(form.responsavel_id).trim() || !form.nome.trim() || !form.pre_condicoes.trim() || !form.criterios_aceitacao.trim() || !form.prioridade.trim();
+  const isFormInvalid =  !String(form.ciclo_id).trim() || !String(form.responsavel_id).trim() || !form.nome.trim() || !form.pre_condicoes.trim() || !form.criterios_aceitacao.trim() || !form.prioridade.trim() || !form.projeto_id;
 
   return (
     <main className="container">
@@ -420,13 +427,12 @@ export function AdminCasosTeste() {
                   <div className="form-grid">
                       <div>
                         <label className="input-label">Projeto *</label>
-                        {/* USO DA NOVA FUNÇÃO DE MUDANÇA DE PROJETO */}
                         <SearchableSelect 
                             options={projetos.filter(p => p.status === 'ativo')} 
                             value={form.projeto_id} 
                             onChange={handleFormProjectChange} 
                             placeholder="Selecione..." 
-                            disabled={!!editingId} // Bloqueia edição de projeto na edição de caso
+                            disabled={!!editingId} 
                         />
                       </div>
                       <div><label className="input-label"><b>Título</b></label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control" /></div>
@@ -525,12 +531,12 @@ export function AdminCasosTeste() {
                                 options={projetos.filter(p => p.status === 'ativo')}
                                 value={selectedProjeto}
                                 onChange={(val) => setSelectedProjeto(val)}
-                                placeholder="Filtrar Projeto..."
+                                placeholder="Todos os Projetos"
                                 maxLen={15}
                             />
                         </div>
                    </div>
-                   <button onClick={handleNew} className="btn primary btn-new" disabled={!isProjectActive} style={{opacity: isProjectActive ? 1 : 0.5, cursor: isProjectActive ? 'pointer' : 'not-allowed'}}>Novo Cenário</button>
+                   <button onClick={handleNew} className="btn primary btn-new">Novo Cenário</button>
                    <div className="separator"></div>
                    <div ref={wrapperRef} className="search-wrapper">
                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
@@ -593,7 +599,7 @@ export function AdminCasosTeste() {
                          {filteredCasos.length === 0 ? (
                            <tr>
                                <td colSpan="8" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
-                                   {!selectedProjeto ? <span>Selecione um projeto para visualizar os casos de teste.</span> : <span>Nenhum caso encontrado neste projeto.</span>}
+                                   Nenhum caso de teste encontrado.
                                </td>
                            </tr>
                          ) : (

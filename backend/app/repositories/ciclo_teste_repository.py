@@ -44,6 +44,17 @@ class CicloTesteRepository:
         )
         result = await self.db.execute(query)
         return result.scalars().first()
+    
+    async def get_all(self) -> Sequence[CicloTeste]:
+        query = (
+            select(CicloTeste)
+            .options(
+                selectinload(CicloTeste.execucoes).selectinload(ExecucaoTeste.responsavel)
+            )
+            .order_by(CicloTeste.data_inicio.desc())
+        )
+        result = await self.db.execute(query)
+        return result.unique().scalars().all()
 
     async def update(self, ciclo_id: int, dados: dict) -> Optional[CicloTeste]:
         if not dados:

@@ -3,6 +3,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.projeto_service import ProjetoService
+from app.services.log_service import LogService
 from app.schemas.projeto import ProjetoCreate, ProjetoResponse, ProjetoUpdate
 from app.api.deps import get_current_active_user
 from app.models.usuario import Usuario
@@ -16,16 +17,35 @@ def get_service(db: AsyncSession = Depends(get_db)) -> ProjetoService:
 async def create_projeto(
     projeto_in: ProjetoCreate,
     service: ProjetoService = Depends(get_service),
+    db: AsyncSession = Depends(get_db), # <--- Injeta DB
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    return await service.create_projeto(projeto_in)
+    novo_projeto = await service.create_projeto(projeto_in)
+    
+    log_service = LogService(db)
+    await log_service.registrar_acao(
+        usuario_id=current_user.id,
+        acao="CRIAR",
+        entidade="Projeto",
+        entidade_id=novo_projeto.id,
+        sistema_id=novo_projeto.sistema_id, 
+        detalhes=f"Criou o projeto '{novo_projeto.nome}'"
+    )
+    
+    return novo_projeto
 
 @router.get("/", response_model=List[ProjetoResponse])
 async def get_projetos(
     service: ProjetoService = Depends(get_service),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    # CORREÇÃO: Usando o método correto do service
+    return await service.get_all_projetos()
+
+@router.get("/selection", response_model=List[ProjetoResponse])
+async def get_projetos_selection(
+    service: ProjetoService = Depends(get_service),
+    current_user: Usuario = Depends(get_current_active_user)
+):
     return await service.get_all_projetos()
 
 @router.get("/{projeto_id}", response_model=ProjetoResponse)
@@ -44,19 +64,48 @@ async def update_projeto(
     projeto_id: int,
     projeto_in: ProjetoUpdate,
     service: ProjetoService = Depends(get_service),
+    db: AsyncSession = Depends(get_db), # <--- Injeta DB
     current_user: Usuario = Depends(get_current_active_user)
 ):
     projeto = await service.update_projeto(projeto_id, projeto_in)
     if not projeto:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
+    
+    log_service = LogService(db)
+    await log_service.registrar_acao(
+        usuario_id=current_user.id,
+        acao="ATUALIZAR",
+        entidade="Projeto",
+        entidade_id=projeto.id,
+        sistema_id=projeto.sistema_id,
+        detalhes=f"Atualizou o projeto '{projeto.nome}'"
+    )
+
     return projeto
 
 @router.delete("/{projeto_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_projeto(
     projeto_id: int,
     service: ProjetoService = Depends(get_service),
+    db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
+    projeto_antigo = await service.get_projeto_by_id(projeto_id)
+    if not projeto_antigo:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+
     success = await service.delete_projeto(projeto_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+        raise HTTPException(status_code=404, detail="Erro ao apagar projeto")
+    
+    log_service = LogService(db)
+    await log_service.registrar_acao(
+        usuario_id=current_user.id,
+        acao="DELETAR",
+        entidade="Projeto",
+        entidade_id=projeto_id,
+        sistema_id=projeto_antigo.sistema_id,
+        detalhes=f"Apagou o projeto '{projeto_antigo.nome}'"
+    )
+    
+    return

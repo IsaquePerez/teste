@@ -15,6 +15,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
   const truncate = (str, n = 20) => (str && str.length > n) ? str.substr(0, n - 1) + '...' : str || '';
 
   useEffect(() => {
+    if (!Array.isArray(options)) return;
     const selectedOption = options.find(opt => String(opt.id) === String(value));
     if (selectedOption) {
       if(!isOpen) setSearchTerm(selectedOption[labelKey]);
@@ -27,17 +28,22 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsOpen(false);
-        const selectedOption = options.find(opt => String(opt.id) === String(value));
-        setSearchTerm(selectedOption ? selectedOption[labelKey] : '');
+        if (value && Array.isArray(options)) {
+            const selectedOption = options.find(opt => String(opt.id) === String(value));
+            if (selectedOption) setSearchTerm(selectedOption[labelKey]);
+        } else {
+            setSearchTerm('');
+        }
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef, value, options, labelKey]);
 
+  const safeOptions = Array.isArray(options) ? options : [];
   const filteredOptions = searchTerm === '' 
-    ? options 
-    : options.filter(opt => opt[labelKey].toLowerCase().includes(searchTerm.toLowerCase()));
+    ? safeOptions 
+    : safeOptions.filter(opt => opt[labelKey] && opt[labelKey].toLowerCase().includes(searchTerm.toLowerCase()));
 
   const displayOptions = filteredOptions.slice(0, 5);
 
@@ -62,6 +68,10 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, lab
       <span className="search-icon" style={{ cursor: disabled ? 'not-allowed' : 'pointer', right: '10px', position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '12px' }} onClick={() => !disabled && setIsOpen(!isOpen)}>▼</span>
       {isOpen && !disabled && (
         <ul className="custom-dropdown" style={{ width: '100%', top: '100%', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+          <li onClick={() => { onChange(''); setSearchTerm(''); setIsOpen(false); }} style={{ fontWeight: 'bold', color: '#3b82f6' }}>
+            Todos os Projetos
+          </li>
+
           {displayOptions.length === 0 ? <li style={{ color: '#999', cursor: 'default', padding: '10px' }}>Sem resultados</li> : displayOptions.map(opt => (
             <li key={opt.id} onClick={() => handleSelect(opt)} title={opt[labelKey]}>{truncate(opt[labelKey], 20)}</li>
           ))}
@@ -122,18 +132,15 @@ export function AdminCiclos() {
   useEffect(() => {
     const loadProjetos = async () => {
       try {
-        const data = await api.get("/projetos");
+        const data = await api.get("/projetos/selection");
         setProjetos(data || []);
-        const ativos = (data || []).filter(p => p.status === 'ativo');
-        if (ativos.length > 0) setSelectedProjeto(ativos[0].id);
       } catch (err) { error("Erro ao carregar projetos."); }
     };
     loadProjetos();
   }, []);
 
   useEffect(() => {
-    if (selectedProjeto) loadCiclos(selectedProjeto);
-    else setCiclos([]); 
+    loadCiclos(selectedProjeto);
   }, [selectedProjeto]);
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedStatus]);
@@ -141,14 +148,28 @@ export function AdminCiclos() {
   const loadCiclos = async (projId) => {
     setLoading(true);
     try {
-      const data = await api.get(`/testes/projetos/${projId}/ciclos`);
+      let url = '/testes/ciclos';
+      
+      if (projId) {
+          url = `/testes/projetos/${projId}/ciclos`;
+      }
+      
+      const data = await api.get(url);
       setCiclos(Array.isArray(data) ? data : []);
-    } catch (err) { error("Erro ao carregar ciclos."); setCiclos([]); } 
-    finally { setLoading(false); }
+    } catch (err) { 
+        console.error(err);
+        error("Erro ao carregar ciclos."); 
+        setCiclos([]); 
+    } finally { setLoading(false); }
   };
 
   // --- FILTRAGEM ---
   const filteredCiclos = ciclos.filter(c => {
+      if (!selectedProjeto) {
+          const proj = projetos.find(p => p.id === c.projeto_id);
+          if (proj && proj.status !== 'ativo') return false; 
+      }
+
       if (selectedStatus && c.status !== selectedStatus) return false;
       if (searchTerm && !c.nome.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
@@ -171,17 +192,24 @@ export function AdminCiclos() {
   const paginate = (n) => setCurrentPage(n);
 
   // --- ACTIONS ---
-  const currentProject = projetos.find(p => p.id == selectedProjeto);
-  const isProjectActive = currentProject?.status === 'ativo';
+  const currentProject = projetos.find(p => String(p.id) === String(selectedProjeto));
+  const isProjectActive = selectedProjeto ? currentProject?.status === 'ativo' : true;
 
   const handleReset = () => {
     setForm({ nome: '', descricao: '', data_inicio: '', data_fim: '', status: 'planejado', projeto_id: selectedProjeto || '' });
     setEditingId(null); setView('list');
+    loadCiclos(selectedProjeto);
   };
 
   const handleNew = () => {
-    if (!isProjectActive) return warning(`Projeto Inativo.`);
-    handleReset(); setView('form');
+    if (selectedProjeto && !isProjectActive) return warning(`O projeto selecionado está Inativo.`);
+    
+    setForm({ 
+        nome: '', descricao: '', data_inicio: '', data_fim: '', status: 'planejado', 
+        projeto_id: selectedProjeto 
+    });
+    
+    setView('form');
   };
 
   const handleEdit = (item) => {
@@ -189,7 +217,7 @@ export function AdminCiclos() {
       nome: item.nome, descricao: item.descricao || '', 
       data_inicio: item.data_inicio ? item.data_inicio.split('T')[0] : '',
       data_fim: item.data_fim ? item.data_fim.split('T')[0] : '',
-      status: item.status, projeto_id: item.projeto_id || selectedProjeto
+      status: item.status, projeto_id: item.projeto_id
     });
     setEditingId(item.id); setView('form');
   };
@@ -205,7 +233,6 @@ export function AdminCiclos() {
       if (editingId) { await api.put(`/testes/ciclos/${editingId}`, payload); success("Atualizado!"); } 
       else { await api.post(`/testes/projetos/${form.projeto_id}/ciclos`, payload); success("Criado!"); }
       handleReset();
-      if (selectedProjeto == form.projeto_id) loadCiclos(selectedProjeto); else setSelectedProjeto(form.projeto_id);
     } catch (err) { error("Erro ao salvar."); }
   };
 
@@ -216,7 +243,7 @@ export function AdminCiclos() {
     finally { setIsDeleteModalOpen(false); setItemToDelete(null); }
   };
 
-  const isFormInvalid =  !form.nome.trim() || !form.descricao.trim() || !form.data_inicio.trim() || !form.data_fim.trim();
+  const isFormInvalid =  !form.nome.trim() || !form.descricao.trim() || !form.data_inicio.trim() || !form.data_fim.trim() || !form.projeto_id;
 
   return (
     <main className="container">
@@ -231,13 +258,23 @@ export function AdminCiclos() {
                   <div className="form-grid">
                       <div style={{ flex: 1 }}>
                         <label className="input-label"><b>Projeto</b></label>
-                        <input 
-                          type="text"
-                          className="form-control bg-gray" 
-                          style={{ cursor: 'not-allowed', color: '#666' }}
-                          value={projetos.find(p => String(p.id) === String(form.projeto_id))?.nome || 'Projeto não selecionado'}
-                          readOnly
-                        />
+                        {/* Se estiver editando, bloqueia. Se for novo e sem filtro, permite escolher */}
+                        {editingId ? (
+                            <input 
+                              type="text"
+                              className="form-control bg-gray" 
+                              style={{ cursor: 'not-allowed', color: '#666' }}
+                              value={projetos.find(p => String(p.id) === String(form.projeto_id))?.nome || 'Projeto não encontrado'}
+                              readOnly
+                            />
+                        ) : (
+                            <SearchableSelect 
+                                options={projetos.filter(p => p.status === 'ativo')}
+                                value={form.projeto_id}
+                                onChange={(val) => setForm({...form, projeto_id: val})}
+                                placeholder="Selecione o projeto..."
+                            />
+                        )}
                       </div>
                       <div><label className="input-label"><b>Nome</b></label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="form-control"/></div>
                   </div>
@@ -275,17 +312,25 @@ export function AdminCiclos() {
                <h3 className="page-title">Ciclos de Teste</h3>
                <div className="toolbar-actions">
                    <div className="filter-group">
-                        <span className="filter-label">PROJETO:</span>
-                        <div style={{width: '200px'}}>
-                            <SearchableSelect 
-                                options={projetos.filter(p => p.status === 'ativo')}
-                                value={selectedProjeto}
-                                onChange={(val) => setSelectedProjeto(val)}
-                                placeholder="Filtrar Projeto..."
-                            />
-                        </div>
+                       <span className="filter-label">PROJETO:</span>
+                       <div style={{width: '200px'}}>
+                           <SearchableSelect 
+                               options={projetos.filter(p => p.status === 'ativo')}
+                               value={selectedProjeto}
+                               onChange={(val) => setSelectedProjeto(val)}
+                               placeholder="Todos os Projetos"
+                           />
+                       </div>
                    </div>
-                   <button onClick={handleNew} className="btn primary btn-new" disabled={!isProjectActive} style={{opacity: isProjectActive ? 1 : 0.5, cursor: isProjectActive ? 'pointer' : 'not-allowed'}}>Novo Ciclo</button>
+                   <button 
+                        onClick={handleNew} 
+                        className="btn primary btn-new"
+                        disabled={selectedProjeto && !isProjectActive} // Bloqueia apenas se projeto inativo estiver selecionado
+                        title={selectedProjeto && !isProjectActive ? "Projeto Inativo" : "Novo Ciclo"}
+                        style={{opacity: selectedProjeto && !isProjectActive ? 0.5 : 1}}
+                   >
+                        Novo Ciclo
+                   </button>
                    <div className="separator"></div>
                    <div ref={wrapperRef} className="search-wrapper">
                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onFocus={() => setShowSuggestions(true)} className="search-input" />
@@ -299,7 +344,7 @@ export function AdminCiclos() {
                                ))}
                            </ul>
                        )}
-                   </div>
+                   </div>                  
                </div>
            </div>
 
@@ -347,7 +392,11 @@ export function AdminCiclos() {
                        </thead>
                        <tbody>
                          {filteredCiclos.length === 0 ? (
-                            <tr><td colSpan="6" className="no-results" style={{textAlign: 'center'}}>Nenhum ciclo encontrado.</td></tr>
+                           <tr>
+                                <td colSpan="6" className="no-results" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>
+                                    {selectedProjeto ? <span>Nenhum ciclo encontrado neste projeto.</span> : <span>Nenhum ciclo encontrado.</span>}
+                                </td>
+                           </tr>
                          ) : (
                            currentCiclos.map(item => (
                             <tr key={item.id} className="selectable" onClick={() => handleEdit(item)}>
@@ -369,11 +418,11 @@ export function AdminCiclos() {
                </div>
                {filteredCiclos.length > 0 && (
                    <div className="pagination-container">
-                        <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
-                        {Array.from({length: totalPages}, (_, i) => (
-                            <button key={i+1} onClick={() => paginate(i+1)} className={`pagination-btn ${currentPage === i+1 ? 'active' : ''}`}>{i+1}</button>
-                        )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
-                        <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
+                       <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn nav-btn">‹</button>
+                       {Array.from({length: totalPages}, (_, i) => (
+                           <button key={i+1} onClick={() => paginate(i+1)} className={`pagination-btn ${currentPage === i+1 ? 'active' : ''}`}>{i+1}</button>
+                       )).slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))}
+                       <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="pagination-btn nav-btn">›</button>
                    </div>
                )}
              </div>

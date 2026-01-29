@@ -4,7 +4,7 @@ export const Search = ({ size = 16, className = '', ...props }) => {
       xmlns="http://www.w3.org/2000/svg" 
       width={size} 
       height={size} 
-      fill="#000000" 
+      fill="currentColor" 
       viewBox="0 0 16 16"
       className={`bi bi-search ${className}`}
       {...props}

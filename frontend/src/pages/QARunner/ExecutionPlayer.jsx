@@ -66,13 +66,6 @@ export function ExecutionPlayer({
                     <p>{execution.caso_teste.criterios_aceitacao}</p>
                 </div>
             )}
-            
-            {/* Descrição Extra */}
-            {execution.caso_teste?.descricao && execution.caso_teste?.descricao !== execution.caso_teste?.criterios_aceitacao && (
-                <div className={styles.metaBoxSimple}>
-                   <strong>Descrição:</strong> {execution.caso_teste.descricao}
-                </div>
-            )}
           </div>
         </div>
       </div>
@@ -80,7 +73,7 @@ export function ExecutionPlayer({
       <div className={styles.stepsContainer}>
         {passosOrdenados.map((passo, index) => {
           const status = passo.status || 'pendente';
-          const evidencias = passo.evidencias || []; 
+          const evidencias = passo.evidencias || [];
           const hasEvidences = Array.isArray(evidencias) && evidencias.length > 0;
           const isStepLocked = readOnly;
 
